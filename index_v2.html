@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4everKPI — Agency Operations</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0a;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#f0f0f0;--text2:#888;--text3:#444;
+  --accent:#7fff6e;--accent2:#5fd951;
+  --red:#ff5c5c;--amber:#ffb830;--blue:#5b9cf6;--purple:#a78bfa;--teal:#34d399;--coral:#fb7185;
+  --radius:10px;--radius-lg:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.5;min-height:100vh}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:24px}
+.login-screen.hidden{display:none}
+.login-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:40px;width:360px;text-align:center}
+.login-logo{font-size:28px;font-weight:700;color:var(--accent);letter-spacing:-1px;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text2);margin-bottom:28px}
+.login-tabs{display:flex;gap:6px;margin-bottom:20px;background:var(--bg3);border-radius:8px;padding:4px}
+.login-tab{flex:1;padding:7px;border:none;background:none;color:var(--text2);font-size:13px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.login-tab.active{background:var(--bg4);color:var(--text)}
+.login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;text-align:left}
+.login-field label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.login-field input{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
+.login-field input:focus{border-color:var(--accent)}
+.login-btn{width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px}
+.login-btn:hover{background:var(--accent2)}
+.login-error{font-size:12px;color:var(--red);margin-top:8px;min-height:16px}
+.login-member-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.member-login-btn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;color:var(--text);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .15s}
+.member-login-btn:hover{border-color:var(--accent);color:var(--accent)}
+.pin-input{display:none;flex-direction:column;gap:10px}
+.pin-input.show{display:flex}
+
+/* LAYOUT */
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:20px 14px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.main{flex:1;padding:28px 32px;overflow-x:hidden}
+.logo{font-size:16px;font-weight:700;color:var(--accent);letter-spacing:-.5px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.logo-dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 5px 8px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text2);font-size:13px;border:none;background:none;width:100%;text-align:left;transition:all .15s;font-family:'DM Sans',sans-serif}
+.nav-item:hover{background:var(--bg3);color:var(--text)}
+.nav-item.active{background:var(--bg4);color:var(--text)}
+.nav-item svg{width:14px;height:14px;flex-shrink:0}
+.sidebar-bottom{margin-top:auto;padding-top:14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:8px}
+.user-pill{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)}
+.user-av{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.logout-btn{font-size:11px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;padding:0}
+.logout-btn:hover{color:var(--red)}
+.live-dot{width:6px;height:6px;background:var(--accent);border-radius:50%;display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text);transition:all .15s;font-family:'DM Sans',sans-serif}
+.btn:hover{background:var(--bg4)}
+.btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
+.btn.primary:hover{background:var(--accent2)}
+.btn svg{width:13px;height:13px}
+
+/* PAGE */
+.page{display:none}.page.active{display:block}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:21px;font-weight:700;letter-spacing:-.5px}
+.page-sub{font-size:13px;color:var(--text2);margin-top:2px}
+
+/* KPI CARDS */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:28px}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px}
+.kpi-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+.kpi-value{font-size:26px;font-weight:700;letter-spacing:-1px;line-height:1}
+.kpi-value.green{color:var(--accent)}.kpi-value.red{color:var(--red)}.kpi-value.amber{color:var(--amber)}
+.kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* SECTION */
+.sec-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.sec-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+
+/* MEMBER CARDS */
+.member-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;margin-bottom:28px}
+.member-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.member-card.behind{border-color:rgba(255,92,92,.35)}
+.member-card.watch{border-color:rgba(255,184,48,.25)}
+.member-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.member-info{display:flex;align-items:center;gap:10px}
+.avatar{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.member-name{font-size:14px;font-weight:600}
+.member-role{font-size:11px;color:var(--text2);margin-top:1px}
+.role-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.role-tag{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)}
+.verdict{font-size:10px;font-weight:700;padding:4px 9px;border-radius:6px}
+.verdict.producing{background:rgba(127,255,110,.1);color:var(--accent)}
+.verdict.watch{background:rgba(255,184,48,.1);color:var(--amber)}
+.verdict.behind{background:rgba(255,92,92,.1);color:var(--red)}
+.verdict.nodata{background:var(--bg3);color:var(--text3)}
+.mini-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px}
+.mini-stat{background:var(--bg3);border-radius:8px;padding:9px 10px}
+.mini-stat-l{font-size:10px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
+.mini-stat-v{font-size:17px;font-weight:700;letter-spacing:-.5px}
+.mini-stat-v.g{color:var(--accent)}.mini-stat-v.a{color:var(--amber)}.mini-stat-v.r{color:var(--red)}
+.task-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px}
+.task-row1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px}
+.task-name{font-size:13px;font-weight:500}
+.task-meta{font-size:11px;color:var(--text2);margin-bottom:3px}
+.tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;white-space:nowrap}
+.tag.done{background:rgba(127,255,110,.1);color:var(--accent)}
+.tag.prog{background:rgba(91,156,246,.1);color:var(--blue)}
+.tag.late{background:rgba(255,92,92,.1);color:var(--red)}
+.tag.pending{background:rgba(255,184,48,.1);color:var(--amber)}
+.eta-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:3px}
+.eta-bar-track{background:var(--bg4);border-radius:3px;height:4px;overflow:hidden}
+.eta-bar-fill{height:100%;border-radius:3px;transition:width .4s}
+.eta-bar-fill.g{background:var(--accent)}.eta-bar-fill.a{background:var(--amber)}.eta-bar-fill.r{background:var(--red)}.eta-bar-fill.b{background:var(--blue)}
+.no-tasks{font-size:13px;color:var(--text3);padding:10px 0;text-align:center}
+.add-task-btn{width:100%;margin-top:10px;justify-content:center}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin-bottom:28px}
+.chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:14px}
+.chart-legend{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.legend-dot{width:8px;height:8px;border-radius:2px}
+
+/* ACCOUNTABILITY */
+.acct-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:28px}
+.acct-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.acct-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.acct-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.acct-item:last-child{border-bottom:none}
+.acct-name{font-weight:500}
+.acct-val{font-size:12px;color:var(--text2)}
+.acct-val.red{color:var(--red)}.acct-val.green{color:var(--accent)}.acct-val.amber{color:var(--amber)}
+
+/* CALENDAR */
+.cal-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:28px}
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.cal-title{font-size:15px;font-weight:600}
+.cal-nav{display:flex;gap:8px}
+.cal-nav button{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 10px;color:var(--text2);cursor:pointer;font-size:13px}
+.cal-nav button:hover{color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal-day-label{text-align:center;font-size:10px;color:var(--text3);text-transform:uppercase;padding:4px 0;letter-spacing:.04em}
+.cal-day{background:var(--bg3);border-radius:8px;padding:8px 6px;min-height:70px;border:1px solid var(--border);cursor:pointer;transition:border-color .15s}
+.cal-day:hover{border-color:var(--border2)}
+.cal-day.today{border-color:var(--accent)}
+.cal-day.other-month{opacity:.4}
+.cal-day-num{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:4px}
+.cal-day.today .cal-day-num{color:var(--accent)}
+.cal-task-dot{width:100%;font-size:9px;padding:2px 4px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-task-dot.done{background:rgba(127,255,110,.15);color:var(--accent)}
+.cal-task-dot.late{background:rgba(255,92,92,.15);color:var(--red)}
+.cal-task-dot.pending{background:rgba(255,184,48,.15);color:var(--amber)}
+.cal-task-dot.prog{background:rgba(91,156,246,.15);color:var(--blue)}
+
+/* TEAM ORG */
+.org-section{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:14px}
+.org-section-title{font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.org-members{display:flex;flex-wrap:wrap;gap:8px}
+.org-member-chip{display:flex;align-items:center;gap:7px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:7px 12px;font-size:13px;cursor:grab}
+.org-member-chip:active{cursor:grabbing;opacity:.7}
+
+/* ROLE GUIDES */
+.role-guide{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;margin-bottom:10px}
+.role-guide-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.role-guide-name{font-size:14px;font-weight:600}
+.role-guide-role{font-size:12px;color:var(--text2);margin-top:1px}
+.role-guide-desc{font-size:13px;color:var(--text2);line-height:1.7}
+
+/* PULSE WIDGET */
+.pulse-widget{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 18px;margin-bottom:28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.pulse-left{display:flex;align-items:center;gap:12px}
+.pulse-orb-wrap{position:relative;width:40px;height:40px}
+.pulse-orb{width:40px;height:40px;border-radius:50%;background:conic-gradient(var(--accent) 0deg, var(--bg3) 0deg);transition:background .5s;border:2px solid var(--bg3);position:relative}
+.pulse-orb-inner{position:absolute;inset:4px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--accent)}
+.pulse-label{font-size:13px;font-weight:600}
+.pulse-sub{font-size:11px;color:var(--text2)}
+.pulse-streak{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--amber)}
+.pulse-quote{font-size:12px;color:var(--text2);font-style:italic;max-width:300px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:26px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fg{display:flex;flex-direction:column;gap:4px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.fg input,.fg select,.fg textarea{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--accent)}
+.fg select option{background:var(--bg3)}
+.fg textarea{resize:vertical;min-height:60px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+.form-hint{font-size:11px;color:var(--text3);margin-top:3px}
+.divider{border:none;border-top:1px solid var(--border);margin:24px 0}
+.eta-suggest{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--teal);margin-top:4px;display:none}
+.eta-suggest.show{display:block}
+
+/* TIME SELECTOR */
+.time-select{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:4px}
+.time-btn{background:var(--bg4);border:1px solid var(--border);border-radius:6px;padding:6px 4px;font-size:11px;color:var(--text2);cursor:pointer;text-align:center;transition:all .15s;font-family:'DM Sans',sans-serif}
+.time-btn:hover{border-color:var(--accent);color:var(--accent)}
+.time-btn.selected{background:rgba(127,255,110,.1);border-color:var(--accent);color:var(--accent)}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:12px 18px;font-size:13px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:rgba(127,255,110,.3);color:var(--accent)}
+.toast.error{border-color:rgba(255,92,92,.3);color:var(--red)}
+
+@media(max-width:700px){.sidebar{display:none}.main{padding:16px}.mini-stats{grid-template-columns:repeat(2,1fr)}.form-grid{grid-template-columns:1fr}.fg.full{grid-column:1}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">4everKPI</div>
+    <div class="login-sub">Agency Operations Dashboard</div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="setLoginTab('admin',this)">Admin</button>
+      <button class="login-tab" onclick="setLoginTab('member',this)">Team Member</button>
+    </div>
+    <!-- Admin login -->
+    <div id="admin-login">
+      <div class="login-field"><label>Username</label><input id="admin-user" placeholder="admin" value="admin"></div>
+      <div class="login-field"><label>Password</label><input id="admin-pass" type="password" placeholder="••••••"></div>
+      <button class="login-btn" onclick="adminLogin()">Sign in as Admin</button>
+      <div class="login-error" id="admin-error"></div>
+    </div>
+    <!-- Member login -->
+    <div id="member-login" style="display:none">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Select your name then enter your PIN</div>
+      <div class="login-member-grid" id="member-login-grid"></div>
+      <div class="pin-input" id="pin-input">
+        <div class="login-field"><label id="pin-label">Enter PIN</label><input id="member-pin" type="password" placeholder="••••" maxlength="4"></div>
+        <button class="login-btn" onclick="memberLogin()">Sign in</button>
+      </div>
+      <div class="login-error" id="member-error"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-dot"></div>4everKPI</div>
+    <span class="nav-label">Overview</span>
+    <button class="nav-item active" onclick="setPage('dashboard',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard
+    </button>
+    <button class="nav-item" onclick="setPage('performance',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Performance
+    </button>
+    <button class="nav-item" onclick="setPage('accountability',this)" id="acct-nav">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Accountability
+    </button>
+    <button class="nav-item" onclick="setPage('calendar',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar
+    </button>
+    <span class="nav-label">Team</span>
+    <button class="btn primary" onclick="openAddTask()" style="margin:0 0 4px;justify-content:center;font-size:13px">+ Log task</button>
+    <button class="nav-item" id="add-member-nav" onclick="openAddMember()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Add member
+    </button>
+    <button class="nav-item" onclick="setPage('team-org',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="5" cy="18" r="3"/><circle cx="19" cy="18" r="3"/><line x1="12" y1="13" x2="5" y2="15"/><line x1="12" y1="13" x2="19" y2="15"/></svg>Team org
+    </button>
+    <button class="nav-item" onclick="setPage('roles',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Role guides
+    </button>
+    <div class="sidebar-bottom">
+      <div class="user-pill">
+        <div class="user-av" id="user-av" style="background:rgba(127,255,110,.15);color:var(--accent)">AD</div>
+        <div>
+          <div style="font-size:12px;font-weight:500" id="user-name-display">Admin</div>
+          <div style="font-size:10px;color:var(--text3)" id="user-role-display">Full access</div>
+        </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">Sign out</button>
+      <div style="font-size:12px;color:var(--text3)"><span class="live-dot"></span>Live sync</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div><div class="page-title">Agency dashboard</div><div class="page-sub" id="today-label"></div></div>
+        <button class="btn primary" onclick="openAddTask()">+ Log task</button>
+      </div>
+      <!-- Pulse widget -->
+      <div class="pulse-widget" id="pulse-widget">
+        <div class="pulse-left">
+          <div class="pulse-orb-wrap">
+            <div class="pulse-orb" id="pulse-orb">
+              <div class="pulse-orb-inner" id="pulse-pct">0%</div>
+            </div>
+          </div>
+          <div>
+            <div class="pulse-label">Agency pulse</div>
+            <div class="pulse-sub" id="pulse-sub">Log tasks to get started</div>
+          </div>
+        </div>
+        <div class="pulse-streak" id="streak-display">🔥 0 day streak</div>
+        <div class="pulse-quote" id="daily-quote"></div>
+      </div>
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="sec-header"><div class="sec-title">Team members</div></div>
+      <div class="member-grid" id="member-grid"></div>
+    </div>
+
+    <!-- PERFORMANCE -->
+    <div class="page" id="page-performance">
+      <div class="page-header">
+        <div><div class="page-title">Performance</div><div class="page-sub">Charts, trends, and who's actually producing</div></div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card"><div class="chart-title">Completion rate by member</div><div class="chart-legend" id="completion-legend"></div><div style="position:relative;height:200px"><canvas id="completionChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Avg time vs ETA (hours)</div><div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:#5b9cf6"></div>Actual</div><div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>ETA</div></div><div style="position:relative;height:200px"><canvas id="timeChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Tasks by status</div><div class="chart-legend" id="status-legend"></div><div style="position:relative;height:200px"><canvas id="statusChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Late / missed tasks by member</div><div style="position:relative;height:200px"><canvas id="lateChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Results produced by type</div><div style="position:relative;height:200px"><canvas id="resultsChart"></canvas></div></div>
+        <div class="chart-card"><div class="chart-title">Tasks logged per day (last 14 days)</div><div style="position:relative;height:200px"><canvas id="trendChart"></canvas></div></div>
+      </div>
+    </div>
+
+    <!-- ACCOUNTABILITY -->
+    <div class="page" id="page-accountability">
+      <div class="page-header">
+        <div><div class="page-title">Accountability</div><div class="page-sub">Who's producing, who needs pressure, what's breaking</div></div>
+      </div>
+      <div class="acct-grid" id="acct-grid"></div>
+      <div class="sec-header" style="margin-top:8px"><div class="sec-title">Bottlenecks & follow-ups</div></div>
+      <div id="bottleneck-list" style="margin-bottom:28px"></div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="page" id="page-calendar">
+      <div class="page-header">
+        <div><div class="page-title">Calendar</div><div class="page-sub">Plan tasks ahead — compare planned vs actual</div></div>
+        <button class="btn primary" onclick="openPlanTask()">+ Plan task</button>
+      </div>
+      <div class="cal-wrap">
+        <div class="cal-header">
+          <div class="cal-title" id="cal-month-label"></div>
+          <div class="cal-nav">
+            <button onclick="changeMonth(-1)">‹ Prev</button>
+            <button onclick="changeMonth(1)">Next ›</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+    </div>
+
+    <!-- TEAM ORG -->
+    <div class="page" id="page-team-org">
+      <div class="page-header">
+        <div><div class="page-title">Team organization</div><div class="page-sub">Drag members into focus areas — one person can be in multiple</div></div>
+      </div>
+      <div id="org-sections"></div>
+    </div>
+
+    <!-- ROLES -->
+    <div class="page" id="page-roles">
+      <div class="page-header">
+        <div><div class="page-title">Role guides</div><div class="page-sub">Drop a new VA in — they'll know exactly what to do</div></div>
+        <button class="btn primary" onclick="openAddMember()">+ Add member</button>
+      </div>
+      <div id="role-guides-list"></div>
+    </div>
+  </main>
+</div>
+
+<!-- TASK MODAL -->
+<div class="modal-overlay" id="task-modal">
+  <div class="modal">
+    <div class="modal-title" id="task-modal-title">Log task</div>
+    <div class="form-grid">
+      <div class="fg full"><label>Team member</label><select id="t-member" onchange="onMemberChange()"></select></div>
+      <div class="fg full"><label>Role / focus area</label><select id="t-role" onchange="onRoleChange()"></select></div>
+      <div class="fg full"><label>Task type</label><select id="t-tasktype" onchange="onTaskTypeChange()"></select></div>
+      <div class="fg full"><label>Task description</label><input id="t-name" placeholder="More detail about what was done..."></div>
+      <div class="fg full"><label>Result category</label><select id="t-result-cat"></select></div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="t-status">
+          <option value="done">Done</option>
+          <option value="prog">In progress</option>
+          <option value="pending">Pending</option>
+          <option value="late">Late / missed</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Planned date</label>
+        <input type="date" id="t-date">
+      </div>
+      <div class="fg full">
+        <label>ETA</label>
+        <div class="time-select" id="eta-time-select"></div>
+        <div class="eta-suggest" id="eta-suggest"></div>
+      </div>
+      <div class="fg full">
+        <label>Actual time</label>
+        <div class="time-select" id="actual-time-select"></div>
+      </div>
+      <div class="fg full"><label>Notes / blockers</label><textarea id="t-notes" placeholder="What slowed this down? What needs follow-up?"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn primary" onclick="saveTask()">Save task</button>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER MODAL -->
+<div class="modal-overlay" id="member-modal">
+  <div class="modal">
+    <div class="modal-title">Add team member</div>
+    <div class="form-grid">
+      <div class="fg"><label>Name</label><input id="m-name" placeholder="e.g. Logan"></div>
+      <div class="fg"><label>PIN (4 digits)</label><input id="m-pin" type="password" maxlength="4" placeholder="••••"></div>
+      <div class="fg full"><label>Role title</label><input id="m-role" placeholder="e.g. Lead Searching / Networking"></div>
+      <div class="fg full"><label>Role tags (comma separated)</label><input id="m-tags" placeholder="e.g. Lead Searching, Networking, Systems"></div>
+      <div class="fg full"><label>Role description (for onboarding)</label><textarea id="m-desc" placeholder="What does this person do? What does success look like?"></textarea></div>
+      <div class="fg">
+        <label>Color</label>
+        <select id="m-color">
+          <option value="purple">Purple</option>
+          <option value="teal">Teal</option>
+          <option value="coral">Coral / Pink</option>
+          <option value="blue">Blue</option>
+          <option value="amber">Amber</option>
+          <option value="neongreen">Neon Green</option>
+          <option value="iceblue">Ice Blue</option>
+          <option value="gold">Gold</option>
+          <option value="violet">Violet</option>
+          <option value="cyan">Cyan</option>
+          <option value="lime">Lime</option>
+          <option value="midnight">Midnight Blue</option>
+          <option value="red">Red</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeMemberModal()">Cancel</button>
+      <button class="btn primary" onclick="saveMember()">Add member</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://wqtenvjtuxvdoaechyjh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// AUTH
+const ADMIN_CREDS = { user: 'admin', pass: '4ever2026' };
+let currentUser = null; // {name, role:'admin'|'member'|'pa', memberId}
+
+const COLORS = {
+  purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},
+  teal:{bg:'rgba(52,211,153,.15)',text:'#34d399'},
+  coral:{bg:'rgba(251,113,133,.15)',text:'#fb7185'},
+  blue:{bg:'rgba(91,156,246,.15)',text:'#5b9cf6'},
+  amber:{bg:'rgba(255,184,48,.15)',text:'#ffb830'},
+  neongreen:{bg:'rgba(57,255,20,.15)',text:'#39ff14'},
+  iceblue:{bg:'rgba(176,224,230,.15)',text:'#b0e0e6'},
+  gold:{bg:'rgba(255,215,0,.15)',text:'#ffd700'},
+  violet:{bg:'rgba(238,130,238,.15)',text:'#ee82ee'},
+  cyan:{bg:'rgba(0,255,255,.15)',text:'#00ffff'},
+  lime:{bg:'rgba(50,205,50,.15)',text:'#32cd32'},
+  midnight:{bg:'rgba(25,25,112,.4)',text:'#7b8fd4'},
+  red:{bg:'rgba(255,0,0,.15)',text:'#ff4444'},
+};
+
+const ROLE_AREAS = {
+  'Lead Searching': ['Scrape leads','Qualify leads','Add leads to sheet','Contact leads','Follow up with leads','Research potential model'],
+  'Networking': ['Message potential partner','Test networking script','Follow up','Book call','Log useful connection','Review response rates'],
+  'Twitter/Social Growth': ['Post content','Track impressions','Test hook','Check account growth','Analyze best post','Schedule content','Engage with followers'],
+  'Chaturbate': ['Check stream stats','Post stream schedule','Engage audience','Review top performers','Update profile'],
+  'Reddit': ['Post content','Engage in subreddit','Check post performance','Find new subreddits','Reply to comments'],
+  'Chatters': ['Reply to DMs','Send mass message','Upsell content','Log conversation results','Follow up with fans'],
+  'Model Management': ['Check in with model','Review model content','Give feedback','Track model metrics','Update model SOP'],
+  'Systems/SOPs': ['Create SOP','Update tracker','Review team performance','Find bottleneck','Prepare outsourcing task','Update process doc'],
+  'PA/Oversight': ['Check team tasks','Follow up with member','Flag bottleneck','Review efficiency','Prepare daily report','Check SOP compliance'],
+  'General Admin': ['Update records','Send report','Organize files','Schedule meeting','Handle miscellaneous'],
+};
+
+const RESULT_CATEGORIES = [
+  'Lead found','Qualified lead','DM sent','Reply received','Positive reply',
+  'Call booked','Model recruited','Script tested','Post made','Impressions gained',
+  'Account checked','SOP created','Follow-up completed','Bottleneck found',
+  'No result','Needs follow-up','Task completed','Content uploaded','Data updated'
+];
+
+const TIME_OPTIONS = [
+  {label:'15 min',mins:15},{label:'30 min',mins:30},{label:'45 min',mins:45},
+  {label:'1 hr',mins:60},{label:'1 hr 15m',mins:75},{label:'1 hr 30m',mins:90},
+  {label:'1 hr 45m',mins:105},{label:'2 hrs',mins:120},{label:'2 hr 30m',mins:150},
+  {label:'3 hrs',mins:180},{label:'4 hrs',mins:240},{label:'5+ hrs',mins:300},
+];
+
+const QUOTES = [
+  "The agency moves when the team moves. Log it, track it, own it.",
+  "Consistency beats motivation every time.",
+  "What gets measured gets managed.",
+  "Every logged task is a step toward a system.",
+  "Small daily wins build agencies.",
+  "Accountability is the foundation of growth.",
+  "Data doesn't lie. Log everything.",
+  "The goal isn't to be busy. It's to produce results.",
+];
+
+const ORG_SECTIONS = ['Social Media / Twitter','Lead Searching','Chaturbate','Reddit','Chatters','Management','PA / Oversight','Systems'];
+
+let members=[], tasks=[], charts={};
+let calDate = new Date();
+let selectedEtaMins = null, selectedActualMins = null;
+let selectedMemberForPin = null;
+
+// LOGIN
+function setLoginTab(tab, btn) {
+  document.querySelectorAll('.login-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('admin-login').style.display = tab==='admin'?'block':'none';
+  document.getElementById('member-login').style.display = tab==='member'?'block':'none';
+  if(tab==='member') renderMemberLoginGrid();
+}
+
+function renderMemberLoginGrid() {
+  const grid = document.getElementById('member-login-grid');
+  grid.innerHTML = members.map(m=>`
+    <button class="member-login-btn" onclick="selectMemberLogin('${m.id}','${m.name}')">${m.name}</button>
+  `).join('');
+}
+
+function selectMemberLogin(id, name) {
+  selectedMemberForPin = {id, name};
+  document.getElementById('pin-input').classList.add('show');
+  document.getElementById('pin-label').textContent = `${name}'s PIN`;
+  document.getElementById('member-pin').focus();
+}
+
+function adminLogin() {
+  const u = document.getElementById('admin-user').value;
+  const p = document.getElementById('admin-pass').value;
+  if(u===ADMIN_CREDS.user && p===ADMIN_CREDS.pass) {
+    currentUser = {name:'Admin',role:'admin',memberId:null};
+    enterApp();
+  } else {
+    document.getElementById('admin-error').textContent = 'Incorrect credentials';
+  }
+}
+
+function memberLogin() {
+  if(!selectedMemberForPin) return;
+  const pin = document.getElementById('member-pin').value;
+  const member = members.find(m=>m.id===selectedMemberForPin.id);
+  if(!member) return;
+  if(member.pin && member.pin !== pin) {
+    document.getElementById('member-error').textContent = 'Incorrect PIN';
+    return;
+  }
+  currentUser = {name:member.name, role:'member', memberId:member.id};
+  enterApp();
+}
+
+function enterApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-name-display').textContent = currentUser.name;
+  document.getElementById('user-role-display').textContent = currentUser.role==='admin'?'Full access':currentUser.role==='pa'?'PA / Oversight':'Team member';
+  const av = document.getElementById('user-av');
+  av.textContent = currentUser.name.slice(0,2).toUpperCase();
+  // Hide admin-only nav for members
+  if(currentUser.role==='member') {
+    document.getElementById('add-member-nav').style.display='none';
+    document.getElementById('acct-nav').style.display='none';
+  }
+  render();
+}
+
+function logout() {
+  currentUser = null;
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('app').style.display='none';
+  document.getElementById('admin-error').textContent='';
+  document.getElementById('member-error').textContent='';
+  document.getElementById('pin-input').classList.remove('show');
+  document.getElementById('member-pin').value='';
+}
+
+// DATA
+async function load() {
+  const [{ data: mData }, { data: tData }] = await Promise.all([
+    sb.from('members').select('*').order('created_at'),
+    sb.from('tasks').select('*').order('logged_at', { ascending: false })
+  ]);
+  members = mData || [];
+  tasks = tData || [];
+  render();
+}
+
+function initials(n){return n.slice(0,2).toUpperCase()}
+function memberTasks(id){return tasks.filter(t=>t.member_id===id)}
+function fmtMins(m){if(!m)return'—';if(m<60)return m+'m';const h=Math.floor(m/60),min=m%60;return min?`${h}h ${min}m`:`${h}h`}
+
+function memberStats(id){
+  const mine=memberTasks(id);
+  const total=mine.length,done=mine.filter(t=>t.status==='done').length,late=mine.filter(t=>t.status==='late').length;
+  const rate=total?Math.round((done/total)*100):0;
+  const wt=mine.filter(t=>t.actual_minutes&&t.eta_minutes);
+  const avgActual=wt.length?Math.round(wt.reduce((s,t)=>s+t.actual_minutes,0)/wt.length):null;
+  const avgEta=wt.length?Math.round(wt.reduce((s,t)=>s+t.eta_minutes,0)/wt.length):null;
+  return{total,done,late,rate,avgActual,avgEta};
+}
+
+function verdict(id){
+  const s=memberStats(id);
+  if(!s.total)return{label:'No data',cls:'nodata'};
+  if(s.late>=2)return{label:'Falling behind',cls:'behind'};
+  if(s.rate>=80)return{label:'Producing',cls:'producing'};
+  if(s.rate>=50)return{label:'Watch',cls:'watch'};
+  return{label:'Falling behind',cls:'behind'};
+}
+
+function statusTag(s){
+  const map={done:['Done','done'],prog:['In progress','prog'],late:['Late','late'],pending:['Pending','pending']};
+  const [l,c]=map[s]||['Unknown','pending'];
+  return`<span class="tag ${c}">${l}</span>`;
+}
+
+function etaBar(eta,actual){
+  if(!eta)return'';
+  const pct=actual?Math.min(Math.round((actual/eta)*100),150):0;
+  const over=actual>eta;
+  const cls=!actual?'b':over?'r':'g';
+  const label=actual?(over?`+${fmtMins(actual-eta)} over`:`-${fmtMins(eta-actual)} under`):'No time logged';
+  return`<div style="margin-top:6px">
+    <div class="eta-row"><span>ETA ${fmtMins(eta)}${actual?' · Actual '+fmtMins(actual):''}</span><span>${label}</span></div>
+    <div class="eta-bar-track"><div class="eta-bar-fill ${cls}" style="width:${Math.min(pct,100)}%"></div></div>
+  </div>`;
+}
+
+// RENDER
+function render(){renderKPIs();renderMembers();renderPulse();if(document.getElementById('page-performance').classList.contains('active'))renderCharts();if(document.getElementById('page-accountability').classList.contains('active'))renderAccountability();if(document.getElementById('page-calendar').classList.contains('active'))renderCalendar();if(document.getElementById('page-roles').classList.contains('active'))renderRoleGuides();if(document.getElementById('page-team-org').classList.contains('active'))renderTeamOrg();}
+
+function renderKPIs(){
+  const total=tasks.length,done=tasks.filter(t=>t.status==='done').length,late=tasks.filter(t=>t.status==='late').length;
+  const results=tasks.filter(t=>t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs follow-up').length;
+  const rate=total?Math.round((done/total)*100):0;
+  document.getElementById('kpi-grid').innerHTML=[
+    {l:'Tasks logged',v:total,c:'',s:'all time'},
+    {l:'Completed',v:done,c:'green',s:`${rate}% rate`},
+    {l:'Late / missed',v:late,c:late>2?'red':late>0?'amber':'green',s:'need attention'},
+    {l:'Results produced',v:results,c:results>0?'green':'',s:'confirmed outputs'},
+    {l:'Team size',v:members.length,c:'',s:'active members'},
+  ].map(k=>`<div class="kpi-card"><div class="kpi-label">${k.l}</div><div class="kpi-value ${k.c}">${k.v}</div><div class="kpi-sub">${k.s}</div></div>`).join('');
+}
+
+function renderPulse(){
+  const total=tasks.length,done=tasks.filter(t=>t.status==='done').length;
+  const pct=total?Math.round((done/total)*100):0;
+  const orb=document.getElementById('pulse-orb');
+  orb.style.background=`conic-gradient(var(--accent) ${pct*3.6}deg, var(--bg3) ${pct*3.6}deg)`;
+  document.getElementById('pulse-pct').textContent=pct+'%';
+  document.getElementById('pulse-sub').textContent=pct>=80?'Agency is firing 🔥':pct>=50?'Making progress':'Get those tasks logged';
+  // Streak — count consecutive days with at least 1 task
+  const today=new Date().toDateString();
+  let streak=0;
+  for(let d=0;d<30;d++){
+    const day=new Date();day.setDate(day.getDate()-d);
+    const ds=day.toDateString();
+    const has=tasks.some(t=>new Date(t.logged_at).toDateString()===ds);
+    if(has)streak++;else if(d>0)break;
+  }
+  document.getElementById('streak-display').textContent=`🔥 ${streak} day streak`;
+  document.getElementById('daily-quote').textContent=QUOTES[new Date().getDay()%QUOTES.length];
+}
+
+function renderMembers(){
+  const mg=document.getElementById('member-grid');
+  if(!members.length){mg.innerHTML='<div style="color:var(--text3);font-size:13px">No members yet. Add one to get started.</div>';return;}
+  const visibleMembers = currentUser?.role==='member' ? members.filter(m=>m.id===currentUser.memberId) : members;
+  mg.innerHTML=visibleMembers.map(m=>{
+    const c=COLORS[m.color]||COLORS.purple;
+    const s=memberStats(m.id),v=verdict(m.id);
+    const mine=memberTasks(m.id).slice(0,3);
+    const rc=s.rate>=80?'g':s.rate>=50?'a':'r';
+    const lc=s.late===0?'g':s.late<=1?'a':'r';
+    const dc=s.avgActual&&s.avgEta?(s.avgActual>s.avgEta?'r':'g'):'';
+    const dv=s.avgActual&&s.avgEta?((s.avgActual>s.avgEta?'+':'')+fmtMins(Math.abs(s.avgActual-s.avgEta))):'—';
+    const tags=(m.role_tags||'').split(',').filter(Boolean).map(t=>`<span class="role-tag">${t.trim()}</span>`).join('');
+    const taskHTML=mine.length?mine.map(t=>`
+      <div class="task-item">
+        <div class="task-row1"><span class="task-name">${t.name||t.task_type||'Unnamed'}</span>${statusTag(t.status)}</div>
+        ${t.role_area?`<div class="task-meta">${t.role_area}${t.result_category?' · '+t.result_category:''}</div>`:''}
+        ${etaBar(t.eta_minutes,t.actual_minutes)}
+      </div>`).join(''):`<div class="no-tasks">No tasks logged yet</div>`;
+    return`<div class="member-card ${v.cls}">
+      <div class="member-head">
+        <div class="member-info">
+          <div class="avatar" style="background:${c.bg};color:${c.text}">${initials(m.name)}</div>
+          <div><div class="member-name">${m.name}</div><div class="member-role">${m.role}</div>${tags?`<div class="role-tags">${tags}</div>`:''}</div>
+        </div>
+        <span class="verdict ${v.cls}">${v.label}</span>
+      </div>
+      <div class="mini-stats">
+        <div class="mini-stat"><div class="mini-stat-l">Tasks</div><div class="mini-stat-v">${s.total}</div></div>
+        <div class="mini-stat"><div class="mini-stat-l">Done</div><div class="mini-stat-v ${rc}">${s.rate}%</div></div>
+        <div class="mini-stat"><div class="mini-stat-l">Late</div><div class="mini-stat-v ${lc}">${s.late}</div></div>
+        <div class="mini-stat"><div class="mini-stat-l">vs ETA</div><div class="mini-stat-v ${dc}">${dv}</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Recent tasks</div>
+      ${taskHTML}
+      <button class="btn add-task-btn" onclick="openAddTaskFor('${m.id}')">+ Log task for ${m.name}</button>
+    </div>`;
+  }).join('');
+}
+
+function renderCharts(){
+  const labels=members.map(m=>m.name);
+  const rates=members.map(m=>memberStats(m.id).rate);
+  const barColors=rates.map(r=>r>=80?'#7fff6e':r>=50?'#ffb830':'#ff5c5c');
+  const avgActuals=members.map(m=>{const s=memberStats(m.id);return s.avgActual?parseFloat((s.avgActual/60).toFixed(1)):0});
+  const avgEtas=members.map(m=>{const s=memberStats(m.id);return s.avgEta?parseFloat((s.avgEta/60).toFixed(1)):0});
+  const lates=members.map(m=>memberStats(m.id).late);
+  const cd={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#555',font:{size:11,family:'DM Sans'}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#555',font:{size:11,family:'DM Sans'}},grid:{color:'rgba(255,255,255,.05)'},border:{display:false}}}};
+  if(charts.completion)charts.completion.destroy();
+  charts.completion=new Chart(document.getElementById('completionChart'),{type:'bar',data:{labels,datasets:[{data:rates,backgroundColor:barColors,borderRadius:5,borderSkipped:false}]},options:{...cd,scales:{...cd.scales,y:{...cd.scales.y,min:0,max:100,ticks:{...cd.scales.y.ticks,callback:v=>v+'%'}}}}});
+  document.getElementById('completion-legend').innerHTML=members.map((m,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${barColors[i]}"></div>${m.name}: ${rates[i]}%</div>`).join('');
+  if(charts.time)charts.time.destroy();
+  charts.time=new Chart(document.getElementById('timeChart'),{type:'bar',data:{labels,datasets:[{label:'Actual',data:avgActuals,backgroundColor:'#5b9cf6',borderRadius:5,borderSkipped:false},{label:'ETA',data:avgEtas,backgroundColor:'#a78bfa',borderRadius:5,borderSkipped:false}]},options:{...cd,scales:{...cd.scales,y:{...cd.scales.y,ticks:{...cd.scales.y.ticks,callback:v=>v+'h'}}}}});
+  const sc=[tasks.filter(t=>t.status==='done').length,tasks.filter(t=>t.status==='prog').length,tasks.filter(t=>t.status==='pending').length,tasks.filter(t=>t.status==='late').length];
+  if(charts.status)charts.status.destroy();
+  charts.status=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Done','In progress','Pending','Late'],datasets:[{data:sc,backgroundColor:['#7fff6e','#5b9cf6','#ffb830','#ff5c5c'],borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},cutout:'65%'}});
+  document.getElementById('status-legend').innerHTML=['Done','In progress','Pending','Late'].map((l,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${ ['#7fff6e','#5b9cf6','#ffb830','#ff5c5c'][i]}"></div>${l}: ${sc[i]}</div>`).join('');
+  if(charts.late)charts.late.destroy();
+  charts.late=new Chart(document.getElementById('lateChart'),{type:'bar',data:{labels,datasets:[{data:lates,backgroundColor:'#ff5c5c',borderRadius:5,borderSkipped:false}]},options:{...cd,scales:{...cd.scales,y:{...cd.scales.y,ticks:{...cd.scales.y.ticks,stepSize:1}}}}});
+  // Results chart
+  const resultCounts={};
+  tasks.forEach(t=>{if(t.result_category){resultCounts[t.result_category]=(resultCounts[t.result_category]||0)+1;}});
+  const rLabels=Object.keys(resultCounts).slice(0,8),rData=rLabels.map(l=>resultCounts[l]);
+  if(charts.results)charts.results.destroy();
+  charts.results=new Chart(document.getElementById('resultsChart'),{type:'bar',data:{labels:rLabels,datasets:[{data:rData,backgroundColor:'#34d399',borderRadius:5,borderSkipped:false}]},options:{...cd,indexAxis:'y'}});
+  // Trend chart - last 14 days
+  const trendDays=[];const trendCounts=[];
+  for(let d=13;d>=0;d--){const day=new Date();day.setDate(day.getDate()-d);const ds=day.toLocaleDateString('en-US',{month:'short',day:'numeric'});trendDays.push(ds);const dc=tasks.filter(t=>new Date(t.logged_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})===ds).length;trendCounts.push(dc);}
+  if(charts.trend)charts.trend.destroy();
+  charts.trend=new Chart(document.getElementById('trendChart'),{type:'line',data:{labels:trendDays,datasets:[{data:trendCounts,borderColor:'#7fff6e',backgroundColor:'rgba(127,255,110,.1)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#7fff6e'}]},options:{...cd,scales:{...cd.scales,y:{...cd.scales.y,ticks:{...cd.scales.y.ticks,stepSize:1}}}}});
+}
+
+function renderAccountability(){
+  const grid=document.getElementById('acct-grid');
+  grid.innerHTML=`
+    <div class="acct-card">
+      <div class="acct-title">Who's producing</div>
+      ${members.map(m=>{const s=memberStats(m.id),v=verdict(m.id);return`<div class="acct-item"><span class="acct-name">${m.name}</span><span class="acct-val ${v.cls==='producing'?'green':v.cls==='behind'?'red':'amber'}">${v.label}</span></div>`;}).join('')}
+    </div>
+    <div class="acct-card">
+      <div class="acct-title">Completion rates</div>
+      ${members.map(m=>{const s=memberStats(m.id);return`<div class="acct-item"><span class="acct-name">${m.name}</span><span class="acct-val ${s.rate>=80?'green':s.rate>=50?'amber':'red'}">${s.rate}% (${s.done}/${s.total})</span></div>`;}).join('')}
+    </div>
+    <div class="acct-card">
+      <div class="acct-title">Late / missed tasks</div>
+      ${members.map(m=>{const s=memberStats(m.id);return`<div class="acct-item"><span class="acct-name">${m.name}</span><span class="acct-val ${s.late===0?'green':s.late<=1?'amber':'red'}">${s.late} late</span></div>`;}).join('')}
+    </div>
+    <div class="acct-card">
+      <div class="acct-title">Time efficiency</div>
+      ${members.map(m=>{const s=memberStats(m.id);const diff=s.avgActual&&s.avgEta?s.avgActual-s.avgEta:null;return`<div class="acct-item"><span class="acct-name">${m.name}</span><span class="acct-val ${diff===null?'':diff>0?'red':'green'}">${diff===null?'No data':(diff>0?'+':'')+fmtMins(Math.abs(diff))+' vs ETA'}</span></div>`;}).join('')}
+    </div>
+  `;
+  // Bottlenecks
+  const needsFollowup=tasks.filter(t=>t.result_category==='Needs follow-up'||t.notes?.toLowerCase().includes('block'));
+  const bl=document.getElementById('bottleneck-list');
+  if(!needsFollowup.length){bl.innerHTML='<div style="color:var(--text3);font-size:13px">No active bottlenecks flagged.</div>';return;}
+  bl.innerHTML=needsFollowup.slice(0,10).map(t=>{
+    const m=members.find(x=>x.id===t.member_id);
+    return`<div class="task-item" style="margin-bottom:8px">
+      <div class="task-row1"><span class="task-name">${t.name||t.task_type||'Task'}</span>${statusTag(t.status)}</div>
+      <div class="task-meta">${m?.name||'Unknown'} · ${t.role_area||'—'} · ${t.result_category||'—'}</div>
+      ${t.notes?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${t.notes}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// CALENDAR
+function renderCalendar(){
+  const y=calDate.getFullYear(),mo=calDate.getMonth();
+  document.getElementById('cal-month-label').textContent=calDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const firstDay=new Date(y,mo,1).getDay();
+  const daysInMonth=new Date(y,mo+1,0).getDate();
+  const today=new Date();
+  let html='';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>{html+=`<div class="cal-day-label">${d}</div>`;});
+  for(let i=0;i<firstDay;i++){
+    const prevDate=new Date(y,mo,-(firstDay-1-i));
+    html+=`<div class="cal-day other-month"><div class="cal-day-num">${prevDate.getDate()}</div></div>`;
+  }
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=today.getFullYear()===y&&today.getMonth()===mo&&today.getDate()===d;
+    const dayTasks=tasks.filter(t=>{const td=new Date(t.logged_at||t.planned_date);return td.getFullYear()===y&&td.getMonth()===mo&&td.getDate()===d;}).slice(0,3);
+    const dots=dayTasks.map(t=>`<div class="cal-task-dot ${t.status}">${t.name||t.task_type||'Task'}</div>`).join('');
+    html+=`<div class="cal-day${isToday?' today':''}"><div class="cal-day-num">${d}</div>${dots}</div>`;
+  }
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+function changeMonth(dir){calDate.setMonth(calDate.getMonth()+dir);renderCalendar();}
+
+function renderTeamOrg(){
+  const el=document.getElementById('org-sections');
+  el.innerHTML=ORG_SECTIONS.map(section=>{
+    const sectionMembers=members.filter(m=>{
+      const tags=(m.role_tags||'').toLowerCase();
+      return tags.includes(section.toLowerCase().split('/')[0].trim());
+    });
+    const chips=sectionMembers.length?sectionMembers.map(m=>{
+      const c=COLORS[m.color]||COLORS.purple;
+      return`<div class="org-member-chip" draggable="true"><div class="avatar" style="width:24px;height:24px;font-size:9px;background:${c.bg};color:${c.text}">${initials(m.name)}</div>${m.name}</div>`;
+    }).join(''):`<div style="font-size:12px;color:var(--text3)">No members assigned</div>`;
+    return`<div class="org-section"><div class="org-section-title">📌 ${section}</div><div class="org-members">${chips}</div></div>`;
+  }).join('');
+}
+
+function renderRoleGuides(){
+  const roleDescs={
+    'Lead Searching':'Finds and qualifies potential models, affiliates, or useful contacts. Success = consistent pipeline of qualified leads.',
+    'Networking':'Builds relationships with people who can bring leads, partners, or opportunities. Success = booked calls and warm connections.',
+    'Twitter/Social Growth':'Posts content, tests hooks, tracks impressions, and grows traffic. Success = daily posts that build audience and drive inbound.',
+    'Chaturbate':'Manages streaming presence and performance tracking. Success = consistent streams and growing viewer count.',
+    'Reddit':'Posts content in relevant subreddits and engages the community. Success = growing post performance and inbound traffic.',
+    'Chatters':'Handles DMs and fan engagement. Success = high reply rate, upsells, and fan retention.',
+    'Model Management':'Oversees model performance, content quality, and output. Success = models hitting targets consistently.',
+    'Systems/SOPs':'Creates and maintains processes that make the agency more efficient. Success = documented systems that anyone can follow.',
+    'PA/Oversight':'Tracks team execution, follows up, checks task timing, and flags bottlenecks. Success = nothing falls through the cracks.',
+    'General Admin':'Handles miscellaneous tasks that keep the agency running. Success = clean records and organized operations.',
+  };
+  const el=document.getElementById('role-guides-list');
+  el.innerHTML=members.map(m=>{
+    const c=COLORS[m.color]||COLORS.purple;
+    const tags=(m.role_tags||'').split(',').filter(Boolean);
+    const roleDesc=tags.map(t=>roleDescs[t.trim()]).filter(Boolean).join(' ');
+    return`<div class="role-guide">
+      <div class="role-guide-head">
+        <div class="avatar" style="width:36px;height:36px;font-size:12px;background:${c.bg};color:${c.text}">${initials(m.name)}</div>
+        <div><div class="role-guide-name">${m.name}</div><div class="role-guide-role">${m.role}</div></div>
+      </div>
+      <div class="role-guide-desc">${m.description||roleDesc||'No description added yet.'}</div>
+    </div>`;
+  }).join('');
+}
+
+// TIME SELECTOR
+function buildTimeSelector(containerId, varName){
+  const el=document.getElementById(containerId);
+  el.innerHTML=TIME_OPTIONS.map(t=>`<button class="time-btn" onclick="selectTime('${containerId}','${varName}',${t.mins},this)">${t.label}</button>`).join('');
+}
+
+function selectTime(containerId,varName,mins,btn){
+  document.querySelectorAll(`#${containerId} .time-btn`).forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  if(varName==='eta')selectedEtaMins=mins;
+  else selectedActualMins=mins;
+  if(varName==='eta')checkEtaSuggest();
+}
+
+// ROLE-BASED TASK FLOW
+function onMemberChange(){
+  selectedEtaMins=null;selectedActualMins=null;
+  buildTimeSelector('eta-time-select','eta');
+  buildTimeSelector('actual-time-select','actual');
+  onRoleChange();
+}
+
+function onRoleChange(){
+  const role=document.getElementById('t-role').value;
+  const taskSel=document.getElementById('t-tasktype');
+  const taskTypes=ROLE_AREAS[role]||[];
+  taskSel.innerHTML=taskTypes.map(t=>`<option value="${t}">${t}</option>`).join('');
+  onTaskTypeChange();
+}
+
+function onTaskTypeChange(){
+  checkEtaSuggest();
+}
+
+function checkEtaSuggest(){
+  const taskType=document.getElementById('t-tasktype').value;
+  const memberId=document.getElementById('t-member').value;
+  if(!taskType)return;
+  const similar=tasks.filter(t=>t.task_type===taskType&&t.actual_minutes&&t.member_id===memberId);
+  const el=document.getElementById('eta-suggest');
+  if(similar.length>=2){
+    const avg=Math.round(similar.reduce((s,t)=>s+t.actual_minutes,0)/similar.length);
+    el.textContent=`💡 Typical time for "${taskType}": ${fmtMins(avg)} (based on ${similar.length} past logs)`;
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+
+function populateRoleSelect(){
+  const sel=document.getElementById('t-role');
+  sel.innerHTML=Object.keys(ROLE_AREAS).map(r=>`<option value="${r}">${r}</option>`).join('');
+  onRoleChange();
+}
+
+function populateResultCategories(){
+  const sel=document.getElementById('t-result-cat');
+  sel.innerHTML=RESULT_CATEGORIES.map(r=>`<option value="${r}">${r}</option>`).join('');
+}
+
+function populateMemberSelect(id,preselect){
+  const sel=document.getElementById(id);
+  const opts=currentUser?.role==='member'?members.filter(m=>m.id===currentUser.memberId):members;
+  sel.innerHTML=opts.map(m=>`<option value="${m.id}"${m.id===preselect?' selected':''}>${m.name}</option>`).join('');
+}
+
+// MODALS
+function openAddTask(){
+  populateMemberSelect('t-member');
+  populateRoleSelect();
+  populateResultCategories();
+  buildTimeSelector('eta-time-select','eta');
+  buildTimeSelector('actual-time-select','actual');
+  selectedEtaMins=null;selectedActualMins=null;
+  document.getElementById('t-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function openAddTaskFor(mid){
+  populateMemberSelect('t-member',mid);
+  populateRoleSelect();
+  populateResultCategories();
+  buildTimeSelector('eta-time-select','eta');
+  buildTimeSelector('actual-time-select','actual');
+  selectedEtaMins=null;selectedActualMins=null;
+  document.getElementById('t-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('task-modal').classList.add('open');
+}
+
+function closeTaskModal(){document.getElementById('task-modal').classList.remove('open')}
+
+async function saveTask(){
+  const member_id=document.getElementById('t-member').value;
+  const name=document.getElementById('t-name').value.trim();
+  const status=document.getElementById('t-status').value;
+  const role_area=document.getElementById('t-role').value;
+  const task_type=document.getElementById('t-tasktype').value;
+  const result_category=document.getElementById('t-result-cat').value;
+  const notes=document.getElementById('t-notes').value.trim();
+  const planned_date=document.getElementById('t-date').value||null;
+  if(!task_type){showToast('Please select a task type','error');return;}
+  const{error}=await sb.from('tasks').insert([{member_id,name:name||task_type,status,role_area,task_type,result_category,notes,planned_date,eta_minutes:selectedEtaMins,actual_minutes:selectedActualMins}]);
+  if(error){showToast('Error saving task','error');console.error(error);return;}
+  closeTaskModal();
+  ['t-name','t-notes'].forEach(id=>document.getElementById(id).value='');
+  showToast('Task logged ✓');
+  await load();
+}
+
+function openAddMember(){document.getElementById('member-modal').classList.add('open')}
+function closeMemberModal(){document.getElementById('member-modal').classList.remove('open')}
+
+async function saveMember(){
+  const name=document.getElementById('m-name').value.trim();
+  const role=document.getElementById('m-role').value.trim();
+  const description=document.getElementById('m-desc').value.trim();
+  const color=document.getElementById('m-color').value;
+  const role_tags=document.getElementById('m-tags').value.trim();
+  const pin=document.getElementById('m-pin').value.trim();
+  if(!name||!role){showToast('Name and role required','error');return;}
+  const{error}=await sb.from('members').insert([{name,role,description,color,role_tags,pin}]);
+  if(error){showToast('Error adding member','error');return;}
+  closeMemberModal();
+  ['m-name','m-role','m-desc','m-tags','m-pin'].forEach(id=>document.getElementById(id).value='');
+  showToast(`${name} added to the team ✓`);
+  await load();
+}
+
+function openPlanTask(){openAddTask();}
+
+// PAGE NAV
+function setPage(page,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(page==='performance')renderCharts();
+  if(page==='accountability')renderAccountability();
+  if(page==='calendar')renderCalendar();
+  if(page==='roles')renderRoleGuides();
+  if(page==='team-org')renderTeamOrg();
+}
+
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className=`toast ${type} show`;
+  setTimeout(()=>t.className='toast',2800);
+}
+
+// CLOSE MODALS ON OVERLAY CLICK
+['task-modal','member-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))document.getElementById(id).classList.remove('open');});
+});
+
+// TODAY LABEL
+document.getElementById('today-label').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+// REALTIME
+const channel=sb.channel('realtime-kpi')
+  .on('postgres_changes',{event:'*',schema:'public',table:'tasks'},()=>load())
+  .on('postgres_changes',{event:'*',schema:'public',table:'members'},()=>load())
+  .subscribe();
+
+// INIT — load members first so login grid works
+load().then(()=>{
+  // Don't auto-enter app — wait for login
+});
+</script>
+</body>
+</html>
