@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4everKPI</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="login-screen" id="LS">
+  <div class="login-box">
+    <div class="login-logo">4everKPI</div>
+    <div class="login-sub">Agency Operations — Select your name</div>
+    <div id="step1">
+      <div class="sw"><span class="si">🔍</span><input id="msearch" placeholder="Search name..." oninput="filterM()" autocomplete="off"></div>
+      <div class="lgrid" id="lgrid"></div>
+    </div>
+    <div id="step2" class="pin-sec">
+      <button class="back-btn" onclick="backSel()">← Back</button>
+      <div class="pin-lbl" id="pinlbl">Enter your PIN</div>
+      <div class="pboxes"><input class="pbox" type="password" maxlength="1" id="p0" oninput="pnext(0)" onkeydown="pkey(event,0)"><input class="pbox" type="password" maxlength="1" id="p1" oninput="pnext(1)" onkeydown="pkey(event,1)"><input class="pbox" type="password" maxlength="1" id="p2" oninput="pnext(2)" onkeydown="pkey(event,2)"><input class="pbox" type="password" maxlength="1" id="p3" oninput="pnext(3)" onkeydown="pkey(event,3)"></div>
+      <button class="lbtn" onclick="doLogin()">Enter</button>
+      <div class="lerr" id="lerr"></div>
+    </div>
+  </div>
+</div>
+<div class="app" id="APP" style="display:none">
+  <aside class="sidebar">
+    <div class="logo"><div class="ldot"></div>4everKPI</div>
+    <span class="nlbl">Overview</span>
+    <button class="ni active" onclick="gp('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</button>
+    <button class="ni" onclick="gp('calendar',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</button>
+    <button class="ni" onclick="gp('performance',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Performance</button>
+    <button class="ni ao" onclick="gp('oversight',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Oversight</button>
+    <button class="ni ao" onclick="gp('intelligence',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Intelligence</button>
+    <span class="nlbl">Tasks</span>
+    <button class="btn p" onclick="openT()" style="margin:0 0 3px;justify-content:center;font-size:12px;width:100%">+ Log task</button>
+    <button class="ni" onclick="gp('library',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Task library</button>
+    <span class="nlbl">Team</span>
+    <button class="ni ao" onclick="openM()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>Add member</button>
+    <button class="ni" onclick="gp('roles',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Role guides</button>
+    <div class="sb-bot">
+      <div class="upill"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
+      <button class="out-btn" onclick="logout()">Sign out</button>
+      <div class="live-ind"><div class="ldot2"></div>Live sync</div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="page active" id="page-dashboard">
+      <div class="ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
+      <div class="pbar">
+        <div class="pleft">
+          <div class="orb-wrap"><canvas id="orb" width="40" height="40" style="border-radius:50%;display:block"></canvas><div class="orb-pct" id="opct">0%</div></div>
+          <div><div class="ptitle">Agency pulse</div><div class="psub" id="psub">—</div></div>
+        </div>
+        <div class="streak" id="streak">🔥 0 day streak</div>
+        <div class="qtext" id="quote"></div>
+      </div>
+      <div class="krow" id="krow"></div>
+      <div class="dsplit">
+        <div class="dpanel"><div class="dphead" onclick="toggleP('ib','ii')"><div class="dptitle"><div class="ipulse"></div>Live insights</div><span class="exp open" id="ii">▼</span></div><div class="dpbody" id="ib"><div class="ilist" id="ilist"></div></div></div>
+        <div class="dpanel"><div class="dphead" onclick="toggleP('tb','ti')"><div class="dptitle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team</div><span class="exp open" id="ti">▼</span></div><div class="dpbody" id="tb"><input class="tsrch" id="tsrch" placeholder="🔍 Search member..." oninput="rMembers()"><div class="mgrid2" id="mgrid2"></div></div></div>
+      </div>
+    </div>
+    <div class="page" id="page-calendar">
+      <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Click any day — search names inside</div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
+      <div class="ctop"><div class="cnav"><button onclick="chM(-1)">‹ Prev</button><button onclick="goT()">Today</button><button onclick="chM(1)">Next ›</button><span id="cml" style="font-size:15px;font-weight:600;line-height:32px;padding:0 6px"></span></div><input class="calsrch" id="csrch" placeholder="🔍 Filter member..." oninput="renderCal()"></div>
+      <div class="ddetail" id="dd"><div class="ddhead"><div class="ddtitle" id="ddt">—</div><div style="display:flex;align-items:center;gap:8px"><input class="ddsrch" id="ddsrch" placeholder="🔍 Search name..." oninput="filterDD()"><button class="btn sm" onclick="document.getElementById('dd').classList.remove('open')">✕</button></div></div><div id="ddc"></div></div>
+      <div class="cwrap"><div class="cgrid" id="cgrid"></div></div>
+      <div class="csum" id="csum"></div>
+    </div>
+    <div class="page" id="page-performance">
+      <div class="ph"><div><div class="pt">Performance</div><div class="ps">Click any chart to drill in</div></div></div>
+      <div class="chgrid">
+        <div class="chcard" onclick="dc('completion')"><div class="chtitle">Completion rate <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="cc"></canvas></div></div>
+        <div class="chcard" onclick="dc('time')"><div class="chtitle">Time vs ETA <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="ct"></canvas></div></div>
+        <div class="chcard" onclick="dc('status')"><div class="chtitle">By status <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="cs"></canvas></div></div>
+        <div class="chcard" onclick="dc('late')"><div class="chtitle">Late tasks <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="cl"></canvas></div></div>
+        <div class="chcard" onclick="dc('results')"><div class="chtitle">Results by type <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="cr"></canvas></div></div>
+        <div class="chcard" onclick="dc('trend')"><div class="chtitle">Tasks per day (14d) <span class="chhint">click</span></div><div style="position:relative;height:175px"><canvas id="ctr"></canvas></div></div>
+      </div>
+    </div>
+    <div class="page" id="page-oversight"><div class="ph"><div><div class="pt">Oversight</div><div class="ps">What needs attention right now</div></div></div><div class="ogrid" id="ogrid"></div><div style="margin-bottom:8px;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Tasks needing review</div><div id="otasks"></div></div>
+    <div class="page" id="page-intelligence"><div class="ph"><div><div class="pt">Agency intelligence</div><div class="ps">Calculated metrics</div></div></div><div class="igrid" id="igrid"></div></div>
+    <div class="page" id="page-library"><div class="ph"><div><div class="pt">Task library</div><div class="ps">Click to log · Drag to reorder · Admins edit everything</div></div></div><div class="bcats" id="bcats"></div></div>
+    <div class="page" id="page-profile"><div class="ph"><div><button class="btn sm" onclick="gp('dashboard',document.querySelector('.ni'))">← Back</button></div><div id="pedit"></div></div><div id="pcontent"></div></div>
+    <div class="page" id="page-roles"><div class="ph"><div><div class="pt">Role guides</div></div><button class="btn p ao" onclick="openM()">+ Add member</button></div><div id="rlist"></div></div>
+  </main>
+</div>
+<div class="ddov" id="DD"><div class="ddbox"><div class="ddh"><div class="ddt" id="ddt2">—</div><button class="xcbtn" onclick="closeDrill()">✕ Close</button></div><div class="dstats" id="dstats"></div><div id="dcontent"></div></div></div>
+<div class="cpanel" id="cpanel"></div>
+<div class="mov" id="TM">
+  <div class="modal">
+    <div class="modal-title" id="tmtitle">Log task</div>
+    <div class="bsel"><div class="bsel-lbl">Member</div><div class="bwrap" id="bm"></div></div>
+    <div class="bsel"><div class="bsel-lbl">Role area</div><div class="bwrap" id="br"></div><div class="badd" id="brad"><input id="bri" placeholder="Add role..." onkeydown="if(event.key==='Enter')addBub('role')"><button class="btn sm" onclick="addBub('role')">Add</button><button class="btn sm" onclick="document.getElementById('brad').classList.remove('show')">✕</button></div></div>
+    <div class="bsel"><div class="bsel-lbl">Task type</div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
+    <div class="fg"><label>Description (optional)</label><input id="tname" placeholder="More detail..."></div>
+    <div class="bsel"><div class="bsel-lbl">Result category <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
+    <div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div>
+    <div class="fg"><label>ETA</label><div class="tgrid" id="etag"></div><div class="etasug" id="etas"></div></div>
+    <div class="fg"><label>Actual time</label><div class="tgrid" id="actg"></div></div>
+    <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
+    <div id="recwrap" style="display:none;margin-bottom:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Repeat every</div><div class="recops"><button class="rbtn" onclick="setRec('Daily',this)">Daily</button><button class="rbtn" onclick="setRec('3 days',this)">3 days</button><button class="rbtn" onclick="setRec('5 days',this)">5 days</button><button class="rbtn" onclick="setRec('1 week',this)">1 week</button><button class="rbtn" onclick="setRec('2 weeks',this)">2 weeks</button><button class="rbtn" onclick="setRec('1 month',this)">1 month</button></div></div>
+    <div class="fg"><label>Notes / blockers</label><textarea id="tnotes"></textarea></div>
+    <input type="hidden" id="teid">
+    <div class="ma"><button class="btn" onclick="closeTM()">Cancel</button><button class="btn p" id="tsave" onclick="saveT()">Save task</button></div>
+  </div>
+</div>
+<div class="mov" id="MM">
+  <div class="modal">
+    <div class="modal-title" id="mmtitle">Add team member</div>
+    <div class="frow"><div class="fg"><label>Name</label><input id="mname"></div><div class="fg"><label>PIN (4 digits)</label><input id="mpin" type="password" maxlength="4" placeholder="••••"></div></div>
+    <div class="fg"><label>Admin?</label><select id="madmin"><option value="false">No — Team member</option><option value="true">Yes — Admin</option></select></div>
+    <div class="fg"><label>Role title</label><input id="mrole" placeholder="e.g. Lead Searching"></div>
+    <div class="fg"><label>Role tags (comma separated)</label><input id="mtags" placeholder="e.g. Lead Searching, Chatters"></div>
+    <div class="fg"><label>Role description</label><textarea id="mdesc" placeholder="What does this person do?"></textarea></div>
+    <div class="fg"><label>Color</label><select id="mcolor"><option value="purple">Purple</option><option value="teal">Teal</option><option value="coral">Coral / Pink</option><option value="blue">Blue</option><option value="amber">Amber</option><option value="neongreen">Neon Green</option><option value="gold">Gold</option><option value="violet">Violet</option><option value="cyan">Cyan</option><option value="red">Red</option><option value="lime">Lime</option><option value="midnight">Midnight Blue</option><option value="rose">Rose</option><option value="orange">Orange</option><option value="sky">Sky Blue</option></select></div>
+    <input type="hidden" id="meid">
+    <div class="ma"><button class="btn danger" id="mdel" onclick="delM()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeMM()">Cancel</button><button class="btn p" onclick="saveM()">Save</button></div>
+  </div>
+</div>
+<div class="mov" id="ECM">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title" id="ecmtitle">Edit category</div>
+    <div class="fg"><label>Display name</label><input id="ecmname" placeholder="Leave blank to keep original"></div>
+    <div class="fg"><label>Description</label><input id="ecmdesc"></div>
+    <div class="fg"><label>Icon (emoji)</label><input id="ecmicon" maxlength="4" style="width:80px"></div>
+    <div class="ma"><button class="btn" onclick="document.getElementById('ECM').classList.remove('open')">Cancel</button><button class="btn p" onclick="saveECM()">Save</button></div>
+  </div>
+</div>
+<div class="mov" id="CPM">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">Choose role color</div>
+    <div class="cpgrid" id="cpgrid"></div>
+    <div class="ma"><button class="btn" onclick="document.getElementById('CPM').classList.remove('open')">Cancel</button></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
