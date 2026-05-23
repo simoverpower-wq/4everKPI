@@ -251,3 +251,24 @@ GRANT EXECUTE ON FUNCTION purge_from_trash(uuid) TO anon, authenticated;
 -- Task history timestamps (accurate edit times)
 ALTER TABLE task_history ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now();
 UPDATE task_history SET changed_at = now() WHERE changed_at IS NULL;
+
+-- Wipe all agency data (keeps members — admin button in app)
+CREATE OR REPLACE FUNCTION wipe_agency_data()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM task_history;
+  DELETE FROM tasks;
+  DELETE FROM result_posts;
+  DELETE FROM feedback;
+  DELETE FROM role_notes;
+  DELETE FROM trash_bin;
+  DELETE FROM settings WHERE key = 'agency_prefs';
+  RETURN jsonb_build_object('ok', true, 'wiped_at', now());
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION wipe_agency_data() TO anon, authenticated;

@@ -87,6 +87,7 @@
     </nav>
     <div class="sb-trash">
       <button class="ni" data-nav="trash" onclick="gp('trash',this)" title="Trash & recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="ni-text">Trash</span></button>
+      <button class="ni wipe-btn" data-admin-only onclick="openWipeModal()" title="Erase all agency data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 16h10l1-16"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg><span class="ni-text">Erase all data</span></button>
     </div>
     <div class="sb-bot">
       <div class="upill"><div class="uav-wrap"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div class="uav-dot"></div></div><div class="upill-info"><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
@@ -229,6 +230,15 @@
     <div class="fg"><label>Notes (optional)</label><textarea id="rnotes" placeholder="What happened? Any context..."></textarea></div>
     <div class="fg"><label>Screenshots & files</label><div class="file-drop" id="fileDrop" onclick="el('rfiles').click()"><input type="file" id="rfiles" multiple accept="image/*,.pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.txt" style="display:none" onchange="previewResultFiles()"><div class="file-drop-inner"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>Click or drop files here</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Screenshots, PDFs, images</div></div></div><div class="file-previews" id="filePreviews"></div></div>
     <div class="ma"><button class="btn" onclick="closeResultModal()">Cancel</button><button class="btn p" id="rsaveBtn" onclick="saveResult()">Post result</button></div>
+  </div>
+</div>
+<div class="mov" id="WPM">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title" style="color:var(--red)">Erase all agency data</div>
+    <p class="wipe-copy">This permanently clears every task, streak, result, note, trash item, and custom bubble from the app. <strong>Team member accounts are kept</strong> so people can still log in.</p>
+    <p class="wipe-copy">This cannot be undone from the app. Supabase project backups (if enabled on your plan) may still retain data for recovery.</p>
+    <div class="fg"><label>Type <strong>ERASE</strong> to confirm</label><input id="wipeConfirm" placeholder="ERASE" autocomplete="off" oninput="onWipeType()"></div>
+    <div class="ma"><button class="btn" onclick="closeWipeModal()">Cancel</button><button class="btn danger wipe-confirm-btn" id="wipeBtn" disabled onclick="confirmWipeData()">Erase all data</button></div>
   </div>
 </div>
 <div class="help-float" id="helpFloat"></div>
