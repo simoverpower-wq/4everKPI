@@ -67,11 +67,15 @@ CREATE POLICY "Anyone can read result posts"
 CREATE POLICY "Anyone can insert result posts"
   ON result_posts FOR INSERT WITH CHECK (true);
 
-CREATE POLICY "Users can delete own results or admins all"
+DROP POLICY IF EXISTS "Users can delete own results or admins all" ON result_posts;
+CREATE POLICY "Anyone can delete result posts"
   ON result_posts FOR DELETE USING (true);
 
+DROP POLICY IF EXISTS "Anyone can update result posts" ON result_posts;
 CREATE POLICY "Anyone can update result posts"
   ON result_posts FOR UPDATE USING (true);
+
+GRANT ALL ON TABLE result_posts TO anon, authenticated;
 
 -- Storage bucket for result file uploads
 INSERT INTO storage.buckets (id, name, public)

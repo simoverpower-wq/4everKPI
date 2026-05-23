@@ -120,13 +120,13 @@ const PAL=[{n:'Neon Green',h:'#7fff6e'},{n:'Electric Blue',h:'#5b9cf6'},{n:'Purp
 function ls(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lss(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 
-var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[]},customRC=ls('4k_crc')||[],catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null;
+var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null;
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);saveSettings();}
 
 async function saveSettings(){
   try{
-    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder};
+    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:new Date().toISOString()}]);
   }catch(e){console.log('saveSettings err',e);}
 }
@@ -136,7 +136,7 @@ async function loadSettings(){
     var r=await sb.from('settings').select('value').eq('key','agency_prefs').single();
     if(r.data&&r.data.value){
       var v=r.data.value;
-      RCOLS=v.rcols||{};customRA=v.cra||{};delBase=v.del||{tasks:{},rc:[]};customRC=v.crc||[];catMeta=v.cm||{};catOrder=v.co||null;loginOrder=v.lo||null;rolesOrder=v.ro||null;
+      RCOLS=v.rcols||{};customRA=v.cra||{};delBase=v.del||{tasks:{},rc:[],rcByRole:{}};if(!delBase.rcByRole)delBase.rcByRole={};customRC=v.crc||[];customRCByRole=v.crcr||{};catMeta=v.cm||{};catOrder=v.co||null;loginOrder=v.lo||null;rolesOrder=v.ro||null;
     }
   }catch(e){console.log('No saved settings yet');}
 }
@@ -154,10 +154,80 @@ const BRA={
   'General Admin':{icon:'📋',desc:'Core admin tasks that keep things moving.',tasks:['Assign task','Review KPI','Calendar plan','Role update','Add member','Meeting prep']}
 };
 const BRC=['Lead found','Qualified lead','DM sent','Reply received','Positive reply','Call booked','Model recruited','Partner found','Post made','Impressions gained','Followers gained','Script tested','SOP created','SOP updated','Bottleneck found','Follow-up completed','No result','Needs review'];
+const BRR={
+  'Lead Searching':['Lead found','Qualified lead','DM sent','Reply received','Positive reply','Call booked','Follow-up completed','No result','Needs review'],
+  'Networking':['Partner found','Call booked','Positive reply','Reply received','DM sent','Follow-up completed','No result','Needs review'],
+  'Twitter/Social Growth':['Post made','Impressions gained','Followers gained','DM sent','Reply received','No result','Needs review'],
+  'Chaturbate':['Lead found','Qualified lead','Model recruited','DM sent','Reply received','Call booked','No result','Needs review'],
+  'Reddit':['Post made','Impressions gained','Followers gained','Reply received','Lead found','No result','Needs review'],
+  'Chatters':['DM sent','Reply received','Positive reply','Call booked','Follow-up completed','No result','Needs review'],
+  'Model Management':['Model recruited','Call booked','Follow-up completed','No result','Needs review'],
+  'Systems/SOPs':['SOP created','SOP updated','Bottleneck found','Script tested','No result','Needs review'],
+  'PA/Oversight':['Bottleneck found','Needs review','Follow-up completed','No result'],
+  'General Admin':['Needs review','Follow-up completed','SOP created','No result']
+};
 
 function getOrder(){var base=Object.keys(BRA);if(!catOrder)return base;var extra=Object.keys(customRA).filter(function(r){return!base.includes(r)&&!catOrder.includes(r);});return catOrder.filter(function(r){return base.includes(r)||customRA[r];}).concat(extra);}
 function getRA(){var order=getOrder(),res={};order.forEach(function(role){var bd=BRA[role],bt=bd?bd.tasks.filter(function(t){return!(delBase.tasks[role]||[]).includes(t);}):[];var ct=customRA[role]||[];res[role]=bt.concat(ct);});Object.keys(customRA).forEach(function(r){if(!res[r])res[r]=customRA[r]||[];});return res;}
 function getRC(){return BRC.filter(function(r){return!delBase.rc.includes(r);}).concat(customRC.filter(function(r){return!BRC.includes(r);}));}
+function parseMemberRoles(m){
+  if(!m)return[];
+  var all=Object.keys(BRA).concat(Object.keys(customRA)),roles=[],seen={};
+  function add(role){if(role&&!seen[role]){seen[role]=true;roles.push(role);}}
+  (m.role_tags||'').split(',').forEach(function(tag){
+    tag=tag.trim();if(!tag)return;
+    var match=all.find(function(r){return r.toLowerCase()===tag.toLowerCase();});
+    if(match)add(match);
+  });
+  if(m.role){
+    var rm=all.find(function(r){return r.toLowerCase()===m.role.toLowerCase();});
+    if(rm){roles=roles.filter(function(x){return x!==rm;});roles.unshift(rm);}
+  }
+  return roles;
+}
+function getContextRoles(){
+  if(sRoles.length)return sRoles.slice();
+  if(sMids.length===1){var m=members.find(function(x){return x.id===sMids[0];});if(m)return parseMemberRoles(m);}
+  if(cu){var me=members.find(function(x){return x.id===cu.id;});if(me)return parseMemberRoles(me);}
+  return[];
+}
+function getRCForRoles(roles){
+  if(!roles||!roles.length)return getRC();
+  if(!delBase.rcByRole)delBase.rcByRole={};
+  var out=[],seen={};
+  roles.forEach(function(role){
+    var base=BRR[role]||BRC;
+    var deleted=(delBase.rcByRole[role]||[]).concat(delBase.rc||[]);
+    var custom=customRCByRole[role]||[];
+    base.filter(function(r){return!deleted.includes(r);}).concat(custom.filter(function(r){return!deleted.includes(r);})).forEach(function(r){
+      if(!seen[r]){seen[r]=true;out.push(r);}
+    });
+  });
+  customRC.filter(function(r){return!BRC.includes(r)&&!out.includes(r);}).forEach(function(r){out.push(r);});
+  return out.length?out:getRC();
+}
+function addCustomRC(val,roles){
+  if(!roles||!roles.length){if(!customRC.includes(val))customRC.push(val);return;}
+  roles.forEach(function(role){
+    if(!customRCByRole[role])customRCByRole[role]=[];
+    if(!customRCByRole[role].includes(val))customRCByRole[role].push(val);
+  });
+}
+function removeRC(val,roles){
+  if(!delBase.rcByRole)delBase.rcByRole={};
+  var primary=roles&&roles.length?roles[0]:null;
+  if(primary&&BRR[primary]&&BRR[primary].includes(val)){
+    if(!delBase.rcByRole[primary])delBase.rcByRole[primary]=[];
+    if(!delBase.rcByRole[primary].includes(val))delBase.rcByRole[primary].push(val);
+  }else if(BRC.includes(val)){
+    if(!delBase.rc.includes(val))delBase.rc.push(val);
+  }else{
+    if(roles&&roles.length)roles.forEach(function(role){
+      if(customRCByRole[role])customRCByRole[role]=customRCByRole[role].filter(function(x){return x!==val;});
+    });
+    customRC=customRC.filter(function(x){return x!==val;});
+  }
+}
 function getCatInfo(role){var ov=catMeta[role]||{},b=BRA[role]||{};return{icon:ov.icon||b.icon||'📌',desc:ov.desc||b.desc||'',name:ov.name||role};}
 function getRCol(r){return RCOLS[r]||'#888';}
 
@@ -745,7 +815,15 @@ function bMembers(){
   el('bm').innerHTML=show.map(function(m){var c=getMC(m),on=sMids.includes(m.id);return'<span class="sb'+(on?' on':'')+'" style="'+(on?'border-color:'+c.text+';color:'+c.text+';background:'+c.bg:'')+'" data-mb="'+m.id+'">'+m.name+'</span>';}).join('');
   qsa('[data-mb]',el('bm')).forEach(function(s){s.onclick=function(){togMb(this.dataset.mb);};});
 }
-function togMb(id){if(sMids.includes(id))sMids=sMids.filter(function(x){return x!==id;});else sMids.push(id);bMembers();chkETA();}
+function togMb(id){
+  if(sMids.includes(id))sMids=sMids.filter(function(x){return x!==id;});
+  else sMids.push(id);
+  if(sMids.length===1&&!sRoles.length){
+    var m=members.find(function(x){return x.id===sMids[0];});
+    if(m)sRoles=parseMemberRoles(m);
+  }
+  bMembers();bTTs();bRCs();chkETA();
+}
 
 function bRoles(){
   var RA=getRA();
@@ -753,7 +831,7 @@ function bRoles(){
   qsa('[data-br]',el('br')).forEach(function(s){s.onclick=function(e){if(!e.target.dataset.xr)togR(this.dataset.br);};});
   qsa('[data-xr]',el('br')).forEach(function(s){s.onclick=function(e){e.stopPropagation();delRoleM(this.dataset.xr);};});
 }
-function togR(r){if(sRoles.includes(r))sRoles=sRoles.filter(function(x){return x!==r;});else sRoles.push(r);bRoles();bTTs();}
+function togR(r){if(sRoles.includes(r))sRoles=sRoles.filter(function(x){return x!==r;});else sRoles.push(r);bRoles();bTTs();bRCs();}
 function delRoleM(r){if(BRA[r]){toast('Built-in roles cannot be removed here','error');return;}delete customRA[r];sRoles=sRoles.filter(function(x){return x!==r;});saveAll();bRoles();bTTs();}
 
 function bTTs(){
@@ -766,13 +844,21 @@ function togTT(t){if(sTTs.includes(t))sTTs=sTTs.filter(function(x){return x!==t;
 function delTTM(t){var role=sRoles[0];if(role&&BRA[role]&&BRA[role].tasks.includes(t)){if(!delBase.tasks[role])delBase.tasks[role]=[];if(!delBase.tasks[role].includes(t))delBase.tasks[role].push(t);}else if(role&&customRA[role]){customRA[role]=customRA[role].filter(function(x){return x!==t;});}sTTs=sTTs.filter(function(x){return x!==t;});saveAll();bTTs();toast('"'+t+'" removed');}
 
 function bRCs(){
-  var RC=getRC();
+  var roles=getContextRoles(),RC=getRCForRoles(roles);
   el('brc').innerHTML=RC.map(function(r){return'<span class="sb'+(sRCs.includes(r)?' on':'')+'" data-rc="'+r+'">'+r+'<span class="sbx" data-xrc="'+r+'">✕</span></span>';}).join('')+'<button class="add-bub" onclick="el(\'brcad\').classList.add(\'show\')">+ Add</button>';
   qsa('[data-rc]',el('brc')).forEach(function(s){s.onclick=function(e){if(!e.target.dataset.xrc)togRC(this.dataset.rc);};});
   qsa('[data-xrc]',el('brc')).forEach(function(s){s.onclick=function(e){e.stopPropagation();delRCM(this.dataset.xrc);};});
 }
 function togRC(r){if(sRCs.includes(r))sRCs=sRCs.filter(function(x){return x!==r;});else sRCs.push(r);bRCs();}
-function delRCM(r){if(BRC.includes(r)){if(!delBase.rc.includes(r))delBase.rc.push(r);}else{customRC=customRC.filter(function(x){return x!==r;});}sRCs=sRCs.filter(function(x){return x!==r;});saveAll();bRCs();toast('"'+r+'" removed');}
+function delRCM(r){
+  var roles=getContextRoles();
+  removeRC(r,roles);
+  sRCs=sRCs.filter(function(x){return x!==r;});
+  if(sResultType===r)sResultType=getRCForRoles(roles)[0]||null;
+  saveAll();bRCs();
+  if(el('RM')&&el('RM').classList.contains('open'))bResultTypes();
+  toast('"'+r+'" removed');
+}
 
 function addBub(type){
   var ids={role:'bri',tt:'btti',rc:'brci'},wids={role:'brad',tt:'bttad',rc:'brcad'};
@@ -780,7 +866,7 @@ function addBub(type){
   var val=cap(raw);el(ids[type]).value='';el(wids[type]).classList.remove('show');
   if(type==='role'){if(!customRA[val])customRA[val]=[];if(!sRoles.includes(val))sRoles.push(val);saveAll();bRoles();bTTs();}
   else if(type==='tt'){var role=sRoles[0];if(role){if(!customRA[role])customRA[role]=[];if(!customRA[role].includes(val))customRA[role].push(val);}if(!sTTs.includes(val))sTTs.push(val);saveAll();bTTs();}
-  else if(type==='rc'){if(!customRC.includes(val))customRC.push(val);if(!sRCs.includes(val))sRCs.push(val);saveAll();bRCs();}
+  else if(type==='rc'){var roles=getContextRoles();addCustomRC(val,roles);if(!sRCs.includes(val))sRCs.push(val);saveAll();bRCs();if(el('RM')&&el('RM').classList.contains('open'))bResultTypes();}
   toast('"'+val+'" added');
 }
 
@@ -794,7 +880,10 @@ function setRec(f,btn){recFreq=f;qsa('.rbtn').forEach(function(b){b.classList.re
 // TASK MODAL
 function openT(){
   el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='done';
-  sMids=cu?[cu.id]:[];sRoles=[];sTTs=[];sRCs=[];sEta=null;sAct=null;isRec=false;recFreq=null;
+  sMids=cu?[cu.id]:[];
+  var me=cu?members.find(function(x){return x.id===cu.id;}):null;
+  sRoles=me?parseMemberRoles(me):[];
+  sTTs=[];sRCs=[];sEta=null;sAct=null;isRec=false;recFreq=null;
   if(el('massignsrch'))el('massignsrch').value='';
   el('rtog').classList.remove('on');el('recwrap').style.display='none';
   qsa('.rbtn').forEach(function(b){b.classList.remove('on');});
@@ -804,7 +893,7 @@ function openT(){
   var tl=el('TM').querySelectorAll('.bsel .bsel-lbl')[2];if(tl&&!tl.querySelector('.help-wrap'))tl.insertAdjacentHTML('beforeend',' '+hBtn('tasktype'));
   el('TM').classList.add('open');
 }
-function openTFor(mid){sMids=[mid];openT();}
+function openTFor(mid){openT();sMids=[mid];var m=members.find(function(x){return x.id===mid;});if(m)sRoles=parseMemberRoles(m);bMembers();bRoles();bTTs();bRCs();}
 function openEditSelf(){openEM(cu.id);}
 function closeTM(){el('TM').classList.remove('open');closeDrill();}
 
@@ -1087,14 +1176,23 @@ function rResults(){
   qsa('.res-del',grid).forEach(function(btn){btn.onclick=function(){askDelResult(this.dataset.rid,this);};});
 }
 function bResultTypes(){
-  var RC=getRC(),wrap=el('brtype');if(!wrap)return;
-  wrap.innerHTML=RC.map(function(r){return'<span class="sb'+(sResultType===r?' on':'')+'" data-rtype="'+esc(r)+'">'+esc(r)+'</span>';}).join('')+'<button type="button" class="add-bub" onclick="el(\'rtypead\').classList.add(\'show\')">+ Add</button>';
-  qsa('[data-rtype]',wrap).forEach(function(s){s.onclick=function(){sResultType=this.dataset.rtype;bResultTypes();};});
+  var roles=cu?(function(){var m=members.find(function(x){return x.id===cu.id;});return m?parseMemberRoles(m):[];})():[];
+  var RC=getRCForRoles(roles),wrap=el('brtype');if(!wrap)return;
+  wrap.innerHTML=RC.map(function(r){return'<span class="sb'+(sResultType===r?' on':'')+'" data-rtype="'+esc(r)+'">'+esc(r)+'<span class="sbx" data-xrtype="'+esc(r)+'">✕</span></span>';}).join('')+'<button type="button" class="add-bub" onclick="el(\'rtypead\').classList.add(\'show\')">+ Add</button>';
+  qsa('[data-rtype]',wrap).forEach(function(s){s.onclick=function(e){if(!e.target.dataset.xrtype){sResultType=this.dataset.rtype;bResultTypes();}};});
+  qsa('[data-xrtype]',wrap).forEach(function(s){s.onclick=function(e){e.stopPropagation();delResultType(this.dataset.xrtype);};});
+}
+function delResultType(r){
+  var roles=cu?(function(){var m=members.find(function(x){return x.id===cu.id;});return m?parseMemberRoles(m):[];})():[];
+  removeRC(r,roles);
+  if(sResultType===r)sResultType=getRCForRoles(roles)[0]||null;
+  saveAll();bResultTypes();toast('"'+r+'" removed');
 }
 function addResultType(){
   var val=cap(el('rtypei').value.trim());if(!val)return;
   el('rtypei').value='';el('rtypead').classList.remove('show');
-  if(!customRC.includes(val)&&!BRC.includes(val))customRC.push(val);
+  var roles=cu?(function(){var m=members.find(function(x){return x.id===cu.id;});return m?parseMemberRoles(m):[];})():[];
+  addCustomRC(val,roles);
   sResultType=val;saveAll();bResultTypes();toast('"'+val+'" added');
 }
 function openResultModal(){
@@ -1102,7 +1200,8 @@ function openResultModal(){
   el('rmtitle').textContent='Add result';
   el('rsaveBtn').textContent='Post result';
   el('rtitle').value='';el('rnotes').value='';pendingResultFiles=[];keptResultFiles=[];el('filePreviews').innerHTML='';
-  sResultType=getRC()[0]||null;el('rtypead').classList.remove('show');
+  var roles=cu?(function(){var m=members.find(function(x){return x.id===cu.id;});return m?parseMemberRoles(m):[];})():[];
+  sResultType=getRCForRoles(roles)[0]||null;el('rtypead').classList.remove('show');
   bResultTypes();
   el('RM').classList.add('open');
 }
@@ -1116,7 +1215,7 @@ function openEditResult(id){
   el('rnotes').value=r.notes||'';
   pendingResultFiles=[];
   keptResultFiles=parseResFiles(r);
-  sResultType=r.result_type||getRC()[0]||null;
+  sResultType=r.result_type||getRCForRoles((function(){var m=members.find(function(x){return x.id===cu.id;});return m?parseMemberRoles(m):[];})())[0]||null;
   el('rtypead').classList.remove('show');
   bResultTypes();
   renderFilePreviews();
@@ -1211,10 +1310,16 @@ function askDelResult(id,btn){
 async function confirmDelResult(id,btn){
   if(resultBusy)return;
   resultBusy=true;btn.disabled=true;btn.textContent='Deleting...';
-  var r=await sb.from('result_posts').delete().eq('id',id);
+  var r=await sb.from('result_posts').delete().eq('id',id).select('id');
   resultBusy=false;
   if(r.error){toast(r.error.message||'Could not delete result','error');rResults();return;}
-  toast('Result deleted');await loadResultPosts();rResults();render();
+  if(!r.data||!r.data.length){
+    toast('Could not delete — run the DELETE policy in supabase_migration.sql','error');
+    rResults();
+    return;
+  }
+  resultPosts=resultPosts.filter(function(x){return x.id!==id;});
+  toast('Result deleted');rResults();render();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
@@ -1225,7 +1330,7 @@ el('DD').addEventListener('click',function(e){if(e.target===el('DD'))closeDrill(
 el('dd').querySelector('button').addEventListener('click',function(){el('dd').classList.remove('open');});
 
 // REALTIME
-sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){loadRoleNotes();}).subscribe();
+sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){loadResultPosts();if(el('page-results').classList.contains('active'))rResults();render();}).subscribe();
 
 initLogin();
 initSidebar();
