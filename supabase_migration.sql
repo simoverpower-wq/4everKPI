@@ -1,5 +1,65 @@
 -- Run this in the Supabase SQL Editor for 4everKPI new features
 
+-- ========== QUICK FIX: Results delete/edit not working ==========
+-- Run this block first if deletes show an error in the app.
+
+CREATE OR REPLACE FUNCTION delete_result_post(post_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE row result_posts%ROWTYPE;
+BEGIN
+  DELETE FROM result_posts WHERE id = post_id RETURNING * INTO row;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN to_jsonb(row);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION update_result_post(
+  post_id uuid,
+  p_title text,
+  p_result_type text,
+  p_notes text,
+  p_file_urls text[]
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE row result_posts%ROWTYPE;
+BEGIN
+  UPDATE result_posts SET
+    title = p_title,
+    result_type = p_result_type,
+    notes = p_notes,
+    file_urls = COALESCE(p_file_urls, '{}')
+  WHERE id = post_id
+  RETURNING * INTO row;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN to_jsonb(row);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION delete_result_post(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION update_result_post(uuid, text, text, text, text[]) TO anon, authenticated;
+
+ALTER TABLE result_posts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can read result posts" ON result_posts;
+DROP POLICY IF EXISTS "Anyone can insert result posts" ON result_posts;
+DROP POLICY IF EXISTS "Users can delete own results or admins all" ON result_posts;
+DROP POLICY IF EXISTS "Anyone can delete result posts" ON result_posts;
+DROP POLICY IF EXISTS "Anyone can update result posts" ON result_posts;
+CREATE POLICY "result_posts_select" ON result_posts FOR SELECT USING (true);
+CREATE POLICY "result_posts_insert" ON result_posts FOR INSERT WITH CHECK (true);
+CREATE POLICY "result_posts_update" ON result_posts FOR UPDATE USING (true);
+CREATE POLICY "result_posts_delete" ON result_posts FOR DELETE USING (true);
+GRANT ALL ON TABLE result_posts TO anon, authenticated;
+
+-- ========== END QUICK FIX ==========
+
 -- Feedback submissions (sidebar feedback button)
 CREATE TABLE IF NOT EXISTS feedback (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

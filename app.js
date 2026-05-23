@@ -1287,9 +1287,12 @@ async function saveResult(){
     var payload={title:title,result_type:sResultType,notes:el('rnotes').value.trim()||null,file_urls:files.map(function(f){return JSON.stringify(f);})};
     var r;
     if(editingResultId){
-      r=await sb.from('result_posts').update(payload).eq('id',editingResultId).select();
-      if(r.error){toast(r.error.message||'Could not update result','error');return;}
-      if(!r.data||!r.data.length){toast('Could not update — add the UPDATE policy from supabase_migration.sql','error');return;}
+      r=await sb.rpc('update_result_post',{post_id:editingResultId,p_title:title,p_result_type:sResultType,p_notes:el('rnotes').value.trim()||null,p_file_urls:files.map(function(f){return JSON.stringify(f);})});
+      if(r.error||!r.data){
+        r=await sb.from('result_posts').update(payload).eq('id',editingResultId).select();
+        if(r.error){toast(r.error.message||'Could not update result','error');return;}
+        if(!r.data||!r.data.length){toast('Could not update — run the QUICK FIX block at the top of supabase_migration.sql','error');return;}
+      }
     }else{
       r=await sb.from('result_posts').insert([Object.assign({member_id:cu.id},payload)]).select();
       if(r.error){toast(r.error.message||'Could not save result','error');return;}
@@ -1310,14 +1313,17 @@ function askDelResult(id,btn){
 async function confirmDelResult(id,btn){
   if(resultBusy)return;
   resultBusy=true;btn.disabled=true;btn.textContent='Deleting...';
-  var r=await sb.from('result_posts').delete().eq('id',id).select('id');
-  resultBusy=false;
-  if(r.error){toast(r.error.message||'Could not delete result','error');rResults();return;}
-  if(!r.data||!r.data.length){
-    toast('Could not delete — run the DELETE policy in supabase_migration.sql','error');
-    rResults();
-    return;
+  var r=await sb.rpc('delete_result_post',{post_id:id});
+  if(r.error||!r.data){
+    var fb=await sb.from('result_posts').delete().eq('id',id).select('id');
+    if(fb.error||!fb.data||!fb.data.length){
+      resultBusy=false;
+      toast('Run the QUICK FIX block at the top of supabase_migration.sql in Supabase SQL Editor','error');
+      rResults();
+      return;
+    }
   }
+  resultBusy=false;
   resultPosts=resultPosts.filter(function(x){return x.id!==id;});
   toast('Result deleted');rResults();render();
 }
