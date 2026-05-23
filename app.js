@@ -29,9 +29,9 @@ const HELP={
   kpi_completed:'Tasks marked as "Done." This is your finished homework pile. The percentage below shows what share of all logged tasks are actually complete.',
   kpi_late:'Tasks that were missed or finished late — like homework turned in after the deadline. Keep this number low; red means it needs attention.',
   kpi_results:'Tasks where something actually happened — a DM sent, a lead found, a call booked. These are real outcomes, not just busywork.',
-  kpi_team:'How many people are on the team right now. Simple headcount — like counting players on a roster.',
+  kpi_team:'Everyone with an account on 4everKPI — admins and team members included. This stays in sync whenever someone is added or removed.',
   insights:'Live insights are like a coach shouting tips from the sideline. They pop up automatically when something needs attention or when someone is crushing it.',
-  team:'Your team roster — team members only see other team members here, not admins. Click anyone to see their profile. Search to find someone by name.',
+  team:'Your full team roster on the dashboard — every account, always up to date. Click anyone to see their profile. Search to find someone by name.',
   calendar:'A month-view calendar of who did what and when. Click any day to open a detailed list. The colored dots are like sticky notes showing tasks on that date.',
   cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
   cal_summary:'A quick recap of the whole month — total tasks, how many finished, how many late, and the overall completion rate.',
@@ -640,7 +640,7 @@ function rKPIs(){
   var tot=tasks.length,don=tasks.filter(function(t){return t.status==='done';}).length,lat=tasks.filter(function(t){return t.status==='late';}).length;
   var res=tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';}).length;
   var rt=tot?Math.round(don/tot*100):0;
-  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:members.filter(function(m){return!m.is_admin;}).length,c:'',s:'members',d:'',h:'kpi_team'}];
+  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:members.length,c:'',s:'accounts',d:'',h:'kpi_team'}];
   box.innerHTML=cards.map(function(k){return'<div class="kcard"'+(k.d?' data-kd="'+k.d+'"':'')+' style="cursor:'+(k.d?'pointer':'default')+'"><div class="kcard-top"><div class="klbl">'+k.l+'</div><span class="help-slot" data-help="'+k.h+'"></span></div><div class="kval '+k.c+'">'+k.v+'</div><div class="ksub">'+k.s+(k.d?' · tap':'')+'</div></div>';}).join('');
   qsa('.kcard[data-kd]').forEach(function(card){card.onclick=function(){dKPI(this.dataset.kd);};});
 }
@@ -664,10 +664,10 @@ function rMembers(){
   var container=el('mgrid2');
   if(!container)return;
   if(!members.length){container.innerHTML='<div style="color:var(--text3);font-size:13px">No members yet.</div>';return;}
-  var pool=getTeamVisible();
+  var pool=sortByOrder(members.slice(),'roles');
   var q=(el('tsrch')?el('tsrch').value||'':'').toLowerCase();
   var show=q?pool.filter(function(m){return m.name.toLowerCase().includes(q)||(m.role||'').toLowerCase().includes(q);}):pool;
-  if(!show.length){container.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">'+(q?'No team members match that search.':'No team members to show.')+'</div>';return;}
+  if(!show.length){container.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0">'+(q?'No accounts match that search.':'No accounts yet.')+'</div>';return;}
   var html='';
   show.forEach(function(m){
     var c=getMC(m),s=mst(m.id),v=vrd(m.id),mine=mt(m.id).slice(0,2);
@@ -679,7 +679,7 @@ function rMembers(){
     var editBtn=cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'';
     html+='<div class="mcard '+v.cls+(isC(m)?' chatter':'')+'" draggable="true" data-mid="'+m.id+'">';
     html+='<div class="mhd"><div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div>';
-    html+='<div><div class="mn">'+m.name+(isC(m)?'<span style="font-size:9px;color:var(--purple);margin-left:5px">CHATTER</span>':'')+'</div><div class="mr">'+m.role+'</div></div></div><span class="vd '+v.cls+'">'+v.label+'</span></div>';
+    html+='<div><div class="mn">'+m.name+(m.is_admin?'<span style="font-size:9px;color:var(--amber);margin-left:5px">ADMIN</span>':'')+(isC(m)?'<span style="font-size:9px;color:var(--purple);margin-left:5px">CHATTER</span>':'')+'</div><div class="mr">'+m.role+'</div></div></div><span class="vd '+v.cls+'">'+v.label+'</span></div>';
     html+='<div class="mstats"><div class="ms"><div class="msl">Tasks</div><div class="msv">'+s.total+'</div></div><div class="ms"><div class="msl">Done</div><div class="msv '+rc+'">'+s.rate+'%</div></div><div class="ms"><div class="msl">Late</div><div class="msv '+lc+'">'+s.late+'</div></div><div class="ms"><div class="msl">vs ETA</div><div class="msv '+dc+'">'+dv+'</div></div></div>';
     html+='<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Recent</div>'+tHTML;
     html+='<div style="display:flex;gap:5px;margin-top:8px"><button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log task</button>'+editBtn+'</div></div>';
