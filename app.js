@@ -1,3 +1,4 @@
+const APP_VER='20260523.2';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -377,7 +378,7 @@ function getRCol(r){return RCOLS[r]||'#888';}
 const TIMES=[{l:'15m',m:15},{l:'30m',m:30},{l:'45m',m:45},{l:'1h',m:60},{l:'1h 15m',m:75},{l:'1h 30m',m:90},{l:'1h 45m',m:105},{l:'2h',m:120},{l:'2h 30m',m:150},{l:'3h',m:180},{l:'4h',m:240},{l:'5h+',m:300}];
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
-var members=[],tasks=[],hist=[],charts={},cu=null,calDate=new Date();
+var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
@@ -408,7 +409,8 @@ async function initLogin(){
   var r=await sb.from('members').select('*').order('name');
   sbErr('members (login)',r);
   members=r.data||[];
-  logKPI('initLogin members loaded',{count:members.length});
+  memberAccountTotal=members.length;
+  logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
   await loadSettings();
   renderLG(members);
   var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
@@ -522,10 +524,14 @@ async function fetchAndRender(showLoadErr){
   try{
     await loadSettings();
 
-    var mr=await sb.from('members').select('*').order('name');
+    var mr=await sb.from('members').select('*',{count:'exact'}).order('name');
     sbErr('members',mr);
-    if(mr.data)members=mr.data;
-    else if(mr.error)members=[];
+    if(mr.error){
+      if(!members.length)members=[];
+    }else{
+      members=mr.data||[];
+      memberAccountTotal=typeof mr.count==='number'?mr.count:members.length;
+    }
 
     var tr=await sb.from('tasks').select('*').order('logged_at',{ascending:false});
     if(tr.error||!tr.data){
@@ -543,7 +549,7 @@ async function fetchAndRender(showLoadErr){
     }
     hist=hr.data||[];
 
-    logKPI('fetch complete',{memberCount:members.length,taskCount:tasks.length,histCount:hist.length});
+    logKPI('fetch complete',{memberCount:members.length,memberAccountTotal:memberAccountTotal,taskCount:tasks.length,histCount:hist.length});
 
     try{await loadRoleNotes();}catch(e){console.error('[4KPI] loadRoleNotes failed',e);}
     try{await loadResultPosts();}catch(e){console.error('[4KPI] loadResultPosts failed',e);}
@@ -640,7 +646,8 @@ function rKPIs(){
   var tot=tasks.length,don=tasks.filter(function(t){return t.status==='done';}).length,lat=tasks.filter(function(t){return t.status==='late';}).length;
   var res=tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';}).length;
   var rt=tot?Math.round(don/tot*100):0;
-  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:members.length,c:'',s:'accounts',d:'',h:'kpi_team'}];
+  var teamSz=memberAccountTotal||members.length;
+  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:teamSz,c:'',s:'accounts',d:'',h:'kpi_team'}];
   box.innerHTML=cards.map(function(k){return'<div class="kcard"'+(k.d?' data-kd="'+k.d+'"':'')+' style="cursor:'+(k.d?'pointer':'default')+'"><div class="kcard-top"><div class="klbl">'+k.l+'</div><span class="help-slot" data-help="'+k.h+'"></span></div><div class="kval '+k.c+'">'+k.v+'</div><div class="ksub">'+k.s+(k.d?' · tap':'')+'</div></div>';}).join('');
   qsa('.kcard[data-kd]').forEach(function(card){card.onclick=function(){dKPI(this.dataset.kd);};});
 }
@@ -1705,5 +1712,6 @@ function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.t
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 var ddEl=el('dd');if(ddEl){var ddBtn=ddEl.querySelector('button');if(ddBtn)ddBtn.addEventListener('click',function(){ddEl.classList.remove('open');});}
 
+console.log('[4KPI] app version',APP_VER);
 initLogin();
 initSidebar();
