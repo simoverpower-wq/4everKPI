@@ -248,3 +248,6 @@ GRANT EXECUTE ON FUNCTION move_to_trash(text, uuid, jsonb, text, uuid) TO anon, 
 GRANT EXECUTE ON FUNCTION restore_from_trash(uuid) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION purge_from_trash(uuid) TO anon, authenticated;
 
+-- Task history timestamps (accurate edit times)
+ALTER TABLE task_history ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now();
+UPDATE task_history SET changed_at = now() WHERE changed_at IS NULL;

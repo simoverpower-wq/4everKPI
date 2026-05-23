@@ -66,26 +66,28 @@
     <nav class="sb-nav">
       <div class="sb-section">
         <div class="nlbl">Overview</div>
-        <button class="ni active" onclick="gp('dashboard',this)" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="ni-text">Dashboard</span></button>
-        <button class="ni" onclick="gp('calendar',this)" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="ni-text">Calendar</span></button>
-        <button class="ni" onclick="gp('performance',this)" title="Performance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="ni-text">Performance</span></button>
-        <button class="ni" onclick="gp('compare',this)" title="Compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20V10M12 20V4M18 20v-6"/></svg><span class="ni-text">Compare</span></button>
-        <button class="ni ao" onclick="gp('oversight',this)" title="Oversight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span class="ni-text">Oversight</span></button>
-        <button class="ni ao" onclick="gp('intelligence',this)" title="Intelligence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="ni-text">Intelligence</span></button>
+        <button class="ni" data-nav="dashboard" onclick="gp('dashboard',this)" title="Dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="ni-text">Dashboard</span></button>
+        <button class="ni" data-nav="calendar" onclick="gp('calendar',this)" title="Calendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span class="ni-text">Calendar</span></button>
+        <button class="ni" data-nav="performance" onclick="gp('performance',this)" title="Performance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span class="ni-text">Performance</span></button>
+        <button class="ni" data-nav="compare" onclick="gp('compare',this)" title="Compare"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20V10M12 20V4M18 20v-6"/></svg><span class="ni-text">Compare</span></button>
+        <button class="ni ao" data-nav="oversight" onclick="gp('oversight',this)" title="Oversight"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg><span class="ni-text">Oversight</span></button>
+        <button class="ni ao" data-nav="intelligence" onclick="gp('intelligence',this)" title="Intelligence"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span class="ni-text">Intelligence</span></button>
       </div>
       <div class="sb-section">
         <div class="nlbl">Work</div>
-        <button class="btn-log-task" onclick="openT()" title="Log task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log task</span></button>
-        <button class="ni" onclick="gp('library',this)" title="Task library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="ni-text">Task library</span></button>
-        <button class="ni" onclick="gp('results',this)" title="Results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-text">Results</span></button>
-        <button class="ni ao" onclick="gp('trash',this)" title="Trash & recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="ni-text">Trash</span></button>
+        <button class="btn-log-task" data-nav="log_task" onclick="openT()" title="Log task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log task</span></button>
+        <button class="ni" data-nav="library" onclick="gp('library',this)" title="Task library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="ni-text">Task library</span></button>
+        <button class="ni" data-nav="results" onclick="gp('results',this)" title="Results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-text">Results</span></button>
       </div>
       <div class="sb-section">
         <div class="nlbl">Team</div>
-        <button class="ni ao" onclick="openM()" title="Add member"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span class="ni-text">Add member</span></button>
-        <button class="ni" onclick="gp('roles',this)" title="Role guides"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span class="ni-text">Role guides</span></button>
+        <button class="ni ao" data-nav="add_member" onclick="openM()" title="Add member"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span class="ni-text">Add member</span></button>
+        <button class="ni" data-nav="roles" onclick="gp('roles',this)" title="Role guides"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span class="ni-text">Role guides</span></button>
       </div>
     </nav>
+    <div class="sb-trash">
+      <button class="ni" data-nav="trash" onclick="gp('trash',this)" title="Trash & recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="ni-text">Trash</span></button>
+    </div>
     <div class="sb-bot">
       <div class="upill"><div class="uav-wrap"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div class="uav-dot"></div></div><div class="upill-info"><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
       <div class="sb-actions">
@@ -95,9 +97,11 @@
       <div class="live-ind"><div class="ldot2"></div><span class="ni-text">Live sync</span></div>
     </div>
   </aside>
+  <div class="sidebar-backdrop" id="sbBackdrop" onclick="closeMobileNav()"></div>
+  <button class="mob-menu" id="mobMenu" onclick="toggleMobileNav()" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <main class="main">
     <div class="page active" id="page-dashboard">
-      <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
+      <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
       <div class="pbar dash-pulse">
         <div class="pleft">
           <div class="orb-wrap"><canvas id="orb" width="48" height="48"></canvas><div class="orb-pct" id="opct">0%</div></div>
@@ -159,7 +163,7 @@
       <div class="trash-list" id="trashList"></div>
     </div>
     <div class="page" id="page-profile"><div class="ph"><div><button class="btn sm" onclick="gp('dashboard',document.querySelector('.ni'))">← Back</button></div><div id="pedit"></div></div><div id="pcontent"></div></div>
-    <div class="page" id="page-roles"><div class="ph"><div><div class="pt">Role guides</div><div class="ps">Who does what — drag to reorder</div></div><button class="btn p ao" onclick="openM()">+ Add member</button></div><div class="sw" style="margin-bottom:14px"><span class="si">🔍</span><input id="rsearch" placeholder="Search by name..." oninput="rRoles()" autocomplete="off"></div><div id="rlist"></div></div>
+    <div class="page" id="page-roles"><div class="ph"><div><div class="pt">Role guides</div><div class="ps">Who does what — drag to reorder</div></div><button class="btn p" data-require-nav="add_member" onclick="openM()">+ Add member</button></div><div class="sw" style="margin-bottom:14px"><span class="si">🔍</span><input id="rsearch" placeholder="Search by name..." oninput="rRoles()" autocomplete="off"></div><div id="rlist"></div></div>
     <div class="page" id="page-rolenotes"><div class="ph"><div><button class="btn sm" onclick="gp('library',document.querySelector('.ni[onclick*=library]'))">← Back to library</button><div class="pt" id="rnTitle" style="margin-top:10px">Role notes</div><div class="ps" id="rnMeta">Shared notes for this role category</div></div></div><textarea class="rn-editor" id="rnContent" placeholder="Write meeting notes, face-to-face conversations, reminders, or anything the team needs to remember..."></textarea><div class="rn-actions"><button class="btn p" onclick="saveRoleNotes()">Save notes</button></div></div>
   </main>
 </div>
@@ -168,14 +172,14 @@
 <div class="mov" id="TM">
   <div class="modal">
     <div class="modal-title" id="tmtitle">Log task</div>
-    <div class="bsel"><div class="bsel-lbl">Assign to <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><input class="mem-srch" id="massignsrch" placeholder="🔍 Search member..." oninput="bMembers()"><div class="bwrap" id="bm"></div></div>
+    <div class="bsel"><div class="bsel-lbl">Assign to <span class="bsel-hint">(tap multiple)</span></div><input class="mem-srch" id="massignsrch" placeholder="🔍 Search member..." oninput="bMembers()"><div class="bwrap" id="bm"></div></div>
     <div class="bsel"><div class="bsel-lbl">Role area</div><div class="bwrap" id="br"></div><div class="badd" id="brad"><input id="bri" placeholder="Add role..." onkeydown="if(event.key==='Enter')addBub('role')"><button class="btn sm" onclick="addBub('role')">Add</button><button class="btn sm" onclick="document.getElementById('brad').classList.remove('show')">✕</button></div></div>
-    <div class="bsel"><div class="bsel-lbl">Task type <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
+    <div class="bsel"><div class="bsel-lbl">Task type <span class="bsel-hint">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
     <div class="fg"><label>Description (optional)</label><input id="tname" placeholder="More detail..."></div>
-    <div class="bsel"><div class="bsel-lbl">Result category <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
+    <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
     <div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div>
     <div class="fg"><label>ETA</label><div class="tgrid" id="etag"></div><div class="etasug" id="etas"></div></div>
-    <div class="fg"><label>Actual time</label><div class="tgrid" id="actg"></div></div>
+    <div class="fg"><label>Actual time <span class="bsel-hint">(optional — only fill out after completing the task)</span></label><div class="tgrid" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
     <div id="recwrap" style="display:none;margin-bottom:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Repeat every</div><div class="recops"><button class="rbtn" onclick="setRec('Daily',this)">Daily</button><button class="rbtn" onclick="setRec('3 days',this)">3 days</button><button class="rbtn" onclick="setRec('5 days',this)">5 days</button><button class="rbtn" onclick="setRec('1 week',this)">1 week</button><button class="rbtn" onclick="setRec('2 weeks',this)">2 weeks</button><button class="rbtn" onclick="setRec('1 month',this)">1 month</button></div></div>
     <div class="fg"><label>Notes / blockers</label><textarea id="tnotes"></textarea></div>
@@ -187,11 +191,12 @@
   <div class="modal">
     <div class="modal-title" id="mmtitle">Add team member</div>
     <div class="frow"><div class="fg"><label>Name</label><input id="mname"></div><div class="fg"><label>PIN (4 digits)</label><input id="mpin" type="password" maxlength="4" placeholder="••••"></div></div>
-    <div class="fg"><label>Admin?</label><select id="madmin"><option value="false">No — Team member</option><option value="true">Yes — Admin</option></select></div>
+    <div class="fg"><label>Admin?</label><select id="madmin" onchange="syncMAccessSec()"><option value="false">No — Team member</option><option value="true">Yes — Admin</option></select></div>
     <div class="fg"><label>Role title</label><input id="mrole" placeholder="e.g. Lead Searching"></div>
     <div class="fg"><label>Role tags (comma separated)</label><input id="mtags" placeholder="e.g. Lead Searching, Chatters"></div>
     <div class="fg"><label>Role description</label><textarea id="mdesc" placeholder="What does this person do?"></textarea></div>
     <div class="fg"><label>Color</label><div class="cpgrid" id="mcolorgrid"></div><input type="hidden" id="mcolor" value="#34d399"></div>
+    <div class="fg" id="mAccessSec" style="display:none"><label>Sidebar access</label><div class="nav-access-grid" id="mNavAccess"></div><div class="nav-access-note">Choose which tabs this person can see. Admins always see everything.</div></div>
     <input type="hidden" id="meid">
     <div class="ma"><button class="btn danger" id="mdel" onclick="delM()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeMM()">Cancel</button><button class="btn p" onclick="saveM()">Save</button></div>
   </div>
