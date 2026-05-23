@@ -29,9 +29,10 @@
   </div>
 </div>
 <div class="app" id="APP" style="display:none">
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sb-top">
       <div class="logo"><div class="ldot"></div>4everKPI</div>
+      <button class="sb-collapse" onclick="toggleSidebar()" title="Collapse sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
     </div>
     <nav class="sb-nav">
       <span class="nlbl">Overview</span>
@@ -49,7 +50,7 @@
       <button class="ni" onclick="gp('roles',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Role guides</button>
     </nav>
     <div class="sb-bot">
-      <div class="upill"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
+      <div class="upill"><div class="uav-wrap"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div class="uav-dot"></div></div><div><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
       <button class="sb-action" onclick="openFeedback()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Feedback</button>
       <button class="sb-action out-btn" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</button>
       <div class="live-ind"><div class="ldot2"></div>Live sync</div>
@@ -57,23 +58,23 @@
   </aside>
   <main class="main">
     <div class="page active" id="page-dashboard">
-      <div class="ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
-      <div class="pbar">
+      <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
+      <div class="pbar dash-pulse">
         <div class="pleft">
-          <div class="orb-wrap"><canvas id="orb" width="40" height="40" style="border-radius:50%;display:block"></canvas><div class="orb-pct" id="opct">0%</div></div>
-          <div><div class="ptitle">Agency pulse</div><div class="psub" id="psub">—</div></div>
+          <div class="orb-wrap"><canvas id="orb" width="48" height="48" style="border-radius:50%;display:block"></canvas><div class="orb-pct" id="opct">0%</div></div>
+          <div><div class="ptitle" id="pulseTitle">Agency pulse</div><div class="psub" id="psub">—</div></div>
         </div>
-        <div class="streak" id="streak">🔥 0 day streak</div>
-        <div class="qtext" id="quote"></div>
+        <div class="pbar-right"><div class="streak" id="streak">🔥 0 day streak</div><div class="qtext" id="quote"></div></div>
       </div>
-      <div class="krow" id="krow"></div>
-      <div class="dsplit">
-        <div class="dpanel"><div class="dphead" onclick="toggleP('ib','ii')"><div class="dptitle"><div class="ipulse"></div>Live insights<span class="ins-date" id="insDate"></span></div><span class="exp open" id="ii">▼</span></div><div class="dpbody" id="ib"><div class="ilist" id="ilist"></div></div></div>
-        <div class="dpanel"><div class="dphead" onclick="toggleP('tb','ti')"><div class="dptitle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team</div><span class="exp open" id="ti">▼</span></div><div class="dpbody" id="tb"><input class="tsrch" id="tsrch" placeholder="🔍 Search member..." oninput="rMembers()"><div class="mgrid2" id="mgrid2"></div></div></div>
+      <div class="krow dash-krow" id="krow"></div>
+      <div class="dsplit dash-split">
+        <div class="dpanel"><div class="dphead" onclick="toggleP('ib','ii')"><div class="dptitle"><div class="ipulse"></div>Live insights<span class="ins-date" id="insDate"></span></div><div class="dphead-right" onclick="event.stopPropagation()"><span class="help-slot" data-help="insights"></span><span class="exp open" id="ii" onclick="toggleP('ib','ii')">▼</span></div></div><div class="dpbody" id="ib"><div class="ilist" id="ilist"></div></div></div>
+        <div class="dpanel"><div class="dphead" onclick="toggleP('tb','ti')"><div class="dptitle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Team</div><div class="dphead-right" onclick="event.stopPropagation()"><span class="help-slot" data-help="team"></span><span class="exp open" id="ti" onclick="toggleP('tb','ti')">▼</span></div></div><div class="dpbody" id="tb"><input class="tsrch" id="tsrch" placeholder="🔍 Search team member..." oninput="rMembers()"><div class="mgrid2" id="mgrid2"></div></div></div>
       </div>
     </div>
     <div class="page" id="page-calendar">
-      <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Click any day — search names inside</div></div></div>
+      <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Click any day — check off tasks when done</div></div></div>
+      <div class="mytasks-panel" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My open tasks</div><div class="mytasks-sub">Check off when finished — shows in edited history</div></div><div class="mytasks-list" id="myTasksList"></div></div>
       <div class="ctop"><div class="cnav"><button onclick="chM(-1)">‹ Prev</button><button onclick="goT()">Today</button><button onclick="chM(1)">Next ›</button><span id="cml" style="font-size:15px;font-weight:600;line-height:32px;padding:0 6px"></span></div><input class="calsrch" id="csrch" placeholder="🔍 Filter member..." oninput="renderCal()"></div>
       <div class="ddetail" id="dd"><div class="ddhead"><div class="ddtitle" id="ddt">—</div><div style="display:flex;align-items:center;gap:8px"><input class="ddsrch" id="ddsrch" placeholder="🔍 Search name..." oninput="filterDD()"><button class="btn sm" onclick="document.getElementById('dd').classList.remove('open')">✕</button></div></div><div id="ddc"></div></div>
       <div class="cwrap"><div class="cgrid" id="cgrid"></div></div>
@@ -162,6 +163,7 @@
     <div class="fb-admin ao" id="fbAdminSec" style="display:none;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)"><div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">All submissions</div><div id="fbList" class="fb-list"></div></div>
   </div>
 </div>
+<div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
 </body>
