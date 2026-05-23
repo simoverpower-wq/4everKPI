@@ -70,7 +70,7 @@
       <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" onclick="openT()">+ Log task</button></div>
       <div class="pbar dash-pulse">
         <div class="pleft">
-          <div class="orb-wrap"><canvas id="orb" width="48" height="48" style="border-radius:50%;display:block"></canvas><div class="orb-pct" id="opct">0%</div></div>
+          <div class="orb-wrap"><canvas id="orb" width="48" height="48"></canvas><div class="orb-pct" id="opct">0%</div></div>
           <div><div class="ptitle" id="pulseTitle">Agency pulse</div><div class="psub" id="psub">—</div></div>
         </div>
         <div class="pbar-right"><div class="streak" id="streak">🔥 0 day streak</div><div class="qtext" id="quote"></div></div>
@@ -117,12 +117,10 @@
     <div class="page" id="page-results">
       <div class="ph"><div><div class="pt">Results</div><div class="ps">Log wins & upload screenshots or proof files</div></div><button class="btn p" onclick="openResultModal()">+ Add result</button></div>
       <div class="res-toolbar">
-        <input class="res-search" id="resSearch" placeholder="🔍 Search results..." oninput="rResults()">
+        <input class="res-search" id="resSearch" placeholder="🔍 Search by title, type, or person..." oninput="rResults()">
         <select class="res-filter" id="resMemberFilter" onchange="rResults()"><option value="all">All members</option></select>
-        <select class="res-filter" id="resTypeFilter" onchange="rResults()"><option value="all">All types</option></select>
         <select class="res-filter" id="resDateFilter" onchange="rResults()"><option value="all">All time</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option></select>
       </div>
-      <div class="res-type-chips" id="resTypeChips"></div>
       <div class="res-grid" id="resGrid"></div>
     </div>
     <div class="page" id="page-profile"><div class="ph"><div><button class="btn sm" onclick="gp('dashboard',document.querySelector('.ni'))">← Back</button></div><div id="pedit"></div></div><div id="pcontent"></div></div>
@@ -185,7 +183,7 @@
 </div>
 <div class="mov" id="RM">
   <div class="modal" style="max-width:520px">
-    <div class="modal-title">Add result</div>
+    <div class="modal-title" id="rmtitle">Add result</div>
     <div class="fg"><label>Title</label><input id="rtitle" placeholder="e.g. Booked call with lead"></div>
     <div class="bsel"><div class="bsel-lbl">Result type</div><div class="bwrap" id="brtype"></div><div class="badd" id="rtypead"><input id="rtypei" placeholder="Add result type..." onkeydown="if(event.key==='Enter')addResultType()"><button class="btn sm" onclick="addResultType()">Add</button><button class="btn sm" onclick="document.getElementById('rtypead').classList.remove('show')">✕</button></div></div>
     <div class="fg"><label>Notes (optional)</label><textarea id="rnotes" placeholder="What happened? Any context..."></textarea></div>

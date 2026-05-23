@@ -167,7 +167,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 var members=[],tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
-var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],sResultType=null;
+var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false;
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
   winning:['you think you doing something don\'t you? 😂','okay okay we see you 👀','main character energy right there 🔥','you ate that and left no crumbs','don\'t get too comfy up there 😂'],
@@ -943,7 +943,7 @@ function gp(page,btn){
   if(page==='oversight')rOversight();
   if(page==='intelligence')rIntel();
   if(page==='library')rLib();
-  if(page==='results')rResults();
+  if(page==='results'){refreshResFilters();rResults();}
   if(page==='roles')rRoles();
   if(page==='compare')rCompare();
 }
@@ -1046,20 +1046,6 @@ function refreshResFilters(){
     mf.innerHTML='<option value="all">All members</option><option value="mine">My results</option>'+pool.map(function(m){return'<option value="'+m.id+'">'+esc(m.name)+'</option>';}).join('');
     if(cur&&Array.from(mf.options).some(function(o){return o.value===cur;}))mf.value=cur;
   }
-  var tf=el('resTypeFilter');
-  if(tf){
-    var curT=tf.value;
-    tf.innerHTML='<option value="all">All types</option>'+getRC().map(function(r){return'<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('');
-    if(curT&&Array.from(tf.options).some(function(o){return o.value===curT;}))tf.value=curT;
-  }
-}
-function renderResTypeChips(){
-  var box=el('resTypeChips');if(!box)return;
-  var types=getRC(),active=el('resTypeFilter')?el('resTypeFilter').value:'all';
-  box.innerHTML='<button type="button" class="res-chip'+(active==='all'?' on':'')+'" data-rt="all">All</button>'+types.map(function(t){
-    return'<button type="button" class="res-chip'+(active===t?' on':'')+'" data-rt="'+esc(t)+'">'+esc(t)+'</button>';
-  }).join('');
-  qsa('.res-chip',box).forEach(function(btn){btn.onclick=function(){var tf=el('resTypeFilter');if(tf)tf.value=this.dataset.rt;rResults();};});
 }
 function fmtResDate(d){
   var dt=new Date(d),now=new Date();
@@ -1068,15 +1054,12 @@ function fmtResDate(d){
 }
 function rResults(){
   var grid=el('resGrid');if(!grid)return;
-  refreshResFilters();
   var q=(el('resSearch')?el('resSearch').value:'').toLowerCase();
   var memberF=el('resMemberFilter')?el('resMemberFilter').value:'all';
-  var typeF=el('resTypeFilter')?el('resTypeFilter').value:'all';
   var dateF=el('resDateFilter')?el('resDateFilter').value:'all';
   var list=getResultsPool();
   if(memberF==='mine'&&cu)list=list.filter(function(r){return r.member_id===cu.id;});
   else if(memberF!=='all')list=list.filter(function(r){return r.member_id===memberF;});
-  if(typeF!=='all')list=list.filter(function(r){return r.result_type===typeF;});
   if(dateF!=='all'){
     var now=new Date();
     list=list.filter(function(r){
@@ -1088,7 +1071,6 @@ function rResults(){
     });
   }
   if(q)list=list.filter(function(r){var m=members.find(function(x){return x.id===r.member_id;});return(r.title||'').toLowerCase().includes(q)||(r.result_type||'').toLowerCase().includes(q)||(r.notes||'').toLowerCase().includes(q)||(m?m.name:'').toLowerCase().includes(q);});
-  renderResTypeChips();
   if(!list.length){grid.innerHTML='<div class="res-empty">No results yet — hit "+ Add result" to log your first win with screenshots.</div>';return;}
   grid.innerHTML=list.map(function(r){
     var m=members.find(function(x){return x.id===r.member_id;}),c=getMC(m),files=parseResFiles(r);
@@ -1097,10 +1079,12 @@ function rResults(){
     var media='';
     if(imgs.length)media+='<div class="res-imgs">'+imgs.map(function(f){return'<a href="'+esc(f.url)+'" target="_blank" rel="noopener"><img src="'+esc(f.url)+'" alt=""></a>';}).join('')+'</div>';
     if(others.length)media+='<div class="res-files">'+others.map(function(f){return'<a href="'+esc(f.url)+'" target="_blank" rel="noopener" class="res-file-link">📎 '+esc(f.name)+'</a>';}).join('')+'</div>';
-    var del=(cu&&(cu.isAdmin||r.member_id===cu.id))?'<button class="btn sm danger res-del" data-rid="'+r.id+'">Delete</button>':'';
-    return'<div class="res-card"><div class="res-head"><div class="res-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="res-meta"><div class="res-author">'+esc(m?m.name:'Unknown')+'</div><div class="res-date">'+fmtResDate(r.created_at)+'</div></div><span class="res-type">'+esc(r.result_type||'Result')+'</span></div><div class="res-title">'+esc(r.title)+'</div>'+(r.notes?'<div class="res-notes">'+esc(r.notes)+'</div>':'')+media+(del?'<div class="res-foot">'+del+'</div>':'')+'</div>';
+    var canEdit=cu&&(cu.isAdmin||r.member_id===cu.id);
+    var actions=canEdit?'<div class="res-foot"><div class="res-actions"><button class="btn sm res-edit" data-rid="'+r.id+'">Edit</button><button class="btn sm danger res-del" data-rid="'+r.id+'">Delete</button></div></div>':'';
+    return'<div class="res-card" data-rid="'+r.id+'"><div class="res-head"><div class="res-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="res-meta"><div class="res-author">'+esc(m?m.name:'Unknown')+'</div><div class="res-date">'+fmtResDate(r.created_at)+'</div></div><span class="res-type">'+esc(r.result_type||'Result')+'</span></div><div class="res-title">'+esc(r.title)+'</div>'+(r.notes?'<div class="res-notes">'+esc(r.notes)+'</div>':'')+media+actions+'</div>';
   }).join('');
-  qsa('.res-del',grid).forEach(function(btn){btn.onclick=function(){delResult(this.dataset.rid);};});
+  qsa('.res-edit',grid).forEach(function(btn){btn.onclick=function(){openEditResult(this.dataset.rid);};});
+  qsa('.res-del',grid).forEach(function(btn){btn.onclick=function(){askDelResult(this.dataset.rid,this);};});
 }
 function bResultTypes(){
   var RC=getRC(),wrap=el('brtype');if(!wrap)return;
@@ -1114,21 +1098,46 @@ function addResultType(){
   sResultType=val;saveAll();bResultTypes();toast('"'+val+'" added');
 }
 function openResultModal(){
-  el('rtitle').value='';el('rnotes').value='';pendingResultFiles=[];el('filePreviews').innerHTML='';
+  editingResultId=null;
+  el('rmtitle').textContent='Add result';
+  el('rsaveBtn').textContent='Post result';
+  el('rtitle').value='';el('rnotes').value='';pendingResultFiles=[];keptResultFiles=[];el('filePreviews').innerHTML='';
   sResultType=getRC()[0]||null;el('rtypead').classList.remove('show');
   bResultTypes();
   el('RM').classList.add('open');
 }
-function closeResultModal(){el('RM').classList.remove('open');pendingResultFiles=[];el('filePreviews').innerHTML='';}
+function openEditResult(id){
+  var r=resultPosts.find(function(x){return x.id===id;});if(!r)return;
+  if(!cu||(r.member_id!==cu.id&&!cu.isAdmin)){toast('You can only edit your own results','error');return;}
+  editingResultId=id;
+  el('rmtitle').textContent='Edit result';
+  el('rsaveBtn').textContent='Save changes';
+  el('rtitle').value=r.title||'';
+  el('rnotes').value=r.notes||'';
+  pendingResultFiles=[];
+  keptResultFiles=parseResFiles(r);
+  sResultType=r.result_type||getRC()[0]||null;
+  el('rtypead').classList.remove('show');
+  bResultTypes();
+  renderFilePreviews();
+  el('RM').classList.add('open');
+}
+function closeResultModal(){el('RM').classList.remove('open');editingResultId=null;pendingResultFiles=[];keptResultFiles=[];el('filePreviews').innerHTML='';}
 function previewResultFiles(){var inp=el('rfiles');if(!inp||!inp.files)return;for(var i=0;i<inp.files.length;i++)pendingResultFiles.push(inp.files[i]);inp.value='';renderFilePreviews();}
 function renderFilePreviews(){
   var box=el('filePreviews');if(!box)return;
-  box.innerHTML=pendingResultFiles.map(function(f,i){
-    var isImg=f.type&&f.type.indexOf('image/')===0;
-    var preview=isImg?'<img src="'+URL.createObjectURL(f)+'" class="fp-thumb" alt="">':'<span class="fp-icon">📄</span>';
-    return'<div class="fp-item">'+preview+'<span class="fp-name">'+esc(f.name)+'</span><button type="button" class="fp-x" data-fi="'+i+'">✕</button></div>';
+  var items=keptResultFiles.map(function(f,i){return{kind:'kept',file:f,index:i};}).concat(pendingResultFiles.map(function(f,i){return{kind:'new',file:f,index:i};}));
+  box.innerHTML=items.map(function(item,i){
+    var f=item.file,isImg=f.type&&f.type.indexOf('image/')===0;
+    var preview=isImg?'<img src="'+(item.kind==='new'?URL.createObjectURL(f):esc(f.url))+'" class="fp-thumb" alt="">':'<span class="fp-icon">📄</span>';
+    return'<div class="fp-item">'+preview+'<span class="fp-name">'+esc(f.name)+'</span><button type="button" class="fp-x" data-fi="'+i+'" data-fk="'+item.kind+'" data-idx="'+item.index+'">✕</button></div>';
   }).join('');
-  qsa('.fp-x',box).forEach(function(btn){btn.onclick=function(e){e.stopPropagation();pendingResultFiles.splice(parseInt(this.dataset.fi,10),1);renderFilePreviews();};});
+  qsa('.fp-x',box).forEach(function(btn){btn.onclick=function(e){
+    e.stopPropagation();
+    if(this.dataset.fk==='kept')keptResultFiles.splice(parseInt(this.dataset.idx,10),1);
+    else pendingResultFiles.splice(parseInt(this.dataset.idx,10),1);
+    renderFilePreviews();
+  };});
 }
 function setupFileDrop(){
   var drop=el('fileDrop');if(!drop)return;
@@ -1171,20 +1180,41 @@ async function saveResult(){
   if(!title){toast('Title required','error');return;}
   if(!sResultType){toast('Pick a result type','error');return;}
   if(!cu)return;
-  var btn=el('rsaveBtn');btn.disabled=true;btn.textContent='Uploading...';
+  if(resultBusy)return;
+  var btn=el('rsaveBtn');resultBusy=true;btn.disabled=true;btn.textContent=editingResultId?'Saving...':'Uploading...';
   try{
-    var files=pendingResultFiles.length?await uploadResultFiles(pendingResultFiles):[];
-    var payload={member_id:cu.id,title:title,result_type:sResultType,notes:el('rnotes').value.trim()||null,file_urls:files.map(function(f){return JSON.stringify(f);})};
-    var r=await sb.from('result_posts').insert([payload]);
-    if(r.error){toast(r.error.message||'Could not save result','error');return;}
-    fireConfetti();toast('Result posted ✓');closeResultModal();await loadResultPosts();rResults();render();
+    var newFiles=pendingResultFiles.length?await uploadResultFiles(pendingResultFiles):[];
+    var files=keptResultFiles.concat(newFiles);
+    var payload={title:title,result_type:sResultType,notes:el('rnotes').value.trim()||null,file_urls:files.map(function(f){return JSON.stringify(f);})};
+    var r;
+    if(editingResultId){
+      r=await sb.from('result_posts').update(payload).eq('id',editingResultId).select();
+      if(r.error){toast(r.error.message||'Could not update result','error');return;}
+      if(!r.data||!r.data.length){toast('Could not update — add the UPDATE policy from supabase_migration.sql','error');return;}
+    }else{
+      r=await sb.from('result_posts').insert([Object.assign({member_id:cu.id},payload)]).select();
+      if(r.error){toast(r.error.message||'Could not save result','error');return;}
+    }
+    if(editingResultId){toast('Result updated ✓');closeResultModal();await loadResultPosts();rResults();render();}
+    else{fireConfetti();toast('Result posted ✓');closeResultModal();await loadResultPosts();rResults();render();}
   }catch(e){toast((e&&e.message)||'Upload failed — check storage bucket setup','error');}
-  btn.disabled=false;btn.textContent='Post result';
+  resultBusy=false;btn.disabled=false;btn.textContent=editingResultId?'Save changes':'Post result';
 }
-async function delResult(id){
-  if(!confirm('Delete this result?'))return;
-  await sb.from('result_posts').delete().eq('id',id);
-  toast('Deleted');await loadResultPosts();rResults();render();
+function askDelResult(id,btn){
+  if(resultBusy)return;
+  var card=btn.closest('.res-card');if(!card)return;
+  var foot=card.querySelector('.res-foot');if(!foot)return;
+  foot.innerHTML='<div class="res-confirm"><span>Delete this result?</span><button class="btn sm danger" data-yes="'+id+'">Yes, delete</button><button class="btn sm res-cancel">Cancel</button></div>';
+  foot.querySelector('.res-cancel').onclick=function(){rResults();};
+  foot.querySelector('[data-yes]').onclick=function(){confirmDelResult(id,this);};
+}
+async function confirmDelResult(id,btn){
+  if(resultBusy)return;
+  resultBusy=true;btn.disabled=true;btn.textContent='Deleting...';
+  var r=await sb.from('result_posts').delete().eq('id',id);
+  resultBusy=false;
+  if(r.error){toast(r.error.message||'Could not delete result','error');rResults();return;}
+  toast('Result deleted');await loadResultPosts();rResults();render();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}

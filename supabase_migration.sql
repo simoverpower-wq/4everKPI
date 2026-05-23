@@ -70,6 +70,9 @@ CREATE POLICY "Anyone can insert result posts"
 CREATE POLICY "Users can delete own results or admins all"
   ON result_posts FOR DELETE USING (true);
 
+CREATE POLICY "Anyone can update result posts"
+  ON result_posts FOR UPDATE USING (true);
+
 -- Storage bucket for result file uploads
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('result-files', 'result-files', true)
