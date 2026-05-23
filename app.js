@@ -3,28 +3,64 @@ const sb=supabase.createClient(SBU,SBK);
 const COLORS={purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},teal:{bg:'rgba(52,211,153,.15)',text:'#34d399'},coral:{bg:'rgba(251,113,133,.15)',text:'#fb7185'},blue:{bg:'rgba(91,156,246,.15)',text:'#5b9cf6'},amber:{bg:'rgba(255,184,48,.15)',text:'#ffb830'},neongreen:{bg:'rgba(57,255,20,.15)',text:'#39ff14'},gold:{bg:'rgba(255,215,0,.15)',text:'#ffd700'},violet:{bg:'rgba(238,130,238,.15)',text:'#ee82ee'},cyan:{bg:'rgba(0,255,255,.15)',text:'#00ffff'},red:{bg:'rgba(255,60,60,.15)',text:'#ff4444'},lime:{bg:'rgba(50,205,50,.15)',text:'#32cd32'},midnight:{bg:'rgba(100,120,200,.15)',text:'#8899dd'},rose:{bg:'rgba(255,100,150,.15)',text:'#ff6496'},orange:{bg:'rgba(255,150,50,.15)',text:'#ff9632'},sky:{bg:'rgba(100,200,255,.15)',text:'#64c8ff'}};
 
 const HELP={
-  dashboard:'Your home base — like a scoreboard at a game. The numbers show how many tasks everyone logged, finished, or missed. Green is good, red needs attention.',
-  pulse:'Agency pulse is like a team heartbeat. The circle fills up when more tasks get done. The streak counts days in a row someone logged work.',
-  kpis:'These cards count tasks like points on a board. Tap a card to see the actual tasks behind the number.',
-  insights:'Live insights are quick warnings and wins — like a coach shouting tips from the sideline. They update as people log tasks.',
-  team:'Your roster. Click a person to see their full stats. Admins can drag cards to change the order on the dashboard.',
-  calendar:'A month view of who did what and when. Click a day to open every task from that date.',
-  performance:'Charts that compare people and tasks — like report cards. Click any chart to see the list behind it.',
-  oversight:'A "needs help" list. Shows who has not logged today, who is late, and tasks that need a follow-up.',
-  intelligence:'Smart math about the team — who is fastest, which task types get results, and what might need a written playbook (SOP).',
-  library:'The menu of job types. Tap a bubble to log that task fast. Admins can add roles, colors, and tasks right here.',
-  roles:'Job descriptions for each person — who does what. Search names and drag to reorder.',
-  assign:'Who this task is for. Team members can assign to other team members (not admins). Admins can pick anyone. Tap multiple people to log the same task for each.',
-  tasktype:'What kind of work it was. You can pick more than one type if the task covered multiple things.',
-  results:'What happened — like "DM sent" or "Lead found." Pick all that apply.',
-  profile:'One person\'s stats. Use the time buttons to zoom in — today, last week, last month, or everything ever.',
-  compare:'See who is winning the completion game. Leaderboard ranks everyone; 1v1 puts you against one person side by side.',
-  login:'Pick your name, then enter your PIN. Admins: tap the gear to drag names into the order you want on this screen.'
+  dashboard:'Your home base — like the scoreboard at a basketball game. Everything the team has logged shows up here so you can see at a glance how the agency is doing today.',
+  pulse:'The agency pulse is like a fitness tracker for the whole team. The green ring fills up as more tasks get marked done — think of it as a gas tank for productivity.',
+  pulse_pct:'This percentage is how many logged tasks are finished. If you logged 10 tasks and 8 are done, that\'s 80%. Higher is better — it means stuff is actually getting completed, not just started.',
+  streak:'The streak counts how many days in a row someone on the team logged at least one task. It\'s like a Snapchat streak but for work — keep it alive by logging something every day!',
+  kpis:'These cards are quick score counters — like points on a leaderboard. Tap any card (except Team size) to see the actual tasks behind the number.',
+  kpi_logged:'Every task anyone on the team has ever logged, all added together. Think of it like counting every lap run at practice — more laps means more effort tracked.',
+  kpi_completed:'Tasks marked as "Done." This is your finished homework pile. The percentage below shows what share of all logged tasks are actually complete.',
+  kpi_late:'Tasks that were missed or finished late — like homework turned in after the deadline. Keep this number low; red means it needs attention.',
+  kpi_results:'Tasks where something actually happened — a DM sent, a lead found, a call booked. These are real outcomes, not just busywork.',
+  kpi_team:'How many people are on the team right now. Simple headcount — like counting players on a roster.',
+  insights:'Live insights are like a coach shouting tips from the sideline. They pop up automatically when something needs attention or when someone is crushing it.',
+  team:'Your team roster. Click anyone to see their full profile and stats. Search to find someone by name — everyone can search, not just admins.',
+  calendar:'A month-view calendar of who did what and when. Click any day to open a detailed list. The colored dots are like sticky notes showing tasks on that date.',
+  cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
+  cal_summary:'A quick recap of the whole month — total tasks, how many finished, how many late, and the overall completion rate.',
+  performance:'Charts that turn your task data into pictures — like report cards with graphs. Click any chart to see the full list of tasks behind it.',
+  chart_completion:'Shows each person\'s completion rate as a bar. Taller green bars = more tasks finished. It\'s like comparing test scores across the class.',
+  chart_time:'Compares how long tasks actually took (blue) vs how long people estimated (purple). If blue is taller, they took longer than expected — like thinking a drive is 10 minutes but it takes 20.',
+  chart_status:'A donut chart splitting all tasks into Done, In progress, Pending, and Late. Think of it as sorting your laundry into clean, dirty, in the washer, and lost-sock piles.',
+  chart_late:'Shows how many late tasks each person has. Red bars = missed deadlines. Like a tardy count in school — you want zeros.',
+  chart_results:'Breaks down what kinds of results the team is producing — DMs sent, leads found, etc. Shows which outcomes happen most often.',
+  chart_trend:'A line graph of how many tasks were logged each day over the last 2 weeks. Spikes mean busy days; flat lines mean quiet days.',
+  oversight:'A "needs help right now" dashboard for admins. Like a teacher\'s desk with all the papers that need grading or follow-up.',
+  os_notlogged:'People who haven\'t logged any tasks today. Like teammates who haven\'t shown up to practice yet.',
+  os_late:'People who currently have tasks marked as late or missed. These need attention before they pile up.',
+  os_overeta:'People who consistently take longer than they estimated. Like someone who always says "5 minutes" but takes 30.',
+  os_inprogress:'Tasks currently marked "In progress" — started but not finished. Like open browser tabs you haven\'t closed yet.',
+  os_edited:'Tasks that were changed after being logged. Could mean someone corrected a mistake or updated info.',
+  os_followup:'Tasks flagged as needing a follow-up or review. Like sticky notes that say "call this person back."',
+  intelligence:'Smart math about how the team works — who\'s fastest, which tasks get results, and what might need a written playbook (SOP).',
+  intel_completion:'Each person\'s completion rate side by side. Who finishes what they start vs who leaves things hanging.',
+  intel_avgtime:'Average time each person spends on tasks. Helps spot who works fast vs who takes their time.',
+  intel_eta:'How accurate people\'s time estimates are. Positive = takes longer than expected; negative = finishes faster. Like guessing how long homework takes.',
+  intel_editrate:'How often each person edits tasks after logging. High edit rate might mean rushing or making mistakes the first time.',
+  intel_bestresults:'Which task types produce the most real results. Like figuring out which fishing spot catches the most fish.',
+  intel_outsource:'Tasks that are done fast, done well, and done often — ready to hand off to someone else. Like a recipe you\'ve mastered.',
+  intel_sop:'Tasks that take too long or fail too often — they need a written step-by-step guide (SOP) so anyone can do them.',
+  intel_recurring:'Tasks set to repeat on a schedule. Shows which repeating jobs the team runs most.',
+  library:'The menu of job types your team can do. Tap any bubble to log that task instantly — like speed-dial for common work.',
+  roles:'Job descriptions for each person — who does what on the team. Search by name and drag to reorder how they appear.',
+  assign:'Who this task is for. Tap one or more people. Team members can assign to other team members; admins can pick anyone.',
+  tasktype:'What kind of work it was. Pick one or more types if the task covered multiple things — like tagging a photo with multiple labels.',
+  results:'What happened because of the task — "DM sent," "Lead found," etc. Pick all that apply, like checking boxes on a checklist.',
+  profile:'One person\'s full stats page. Use the time buttons to zoom in — today, last week, last month, or everything ever.',
+  compare:'See who\'s winning the completion game. The leaderboard ranks everyone; 1v1 puts you head-to-head against one person.',
+  cmp_leaderboard:'Everyone ranked by completion rate — like a high score table at an arcade. Green = 80%+, yellow = 50%+, red = below 50%.',
+  cmp_1v1:'Pick yourself and an opponent to compare stats side by side. Toggle "Personality text" for fun commentary on who\'s winning.',
+  cmp_humor:'Funny commentary that reacts to how the comparison is going — winning, losing, close match, etc. Works for everyone, not just admins!',
+  login:'Pick your name, then enter your PIN. Admins: tap the gear to drag names into the order you want on this screen.',
+  feedback:'Rate the app 1–5 stars and leave a comment. Your feedback helps us make 4everKPI better for everyone.',
+  rolenotes:'Shared notes for this role category. Write meeting notes, conversation summaries, reminders — anything the team needs to remember. Everyone can read and edit.'
 };
 const FL={status:'Status',role_area:'Role area',task_type:'Task type',result_category:'Result',eta_minutes:'ETA',actual_minutes:'Actual time',notes:'Notes',member_id:'Assigned to',name:'Description'};
-function hBtn(key){return'<span class="help-wrap"><button type="button" class="help-btn" onclick="toggleHelp(event,this)">?</button><span class="help-tip">'+HELP[key]+'</span></span>';}
-function toggleHelp(e,btn){e.stopPropagation();var w=btn.parentElement;document.querySelectorAll('.help-wrap.open').forEach(function(x){if(x!==w)x.classList.remove('open');});w.classList.toggle('open');}
+function hBtn(key,wide){return'<span class="help-wrap"><button type="button" class="help-btn" onclick="toggleHelp(event,this)">?</button><span class="help-tip'+(wide?' wide':'')+'">'+(HELP[key]||'')+'</span></span>';}
+function hLbl(text,key){return text+hBtn(key);}
+function toggleHelp(e,btn){e.stopPropagation();var w=btn.parentElement;document.querySelectorAll('.help-wrap.open').forEach(function(x){if(x!==w)x.classList.remove('open');});w.classList.toggle('open');btn.classList.toggle('open',w.classList.contains('open'));}
 document.addEventListener('click',function(e){if(!e.target.closest('.help-wrap'))document.querySelectorAll('.help-wrap.open').forEach(function(x){x.classList.remove('open');});});
+function roleExists(name,skipKey){var n=name.trim().toLowerCase();if(!n)return true;var keys=Object.keys(BRA).concat(Object.keys(customRA));for(var i=0;i<keys.length;i++){if(skipKey&&keys[i]===skipKey)continue;if(keys[i].toLowerCase()===n)return true;var info=catMeta[keys[i]];if(info&&info.name&&info.name.toLowerCase()===n)return true;}return false;}
 function getMC(m){if(!m)return COLORS.teal;var col=m.color||'teal';if(col.charAt(0)==='#')return{bg:col+'26',text:col};return COLORS[col]||COLORS.teal;}
 function renderSwatches(gridId,hiddenId,cur){var g=el(gridId),h=el(hiddenId);if(!g)return;g.innerHTML=PAL.map(function(c){return'<div class="csw'+(cur===c.h?' picked':'')+'" style="background:'+c.h+'" data-hex="'+c.h+'" title="'+c.n+'"></div>';}).join('');qsa('.csw',g).forEach(function(sw){sw.onclick=function(){h.value=this.dataset.hex;qsa('.csw',g).forEach(function(x){x.classList.remove('picked');});this.classList.add('picked');};});}
 function sortByOrder(list,orderKey){var order=orderKey==='login'?loginOrder:rolesOrder;if(!order||!order.length)return list.slice();return list.slice().sort(function(a,b){var ia=order.indexOf(a.id),ib=order.indexOf(b.id);if(ia<0)ia=999;if(ib<0)ib=999;return ia-ib;});}
@@ -91,7 +127,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 var members=[],tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
-var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorCounts=ls('4k_humor_counts')||{},humorSessionUsed={};
+var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
   winning:['you think you doing something don\'t you? 😂','okay okay we see you 👀','main character energy right there 🔥','you ate that and left no crumbs','don\'t get too comfy up there 😂'],
@@ -235,6 +271,7 @@ async function load(){
     sb.from('task_history').select('*').order('changed_at',{ascending:false})
   ]);
   members=results[0].data||[];tasks=results[1].data||[];hist=results[2].data||[];
+  await loadRoleNotes();
   render();
 }
 
@@ -270,15 +307,23 @@ function genIns(){
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
 
-function injectPageHelp(){var map={'page-dashboard':['dashboard','pulse','kpis','insights','team'],'page-calendar':['calendar'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-roles':['roles'],'page-compare':['compare']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span style="display:inline-flex;align-items:center;margin-right:10px;font-size:11px;color:var(--text2)">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});}
+function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-calendar':['calendar'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span style="display:inline-flex;align-items:center;margin-right:10px;font-size:11px;color:var(--text2)">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();}
+function injectDashHelp(){
+  var pt=qs('.pbar .ptitle');if(pt&&!pt.querySelector('.help-wrap'))pt.innerHTML=hLbl('Agency pulse','pulse');
+  var ins=qs('#page-dashboard .dpanel .dptitle');if(ins&&!ins.querySelector('.help-wrap')){var pulse=ins.querySelector('.ipulse');ins.innerHTML='';if(pulse)ins.appendChild(pulse);ins.insertAdjacentHTML('beforeend',hLbl('Live insights','insights'));}
+  qsa('#page-dashboard .dpanel').forEach(function(p){
+    var t=p.querySelector('.dptitle');if(!t||t.querySelector('.help-wrap')||t.querySelector('.ipulse'))return;
+    if(t.textContent.indexOf('Team')>=0){var svg=t.querySelector('svg');t.innerHTML='';if(svg)t.appendChild(svg);t.insertAdjacentHTML('beforeend',hLbl('Team','team'));}
+  });
+}
 function render(){rKPIs();rPulse();genIns();rMembers();injectPageHelp();var ap=function(n){return el('page-'+n).classList.contains('active');};if(ap('calendar'))renderCal();if(ap('performance'))rCharts();if(ap('oversight'))rOversight();if(ap('intelligence'))rIntel();if(ap('library'))rLib();if(ap('roles'))rRoles();if(ap('compare'))rCompare();}
 
 function rKPIs(){
   var tot=tasks.length,don=tasks.filter(function(t){return t.status==='done';}).length,lat=tasks.filter(function(t){return t.status==='late';}).length;
   var res=tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';}).length;
   var rt=tot?Math.round(don/tot*100):0;
-  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk'},{l:'Team size',v:members.length,c:'',s:'members',d:''}];
-  el('krow').innerHTML=cards.map(function(k){return'<div class="kcard"'+(k.d?' data-kd="'+k.d+'"':'')+' style="cursor:'+(k.d?'pointer':'default')+'"><div class="klbl">'+k.l+'</div><div class="kval '+k.c+'">'+k.v+'</div><div class="ksub">'+k.s+(k.d?' · tap':'')+'</div></div>';}).join('');
+  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:members.length,c:'',s:'members',d:'',h:'kpi_team'}];
+  el('krow').innerHTML=cards.map(function(k){return'<div class="kcard"'+(k.d?' data-kd="'+k.d+'"':'')+' style="cursor:'+(k.d?'pointer':'default')+'"><div class="klbl">'+hLbl(k.l,k.h)+'</div><div class="kval '+k.c+'">'+k.v+'</div><div class="ksub">'+k.s+(k.d?' · tap':'')+'</div></div>';}).join('');
   qsa('.kcard[data-kd]').forEach(function(card){card.onclick=function(){dKPI(this.dataset.kd);};});
 }
 
@@ -289,17 +334,19 @@ function rPulse(){
   ctx.beginPath();ctx.arc(20,20,17,0,Math.PI*2);ctx.fillStyle='#1a1a1a';ctx.fill();
   if(pct>0){ctx.beginPath();ctx.arc(20,20,17,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle='#7fff6e';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
   el('opct').textContent=pct+'%';
+  var ow=el('orb');if(ow){var wrap=ow.parentElement;if(wrap&&!wrap.querySelector('.orb-help')){wrap.insertAdjacentHTML('beforeend','<span class="orb-help" style="position:absolute;top:-2px;right:-16px">'+hBtn('pulse_pct')+'</span>');}}
   el('psub').textContent=pct>=80?'Agency firing 🔥':pct>=50?'Making moves':'Get those tasks logged';
   var str=0;for(var d=0;d<30;d++){var day=new Date();day.setDate(day.getDate()-d);if(tasks.some(function(t){return new Date(t.logged_at).toDateString()===day.toDateString();}))str++;else if(d>0)break;}
-  el('streak').textContent='🔥 '+str+' day streak';
+  el('streak').innerHTML=hLbl('🔥 '+str+' day streak','streak');
 }
 
 function rMembers(){
   var container=el('mgrid2');
   if(!members.length){container.innerHTML='<div style="color:var(--text3);font-size:13px">No members yet.</div>';return;}
   var q=(el('tsrch')?el('tsrch').value||'':'').toLowerCase();
-  var show=cu&&cu.isAdmin?members:members.filter(function(m){return m.id===cu.id;});
-  if(q)show=show.filter(function(m){return m.name.toLowerCase().includes(q)||(m.role||'').toLowerCase().includes(q);});
+  var show;
+  if(q){show=members.filter(function(m){return m.name.toLowerCase().includes(q)||(m.role||'').toLowerCase().includes(q);});}
+  else{show=cu&&cu.isAdmin?members:members.filter(function(m){return m.id===cu.id;});}
   var html='';
   show.forEach(function(m){
     var c=getMC(m),s=mst(m.id),v=vrd(m.id),mine=mt(m.id).slice(0,2);
@@ -348,6 +395,7 @@ function hideCP(){setTimeout(function(){el('cpanel').classList.remove('show');},
 
 // CALENDAR
 function renderCal(){
+  var ctop=qs('.ctop');if(ctop&&!ctop.querySelector('.cal-help')){var sp=document.createElement('span');sp.className='cal-help';sp.style.cssText='display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text2)';sp.innerHTML='Filter'+hBtn('cal_filter');ctop.insertBefore(sp,ctop.firstChild);}
   var y=calDate.getFullYear(),mo=calDate.getMonth();
   el('cml').textContent=calDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
   var fd=new Date(y,mo,1).getDay(),dim=new Date(y,mo+1,0).getDate(),today=new Date();
@@ -369,7 +417,7 @@ function renderCal(){
   rCalSum(y,mo);
 }
 
-function rCalSum(y,mo){var dim=new Date(y,mo+1,0).getDate(),tot=0,don=0,lat=0;for(var d=1;d<=dim;d++){var ds=new Date(y,mo,d).toDateString(),dT=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});tot+=dT.length;don+=dT.filter(function(t){return t.status==='done';}).length;lat+=dT.filter(function(t){return t.status==='late';}).length;}var rt=tot?Math.round(don/tot*100):0;el('csum').innerHTML='<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Month summary</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px"><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Tasks</div><div class="msv">'+tot+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Completed</div><div class="msv g">'+don+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Late</div><div class="msv '+(lat>0?'r':'')+'">'+lat+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Rate</div><div class="msv '+(rt>=80?'g':rt>=50?'a':'r')+'">'+rt+'%</div></div></div>';}
+function rCalSum(y,mo){var dim=new Date(y,mo+1,0).getDate(),tot=0,don=0,lat=0;for(var d=1;d<=dim;d++){var ds=new Date(y,mo,d).toDateString(),dT=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});tot+=dT.length;don+=dT.filter(function(t){return t.status==='done';}).length;lat+=dT.filter(function(t){return t.status==='late';}).length;}var rt=tot?Math.round(don/tot*100):0;el('csum').innerHTML='<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center">'+hLbl('Month summary','cal_summary')+'</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px"><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Tasks</div><div class="msv">'+tot+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Completed</div><div class="msv g">'+don+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Late</div><div class="msv '+(lat>0?'r':'')+'">'+lat+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Rate</div><div class="msv '+(rt>=80?'g':rt>=50?'a':'r')+'">'+rt+'%</div></div></div>';}
 
 function buildDayHTML(dT,sq){
   var q=(sq||'').toLowerCase(),bM={};
@@ -423,9 +471,10 @@ function rLib(){
     var bubs=tl.map(function(t){return'<span class="lbub" style="border-color:'+col+'33;color:'+col+'" data-role="'+role+'" data-task="'+t+'">'+t+(cu&&cu.isAdmin?'<span class="lx">✕</span>':'')+'</span>';}).join('');
     var addB=cu&&cu.isAdmin?'<button class="add-bub" data-addrole="'+role+'">+ Add</button>':'';
     var editB=cu&&cu.isAdmin?'<button class="btn sm" data-editcat="'+role+'">Edit</button>':'';
+    var notesB='<button class="btn sm" data-notes="'+role+'">Notes</button>';
     var isBase=!!BRA[role];
     var delCatB=cu&&cu.isAdmin&&!isBase?'<button class="btn sm danger" data-delcat="'+role+'">Del</button>':'';
-    return'<div class="bcat" style="background:'+col+'08;border-color:'+col+'22" draggable="true" data-catname="'+role+'"><div class="bchead"><div style="display:flex;align-items:center;gap:8px"><span class="bcicon">'+info.icon+'</span><div><div class="bcname">'+info.name+'</div><div class="bcdesc">'+info.desc+'</div></div></div><div style="display:flex;gap:5px">'+editB+delCatB+'</div></div><div class="bubbles">'+bubs+'</div><div style="margin-top:5px">'+addB+'</div></div>';
+    return'<div class="bcat" style="background:'+col+'08;border-color:'+col+'22" draggable="true" data-catname="'+role+'"><div class="bchead"><div style="display:flex;align-items:center;gap:8px"><span class="bcicon">'+info.icon+'</span><div><div class="bcname">'+info.name+'</div><div class="bcdesc">'+info.desc+'</div></div></div><div style="display:flex;gap:5px">'+notesB+editB+delCatB+'</div></div><div class="bubbles">'+bubs+'</div><div style="margin-top:5px">'+addB+'</div></div>';
   }).join('');
   // Bind lib events
   qsa('.lbub').forEach(function(bub){
@@ -434,6 +483,7 @@ function rLib(){
   });
   qsa('[data-addrole]').forEach(function(btn){btn.onclick=function(){addLibBub(this.dataset.addrole,this);};});
   qsa('[data-editcat]').forEach(function(btn){btn.onclick=function(e){e.stopPropagation();openECM(this.dataset.editcat);};});
+  qsa('[data-notes]').forEach(function(btn){btn.onclick=function(e){e.stopPropagation();openRoleNotes(this.dataset.notes);};});
   qsa('[data-delcat]').forEach(function(btn){btn.onclick=function(e){e.stopPropagation();delCat(this.dataset.delcat);};});
   qsa('.bcat[data-catname]').forEach(function(cat){
     cat.ondragstart=function(){dragCat=this.dataset.catname;};
@@ -460,19 +510,23 @@ function delCat(role){delete customRA[role];if(catOrder)catOrder=catOrder.filter
 function openECM(role){editCat=role;editCatNew=false;var info=getCatInfo(role);el('ecmtitle').textContent='Edit "'+info.name+'"';el('ecmname').value=info.name;el('ecmdesc').value=info.desc;el('ecmicon').value=info.icon;var cur=getRCol(role);el('ecmcolor').value=cur;renderSwatches('ecmcolorgrid','ecmcolor',cur);el('ecmdel').style.display=BRA[role]?'none':'flex';el('ECM').classList.add('open');}
 function openNewCat(){editCat=null;editCatNew=true;el('ecmtitle').textContent='New role category';el('ecmname').value='';el('ecmdesc').value='';el('ecmicon').value='📌';el('ecmcolor').value='#7fff6e';renderSwatches('ecmcolorgrid','ecmcolor','#7fff6e');el('ecmdel').style.display='none';el('ECM').classList.add('open');}
 function saveECM(){
+  if(saveECM._busy)return;
   var n=el('ecmname').value.trim(),d=el('ecmdesc').value.trim(),ic=el('ecmicon').value.trim(),col=el('ecmcolor').value;
   if(!n){toast('Role name required','error');return;}
   if(editCatNew){
-    if(BRA[n]||customRA[n]){toast('That role already exists','error');return;}
+    if(roleExists(n)){toast('That role already exists','error');return;}
+    saveECM._busy=true;
     customRA[n]=[];RCOLS[n]=col;if(!catMeta[n])catMeta[n]={};catMeta[n].name=n;catMeta[n].desc=d;catMeta[n].icon=ic||'📌';
-    var order=getOrder();order.push(n);catOrder=order;
+    var order=getOrder();if(!order.includes(n))order.push(n);catOrder=order;
     toast('Category created');editCat=n;editCatNew=false;
   }else if(editCat){
+    if(n.toLowerCase()!==editCat.toLowerCase()&&roleExists(n,editCat)){toast('That role name already exists','error');return;}
+    saveECM._busy=true;
     if(!catMeta[editCat])catMeta[editCat]={};
     catMeta[editCat].name=n;catMeta[editCat].desc=d;if(ic)catMeta[editCat].icon=ic;
     RCOLS[editCat]=col;toast('Category updated');
   }
-  saveAll();el('ECM').classList.remove('open');rLib();
+  saveAll();el('ECM').classList.remove('open');saveECM._busy=false;rLib();
 }
 function delCatFromECM(){if(!editCat||BRA[editCat])return;if(!confirm('Delete this entire role and its custom tasks?'))return;delCat(editCat);el('ECM').classList.remove('open');}
 function openCP(role){openECM(role);}
@@ -492,6 +546,8 @@ function rCharts(){
   if(charts.r)charts.r.destroy();charts.r=new Chart(el('cr'),{type:'bar',data:{labels:rl,datasets:[{data:rd,backgroundColor:'#34d399',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{indexAxis:'y',scales:{x:cd.scales.x,y:{ticks:{color:'#888',font:{size:9}},grid:{display:false},border:{display:false}}}})});
   var days=[],cnts=[];for(var d=13;d>=0;d--){var day=new Date();day.setDate(day.getDate()-d);var ds=day.toLocaleDateString('en-US',{month:'short',day:'numeric'});days.push(ds);cnts.push(tasks.filter(function(t){return new Date(t.logged_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})===ds;}).length);}
   if(charts.tr)charts.tr.destroy();charts.tr=new Chart(el('ctr'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#7fff6e',backgroundColor:'rgba(127,255,110,.08)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#7fff6e'}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
+  var chHelp={cc:'chart_completion',ct:'chart_time',cs:'chart_status',cl:'chart_late',cr:'chart_results',ctr:'chart_trend'};
+  Object.keys(chHelp).forEach(function(cid){var cv=el(cid);if(!cv)return;var card=cv.closest('.chcard');if(!card)return;var title=card.querySelector('.chtitle');if(!title||title.querySelector('.help-wrap'))return;var hint=title.querySelector('.chhint'),label=title.childNodes[0]?title.childNodes[0].textContent.trim():title.textContent.replace('click','').trim();title.innerHTML=hLbl(label,chHelp[cid])+(hint?' <span class="chhint">click</span>':'');});
 }
 
 function tbl(list){
@@ -556,7 +612,7 @@ function setProfFilter(f){profileFilter=f;if(profileMid)viewP(profileMid,true);}
 function rOversight(){
   var tod=new Date().toDateString(),todT=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===tod;}),zero=members.filter(function(m){return!todT.some(function(t){return t.member_id===m.id;});}),latM=members.filter(function(m){return mst(m.id).late>0;}),overE=members.filter(function(m){var s=mst(m.id);return s.avgA&&s.avgE&&s.avgA>s.avgE+15;}),stk=tasks.filter(function(t){return t.status==='prog';}),noR=tasks.filter(function(t){return t.result_category==='No result';}),fu=tasks.filter(function(t){return t.result_category==='Needs review'||(t.notes||'').toLowerCase().includes('follow');}),ed=tasks.filter(function(t){return t.edited_at;});
   var mn=function(t){return(members.find(function(x){return x.id===t.member_id;})||{name:'?'}).name;};
-  el('ogrid').innerHTML='<div class="ocard"><div class="otitle">Not logged today</div>'+(zero.length?zero.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">0 tasks</span></div>';}).join(''):'<div class="oitem"><span>Everyone active</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">Has late tasks</div>'+(latM.length?latM.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">'+mst(m.id).late+' late</span></div>';}).join(''):'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">Over avg ETA</div>'+(overE.length?overE.map(function(m){var s=mst(m.id);return'<div class="oitem"><span>'+m.name+'</span><span class="oval a">+'+fm(s.avgA-s.avgE)+'</span></div>';}).join(''):'<div class="oitem"><span>All within ETA</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">In progress ('+stk.length+')</div>'+(stk.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'Task')+'</span><span class="oval a">Active</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">Edited ('+ed.length+')</div>'+(ed.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Edited</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">Follow-up needed ('+fu.length+')</div>'+(fu.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Follow up</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div>';
+  el('ogrid').innerHTML='<div class="ocard"><div class="otitle">'+hLbl('Not logged today','os_notlogged')+'</div>'+(zero.length?zero.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">0 tasks</span></div>';}).join(''):'<div class="oitem"><span>Everyone active</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">'+hLbl('Has late tasks','os_late')+'</div>'+(latM.length?latM.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">'+mst(m.id).late+' late</span></div>';}).join(''):'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">'+hLbl('Over avg ETA','os_overeta')+'</div>'+(overE.length?overE.map(function(m){var s=mst(m.id);return'<div class="oitem"><span>'+m.name+'</span><span class="oval a">+'+fm(s.avgA-s.avgE)+'</span></div>';}).join(''):'<div class="oitem"><span>All within ETA</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">'+hLbl('In progress ('+stk.length+')','os_inprogress')+'</div>'+(stk.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'Task')+'</span><span class="oval a">Active</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">'+hLbl('Edited ('+ed.length+')','os_edited')+'</div>'+(ed.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Edited</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle">'+hLbl('Follow-up needed ('+fu.length+')','os_followup')+'</div>'+(fu.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Follow up</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div>';
   el('otasks').innerHTML=tbl(fu.concat(noR).slice(0,20));
   bindDrillActions();
 }
@@ -564,7 +620,7 @@ function rOversight(){
 function rIntel(){
   var ttS={};tasks.forEach(function(t){if(!t.task_type)return;if(!ttS[t.task_type])ttS[t.task_type]={total:0,done:0,results:0,mins:0,count:0};ttS[t.task_type].total++;if(t.status==='done')ttS[t.task_type].done++;if(t.result_category&&t.result_category!=='No result')ttS[t.task_type].results++;if(t.actual_minutes){ttS[t.task_type].mins+=t.actual_minutes;ttS[t.task_type].count++;}});
   var sorted=Object.entries(ttS).sort(function(a,b){return b[1].results-a[1].results;});
-  el('igrid').innerHTML='<div class="icard"><div class="ititle">Completion by member</div>'+members.map(function(m){var s=mst(m.id);return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(s.rate>=80?'var(--accent)':s.rate>=50?'var(--amber)':'var(--red)')+'">'+s.rate+'% ('+s.done+'/'+s.total+')</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Avg task time</div>'+members.map(function(m){var s=mst(m.id);return'<div class="irow"><span>'+m.name+'</span><span>'+(s.avgA?fm(s.avgA):'No data')+'</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">ETA accuracy</div>'+members.map(function(m){var s=mst(m.id),d=s.avgA&&s.avgE?s.avgA-s.avgE:null;return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(d===null?'var(--text3)':d>0?'var(--red)':'var(--accent)')+'">'+(d===null?'—':(d>0?'+':'')+fm(Math.abs(d)))+'</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Edit rate</div>'+members.map(function(m){var mine=mt(m.id),ed=mine.filter(function(t){return t.edited_at;}).length,rt=mine.length?Math.round(ed/mine.length*100):0;return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(rt>20?'var(--amber)':'var(--accent)')+'">'+ed+' edited ('+rt+'%)</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Best result tasks</div>'+sorted.slice(0,6).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--accent)">'+x[1].results+' results</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Ready to outsource</div>'+Object.entries(ttS).filter(function(x){return x[1].count>=3&&x[1].mins/x[1].count<90&&x[1].done/x[1].total>=.8;}).slice(0,5).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--teal)">Ready ✓</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Needs SOP</div>'+Object.entries(ttS).filter(function(x){return x[1].count>=2&&(x[1].mins/x[1].count>120||x[1].done/x[1].total<.6);}).slice(0,5).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--amber)">Needs SOP</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">Recurring tasks</div>'+Object.entries(tasks.filter(function(t){return t.is_recurring;}).reduce(function(a,t){a[t.task_type||'Unknown']=(a[t.task_type||'Unknown']||0)+1;return a;},{})).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--blue)">🔄 '+x[1]+'</span></div>';}).join('')+'</div>';
+  el('igrid').innerHTML='<div class="icard"><div class="ititle">'+hLbl('Completion by member','intel_completion')+'</div>'+members.map(function(m){var s=mst(m.id);return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(s.rate>=80?'var(--accent)':s.rate>=50?'var(--amber)':'var(--red)')+'">'+s.rate+'% ('+s.done+'/'+s.total+')</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Avg task time','intel_avgtime')+'</div>'+members.map(function(m){var s=mst(m.id);return'<div class="irow"><span>'+m.name+'</span><span>'+(s.avgA?fm(s.avgA):'No data')+'</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('ETA accuracy','intel_eta')+'</div>'+members.map(function(m){var s=mst(m.id),d=s.avgA&&s.avgE?s.avgA-s.avgE:null;return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(d===null?'var(--text3)':d>0?'var(--red)':'var(--accent)')+'">'+(d===null?'—':(d>0?'+':'')+fm(Math.abs(d)))+'</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Edit rate','intel_editrate')+'</div>'+members.map(function(m){var mine=mt(m.id),ed=mine.filter(function(t){return t.edited_at;}).length,rt=mine.length?Math.round(ed/mine.length*100):0;return'<div class="irow"><span>'+m.name+'</span><span style="color:'+(rt>20?'var(--amber)':'var(--accent)')+'">'+ed+' edited ('+rt+'%)</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Best result tasks','intel_bestresults')+'</div>'+sorted.slice(0,6).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--accent)">'+x[1].results+' results</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Ready to outsource','intel_outsource')+'</div>'+Object.entries(ttS).filter(function(x){return x[1].count>=3&&x[1].mins/x[1].count<90&&x[1].done/x[1].total>=.8;}).slice(0,5).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--teal)">Ready ✓</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Needs SOP','intel_sop')+'</div>'+Object.entries(ttS).filter(function(x){return x[1].count>=2&&(x[1].mins/x[1].count>120||x[1].done/x[1].total<.6);}).slice(0,5).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--amber)">Needs SOP</span></div>';}).join('')+'</div><div class="icard"><div class="ititle">'+hLbl('Recurring tasks','intel_recurring')+'</div>'+Object.entries(tasks.filter(function(t){return t.is_recurring;}).reduce(function(a,t){a[t.task_type||'Unknown']=(a[t.task_type||'Unknown']||0)+1;return a;},{})).map(function(x){return'<div class="irow"><span>'+x[0]+'</span><span style="color:var(--blue)">🔄 '+x[1]+'</span></div>';}).join('')+'</div>';
 }
 
 function rRoles(){
@@ -734,14 +790,7 @@ function pickHumor(key){
   if(humorOff)return'';
   var pool=HUMOR[key]||[];
   if(!pool.length)return'';
-  var avail=pool.filter(function(p){return!humorSessionUsed[p]&&(humorCounts[p]||0)<2;});
-  if(!avail.length)avail=pool.filter(function(p){return!humorSessionUsed[p];});
-  if(!avail.length)return'';
-  var pick=avail[Math.floor(Math.random()*avail.length)];
-  humorSessionUsed[pick]=true;
-  humorCounts[pick]=(humorCounts[pick]||0)+1;
-  lss('4k_humor_counts',humorCounts);
-  return pick;
+  return pool[Math.floor(Math.random()*pool.length)];
 }
 function toggleHumor(){humorOff=!el('humorToggle').checked;lss('4k_humor',humorOff);rCompare();}
 function cmpStatBox(lbl,val,cls){return'<div class="cmp-stat"><div class="cmp-stat-l">'+lbl+'</div><div class="cmp-stat-v'+(cls?' '+cls:'')+'">'+val+'</div></div>';}
@@ -767,6 +816,10 @@ function rCompare(){
     charts.lb=new Chart(el('lbChart'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}},y:{min:0,max:100,ticks:{color:'#888'},grid:{color:'rgba(255,255,255,.04)'}}}}});
   }
   el('lbTable').innerHTML=ranked.length?ranked.map(function(x,i){var col=x.s.rate>=80?'var(--accent)':x.s.rate>=50?'var(--amber)':'var(--red)';return'<div class="lb-row"><span class="lb-rank">#'+(i+1)+'</span><span style="min-width:90px;font-weight:600">'+x.m.name+'</span><div class="lb-bar"><div class="lb-bar-fill" style="width:'+x.s.rate+'%;background:'+col+'"></div></div><span style="min-width:42px;color:'+col+'">'+x.s.rate+'%</span><span style="color:var(--text2)">'+x.s.done+' done · '+x.s.late+' late</span></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:8px 0">No task data yet.</div>';
+  var panels=qsa('.cmp-panel');
+  if(panels[0]){var t0=panels[0].querySelector('.cmp-title');if(t0&&!t0.querySelector('.help-wrap'))t0.innerHTML=hLbl('🏆 Leaderboard','cmp_leaderboard');}
+  if(panels[1]){var t1=panels[1].querySelector('.cmp-title');if(t1&&!t1.querySelector('.help-wrap'))t1.innerHTML=hLbl('⚔️ 1v1 Compare','cmp_1v1');}
+  var ht=el('humorToggle');if(ht&&!ht.parentElement.querySelector('.help-wrap')){var lbl=ht.parentElement;lbl.insertAdjacentHTML('beforeend',' '+hBtn('cmp_humor'));}
   var q=(el('cmpSearch')?el('cmpSearch').value||'':'').toLowerCase();
   var show=members.filter(function(m){return!q||m.name.toLowerCase().includes(q);});
   if(!cmpMeId&&cu)cmpMeId=cu.id;
@@ -780,7 +833,10 @@ function rCompare(){
   if(!cmpMeId||!cmpThemId){res.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center">Pick two names to compare.</div>';return;}
   if(cmpMeId===cmpThemId){res.innerHTML='<div style="color:var(--text3);font-size:12px;text-align:center">Pick two different people.</div>';return;}
   var m1=members.find(function(m){return m.id===cmpMeId;}),m2=members.find(function(m){return m.id===cmpThemId;});
-  var s1=mst(cmpMeId),s2=mst(cmpThemId),humor=pickHumor(getCmpScenario(s1,s2));
+  var s1=mst(cmpMeId),s2=mst(cmpThemId);
+  var pairKey=cmpMeId+'|'+cmpThemId;
+  if(humorLastPair!==pairKey){humorLastPair=pairKey;}
+  var humor=!humorOff?pickHumor(getCmpScenario(s1,s2)):'';
   var h=humor?'<div class="cmp-humor">'+humor+'</div>':'';
   h+='<div class="cmp-side"><div><div style="font-size:12px;font-weight:600;margin-bottom:8px">'+m1.name+'</div>'+cmpStatBox('Completion',s1.rate+'%',s1.rate>=80?'g':s1.rate>=50?'a':'r')+cmpStatBox('Tasks done',s1.done,'')+cmpStatBox('Late',s1.late,s1.late?'r':'')+'</div>';
   h+='<div><div style="font-size:12px;font-weight:600;margin-bottom:8px">'+m2.name+'</div>'+cmpStatBox('Completion',s2.rate+'%',s2.rate>=80?'g':s2.rate>=50?'a':'r')+cmpStatBox('Tasks done',s2.done,'')+cmpStatBox('Late',s2.late,s2.late?'r':'')+'</div></div>';
@@ -792,7 +848,7 @@ function gp(page,btn){
   qsa('.page').forEach(function(p){p.classList.remove('active');});
   qsa('.ni').forEach(function(b){b.classList.remove('active');});
   el('page-'+page).classList.add('active');
-  if(btn)btn.classList.add('active');
+  if(btn&&btn.classList&&btn.classList.contains('ni'))btn.classList.add('active');
   if(page==='calendar')renderCal();
   if(page==='performance')rCharts();
   if(page==='oversight')rOversight();
@@ -802,14 +858,76 @@ function gp(page,btn){
   if(page==='compare')rCompare();
 }
 
+// FEEDBACK
+function setStar(n){fbRating=n;qsa('#starRow .star').forEach(function(s){s.classList.toggle('on',parseInt(s.dataset.v,10)<=n);});}
+function openFeedback(){fbRating=0;el('fbComment').value='';qsa('#starRow .star').forEach(function(s){s.classList.remove('on');});var sec=el('fbAdminSec');if(sec)sec.style.display=cu&&cu.isAdmin?'block':'none';if(cu&&cu.isAdmin)loadFeedbackList();el('FBM').classList.add('open');}
+function closeFeedback(){el('FBM').classList.remove('open');}
+async function saveFeedback(){
+  if(!fbRating){toast('Pick a star rating','error');return;}
+  if(!cu)return;
+  var r=await sb.from('feedback').insert([{member_id:cu.id,rating:fbRating,comment:el('fbComment').value.trim()||null}]);
+  if(r.error){toast('Could not save — run supabase_migration.sql first','error');return;}
+  toast('Feedback sent — thank you! ✓');closeFeedback();if(cu.isAdmin)loadFeedbackList();
+}
+async function loadFeedbackList(){
+  var r=await sb.from('feedback').select('*').order('created_at',{ascending:false}).limit(50);
+  feedbackList=r.data||[];
+  var list=el('fbList');if(!list)return;
+  if(!feedbackList.length){list.innerHTML='<div style="color:var(--text3);font-size:12px">No feedback yet.</div>';return;}
+  list.innerHTML=feedbackList.map(function(f){
+    var m=members.find(function(x){return x.id===f.member_id;});
+    var stars='★'.repeat(f.rating)+'☆'.repeat(5-f.rating);
+    return'<div class="fb-item"><div class="fb-item-head"><span style="font-weight:600">'+(m?m.name:'Unknown')+'</span><span class="fb-stars">'+stars+'</span></div>'+(f.comment?'<div style="color:var(--text2);margin-bottom:4px">'+f.comment+'</div>':'')+'<div class="fb-meta">'+new Date(f.created_at).toLocaleString()+'</div></div>';
+  }).join('');
+}
+
+// ROLE NOTES
+async function loadRoleNotes(){
+  try{
+    var r=await sb.from('role_notes').select('*');
+    roleNotesCache={};
+    (r.data||[]).forEach(function(n){roleNotesCache[n.role_name]=n;});
+  }catch(e){roleNotesCache={};}
+}
+function openRoleNotes(role){
+  curNoteRole=role;
+  var info=getCatInfo(role);
+  el('rnTitle').textContent=info.name+' — Notes';
+  gp('rolenotes',null);
+  var note=roleNotesCache[role];
+  el('rnContent').value=note?note.content||'':'';
+  updateNoteMeta(note);
+}
+function updateNoteMeta(note){
+  var meta=el('rnMeta');
+  if(!meta)return;
+  if(note&&note.updated_at){
+    var m=members.find(function(x){return x.id===note.updated_by;});
+    meta.textContent='Last updated by '+(m?m.name:'someone')+' · '+new Date(note.updated_at).toLocaleString();
+  }else meta.textContent='No notes yet — start writing!';
+}
+async function saveRoleNotes(){
+  if(!curNoteRole||!cu)return;
+  var content=el('rnContent').value;
+  var existing=roleNotesCache[curNoteRole];
+  var payload={role_name:curNoteRole,content:content,updated_by:cu.id,updated_at:new Date().toISOString()};
+  var r;
+  if(existing&&existing.id)r=await sb.from('role_notes').update(payload).eq('id',existing.id);
+  else r=await sb.from('role_notes').upsert([payload],{onConflict:'role_name'});
+  if(r.error){toast('Could not save — run supabase_migration.sql first','error');return;}
+  toast('Notes saved ✓');
+  await loadRoleNotes();
+  updateNoteMeta(roleNotesCache[curNoteRole]);
+}
+
 function toast(msg,type){type=type||'success';var t=el('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM'].forEach(function(id){el(id).addEventListener('click',function(e){if(e.target===el(id))el(id).classList.remove('open');});});
+['TM','MM','ECM','FBM'].forEach(function(id){el(id).addEventListener('click',function(e){if(e.target===el(id))el(id).classList.remove('open');});});
 el('DD').addEventListener('click',function(e){if(e.target===el('DD'))closeDrill();});
 el('dd').querySelector('button').addEventListener('click',function(){el('dd').classList.remove('open');});
 
 // REALTIME
-sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).subscribe();
+sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){loadRoleNotes();}).subscribe();
 
 initLogin();
