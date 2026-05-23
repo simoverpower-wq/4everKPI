@@ -218,7 +218,7 @@ function applyNavAccess(){
   var sidebar=el('sidebar');
   if(sidebar){
     qsa('.sb-section',sidebar).forEach(function(sec){
-      var items=qsa('[data-nav]',sec);
+      var items=Array.from(qsa('[data-nav]',sec));
       var any=items.some(function(n){return!n.hidden&&n.style.display!=='none';});
       sec.style.display=any?'':'none';
     });
