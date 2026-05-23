@@ -35,6 +35,7 @@
     <button class="ni active" onclick="gp('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</button>
     <button class="ni" onclick="gp('calendar',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Calendar</button>
     <button class="ni" onclick="gp('performance',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Performance</button>
+    <button class="ni" onclick="gp('compare',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 20V10M12 20V4M18 20v-6"/></svg>Compare</button>
     <button class="ni ao" onclick="gp('oversight',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>Oversight</button>
     <button class="ni ao" onclick="gp('intelligence',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Intelligence</button>
     <span class="nlbl">Tasks</span>
@@ -72,6 +73,17 @@
       <div class="ddetail" id="dd"><div class="ddhead"><div class="ddtitle" id="ddt">—</div><div style="display:flex;align-items:center;gap:8px"><input class="ddsrch" id="ddsrch" placeholder="🔍 Search name..." oninput="filterDD()"><button class="btn sm" onclick="document.getElementById('dd').classList.remove('open')">✕</button></div></div><div id="ddc"></div></div>
       <div class="cwrap"><div class="cgrid" id="cgrid"></div></div>
       <div class="csum" id="csum"></div>
+    </div>
+    
+    <div class="page" id="page-compare">
+      <div class="ph"><div><div class="pt">Compare</div><div class="ps">Leaderboard & head-to-head stats</div></div><label class="humor-toggle"><input type="checkbox" id="humorToggle" onchange="toggleHumor()"> Personality text</label></div>
+      <div class="cmp-grid">
+        <div class="cmp-panel"><div class="cmp-title">🏆 Leaderboard</div><div style="position:relative;height:220px;margin-bottom:14px"><canvas id="lbChart"></canvas></div><div id="lbTable"></div></div>
+        <div class="cmp-panel"><div class="cmp-title">⚔️ 1v1 Compare</div><div class="sw" style="margin-bottom:8px"><span class="si">🔍</span><input id="cmpSearch" placeholder="Search names..." oninput="rCompare()" autocomplete="off"></div>
+          <div class="cmp-pick"><div><div class="cmp-lbl">You</div><div class="bwrap" id="cmpMe"></div></div><div><div class="cmp-lbl">Opponent</div><div class="bwrap" id="cmpThem"></div></div></div>
+          <div id="cmpResult" class="cmp-result"></div>
+        </div>
+      </div>
     </div>
     <div class="page" id="page-performance">
       <div class="ph"><div><div class="pt">Performance</div><div class="ps">Click any chart to drill in</div></div></div>
