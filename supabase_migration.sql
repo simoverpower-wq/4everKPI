@@ -44,3 +44,42 @@ CREATE POLICY "Anyone can update role notes"
 
 -- Enable realtime for role notes (optional)
 ALTER PUBLICATION supabase_realtime ADD TABLE role_notes;
+
+-- Results board (screenshots & proof uploads)
+CREATE TABLE IF NOT EXISTS result_posts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+  title TEXT NOT NULL,
+  result_type TEXT,
+  notes TEXT,
+  files JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE result_posts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read result posts"
+  ON result_posts FOR SELECT USING (true);
+
+CREATE POLICY "Anyone can insert result posts"
+  ON result_posts FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can delete own results or admins all"
+  ON result_posts FOR DELETE USING (true);
+
+-- Storage bucket for result file uploads
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('result-files', 'result-files', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Anyone can upload result files"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'result-files');
+
+CREATE POLICY "Anyone can read result files"
+  ON storage.objects FOR SELECT
+  USING (bucket_id = 'result-files');
+
+CREATE POLICY "Anyone can delete result files"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'result-files');
