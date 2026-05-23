@@ -153,10 +153,10 @@ function nowISO(){return new Date().toISOString();}
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{};
 
 var NAV_TAB_DEFS=[
-  {id:'dashboard',label:'Dashboard'},{id:'calendar',label:'Calendar'},{id:'performance',label:'Performance'},{id:'compare',label:'Compare'},
-  {id:'oversight',label:'Oversight',adminDefault:false},{id:'intelligence',label:'Intelligence',adminDefault:false},
-  {id:'log_task',label:'Log task'},{id:'library',label:'Task library'},{id:'results',label:'Results'},{id:'trash',label:'Trash'},
-  {id:'add_member',label:'Add member',adminDefault:false},{id:'roles',label:'Role guides'}
+  {id:'dashboard',label:'Dashboard',group:'Overview'},{id:'calendar',label:'Calendar',group:'Overview'},{id:'performance',label:'Performance',group:'Overview'},{id:'compare',label:'Compare',group:'Overview'},
+  {id:'oversight',label:'Oversight',group:'Overview',adminDefault:false},{id:'intelligence',label:'Intelligence',group:'Overview',adminDefault:false},
+  {id:'log_task',label:'Log task',group:'Work'},{id:'library',label:'Task library',group:'Work'},{id:'results',label:'Results',group:'Work'},{id:'trash',label:'Trash',group:'Work'},
+  {id:'add_member',label:'Add member',group:'Team',adminDefault:false},{id:'roles',label:'Role guides',group:'Team'}
 ];
 var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,library:true,results:true,trash:true,add_member:false,roles:true};
 
@@ -254,8 +254,14 @@ function syncMAccessSec(){
 function renderMemberNavAccess(mid){
   var box=el('mNavAccess');if(!box)return;
   var access=getNavAccess(mid);
-  box.innerHTML=NAV_TAB_DEFS.map(function(t){
-    return'<label class="nav-access-item"><input type="checkbox" data-navkey="'+t.id+'"'+(access[t.id]!==false?' checked':'')+'><span class="nav-access-lbl">'+t.label+'</span></label>';
+  var groups=[],seen={};
+  NAV_TAB_DEFS.forEach(function(t){var g=t.group||'Other';if(!seen[g]){seen[g]=true;groups.push(g);}});
+  box.innerHTML=groups.map(function(g){
+    var items=NAV_TAB_DEFS.filter(function(t){return(t.group||'Other')===g;});
+    return'<div class="nav-access-group"><div class="nav-access-group-title">'+g+'</div>'+items.map(function(t){
+      var cid='nak-'+t.id;
+      return'<div class="nav-access-row"><input type="checkbox" id="'+cid+'" data-navkey="'+t.id+'"'+(access[t.id]!==false?' checked':'')+'><label class="nav-access-lbl" for="'+cid+'">'+t.label+'</label></div>';
+    }).join('')+'</div>';
   }).join('');
 }
 function readMemberNavAccess(mid){

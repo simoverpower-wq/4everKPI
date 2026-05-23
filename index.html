@@ -26,11 +26,16 @@
         <div class="login-solve"><span class="login-solve-icon">🎯</span><div><strong>Outcomes over busywork</strong><span>Log results with proof, compare performance, and know what's working.</span></div></div>
         <div class="login-solve"><span class="login-solve-icon">👥</span><div><strong>Role clarity</strong><span>Task libraries, role guides, and tailored suggestions per person — everyone knows their lane.</span></div></div>
       </div>
+      <div class="login-lyra">
+        <div class="login-lyra-badge">Personality-aware AI</div>
+        <div class="login-lyra-name">Meet Lyra</div>
+        <p class="login-lyra-copy">Lyra learns how your team works and surfaces insights, nudges, and requests tailored to each person — so the app feels like it knows you, not like another spreadsheet.</p>
+      </div>
       <div class="login-roadmap">
         <div class="login-roadmap-title">On the horizon</div>
         <p class="login-roadmap-note">Ideas we're exploring — no dates, no guarantees. Core KPI tracking stays the focus.</p>
         <ul class="login-roadmap-list">
-          <li><strong>Personality-aware AI</strong> — tailored insights and actionable requests based on how you work</li>
+          <li><strong>Lyra gets smarter</strong> — deeper personality-aware insights and actionable requests as your team logs real work</li>
           <li><strong>Notion + Google Drive sync</strong> — connect docs and files to your workflow</li>
           <li><strong>Stronger security</strong> — tighter access controls and data protection</li>
           <li><strong>Per-category dashboards</strong> — deeper tracking per role area (e.g. Reddit rev, proof charts). Possible expansion; still evaluating fit with the KPI-first mission</li>
@@ -197,7 +202,11 @@
     <div class="fg"><label>Role tags (comma separated)</label><input id="mtags" placeholder="e.g. Lead Searching, Chatters"></div>
     <div class="fg"><label>Role description</label><textarea id="mdesc" placeholder="What does this person do?"></textarea></div>
     <div class="fg"><label>Color</label><div class="cpgrid" id="mcolorgrid"></div><input type="hidden" id="mcolor" value="#34d399"></div>
-    <div class="fg" id="mAccessSec" style="display:none"><label>Sidebar access</label><div class="nav-access-grid" id="mNavAccess"></div><div class="nav-access-note">Choose which tabs this person can see. Admins always see everything.</div></div>
+    <div class="m-access-sec" id="mAccessSec" style="display:none">
+      <div class="nav-access-heading">Sidebar access</div>
+      <div class="nav-access-grid" id="mNavAccess"></div>
+      <p class="nav-access-note">Choose which tabs this person can see. Admins always see everything.</p>
+    </div>
     <input type="hidden" id="meid">
     <div class="ma"><button class="btn danger" id="mdel" onclick="delM()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeMM()">Cancel</button><button class="btn p" onclick="saveM()">Save</button></div>
   </div>

@@ -272,3 +272,25 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION wipe_agency_data() TO anon, authenticated;
+
+-- Phase 1 go-live: clear test tasks/logs but keep result posts (e.g. Shock's proof upload)
+CREATE OR REPLACE FUNCTION wipe_test_data_keep_results()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE kept_results integer;
+BEGIN
+  DELETE FROM task_history;
+  DELETE FROM tasks;
+  DELETE FROM feedback;
+  DELETE FROM role_notes;
+  DELETE FROM trash_bin;
+  SELECT COUNT(*) INTO kept_results FROM result_posts;
+  DELETE FROM settings WHERE key = 'agency_prefs';
+  RETURN jsonb_build_object('ok', true, 'kept_results', kept_results, 'wiped_at', now());
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION wipe_test_data_keep_results() TO anon, authenticated;
