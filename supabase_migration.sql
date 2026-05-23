@@ -153,3 +153,98 @@ CREATE POLICY "Anyone can read result files"
 CREATE POLICY "Anyone can delete result files"
   ON storage.objects FOR DELETE
   USING (bucket_id = 'result-files');
+
+-- Trash & recovery bin
+CREATE TABLE IF NOT EXISTS trash_bin (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  item_type TEXT NOT NULL CHECK (item_type IN ('task', 'member', 'result')),
+  item_id UUID NOT NULL,
+  title TEXT,
+  payload JSONB NOT NULL,
+  deleted_by UUID REFERENCES members(id) ON DELETE SET NULL,
+  deleted_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE trash_bin ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "trash_select" ON trash_bin;
+DROP POLICY IF EXISTS "trash_insert" ON trash_bin;
+DROP POLICY IF EXISTS "trash_delete" ON trash_bin;
+CREATE POLICY "trash_select" ON trash_bin FOR SELECT USING (true);
+CREATE POLICY "trash_insert" ON trash_bin FOR INSERT WITH CHECK (true);
+CREATE POLICY "trash_delete" ON trash_bin FOR DELETE USING (true);
+GRANT ALL ON TABLE trash_bin TO anon, authenticated;
+
+CREATE OR REPLACE FUNCTION move_to_trash(
+  p_type text,
+  p_id uuid,
+  p_payload jsonb,
+  p_title text,
+  p_deleted_by uuid DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE row trash_bin%ROWTYPE;
+BEGIN
+  INSERT INTO trash_bin (item_type, item_id, title, payload, deleted_by)
+  VALUES (p_type, p_id, p_title, p_payload, p_deleted_by)
+  RETURNING * INTO row;
+
+  IF p_type = 'task' THEN
+    DELETE FROM task_history WHERE task_id = p_id;
+    DELETE FROM tasks WHERE id = p_id;
+  ELSIF p_type = 'result' THEN
+    DELETE FROM result_posts WHERE id = p_id;
+  ELSIF p_type = 'member' THEN
+    DELETE FROM members WHERE id = p_id;
+  END IF;
+
+  RETURN to_jsonb(row);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION restore_from_trash(p_trash_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE t trash_bin%ROWTYPE; p jsonb;
+BEGIN
+  SELECT * INTO t FROM trash_bin WHERE id = p_trash_id;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  p := t.payload;
+
+  IF t.item_type = 'task' THEN
+    INSERT INTO tasks SELECT * FROM jsonb_populate_record(null::tasks, p);
+  ELSIF t.item_type = 'result' THEN
+    INSERT INTO result_posts SELECT * FROM jsonb_populate_record(null::result_posts, p);
+  ELSIF t.item_type = 'member' THEN
+    INSERT INTO members SELECT * FROM jsonb_populate_record(null::members, p);
+  END IF;
+
+  DELETE FROM trash_bin WHERE id = p_trash_id;
+  RETURN to_jsonb(t);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION purge_from_trash(p_trash_id uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE t trash_bin%ROWTYPE;
+BEGIN
+  DELETE FROM trash_bin WHERE id = p_trash_id RETURNING * INTO t;
+  IF NOT FOUND THEN RETURN NULL; END IF;
+  RETURN to_jsonb(t);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION move_to_trash(text, uuid, jsonb, text, uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION restore_from_trash(uuid) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION purge_from_trash(uuid) TO anon, authenticated;
+

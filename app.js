@@ -111,7 +111,7 @@ function taskActions(t){var h='';if(canEditTask(t))h+='<button class="btn sm" da
 function taskTypesStr(){return sTTs.length?sTTs.join(', '):'';}
 function parseTT(s){if(!s)return[];return s.split(',').map(function(x){return x.trim();}).filter(Boolean);}
 function filterByPeriod(list,period){if(period==='all')return list;var now=new Date(),cut=new Date();if(period==='today'){return list.filter(function(t){return new Date(t.logged_at).toDateString()===now.toDateString();});}if(period==='7d'){cut.setDate(cut.getDate()-7);}else if(period==='30d'){cut.setDate(cut.getDate()-30);}return list.filter(function(t){return new Date(t.logged_at)>=cut;});}
-function fmtField(f,v){if(f==='eta_minutes'||f==='actual_minutes')return fm(parseInt(v,10)||0);if(f==='status'){var m={done:'Done',prog:'In progress',pending:'Pending',late:'Late'};return m[v]||v;}return v||'—';}
+function fmtField(f,v){if(f==='eta_minutes'||f==='actual_minutes')return fm(parseInt(v,10)||0);if(f==='status'){var m={done:'Done',prog:'In progress',nostart:'Not started yet',pending:'Pending',late:'Late'};return m[v]||v;}return v||'—';}
 function taskCardHist(tid){var h=getTH(tid);if(!h.length)return'';return'<div class="hist-inline"><div class="hist-inline-title">✏️ Edit history</div>'+h.map(function(x){var c=members.find(function(m){return m.id===x.changed_by;});var fn=FL[x.field_changed]||x.field_changed;return'<div class="hist-change"><strong>'+(c?c.name:'Someone')+'</strong> changed <strong>'+fn+'</strong> from "'+fmtField(x.field_changed,x.old_value)+'" to "'+fmtField(x.field_changed,x.new_value)+'"<div class="hist-meta">'+new Date(x.changed_at).toLocaleString()+'</div></div>';}).join('')+'</div>';}
 function renderTaskLine(t){var types=parseTT(t.task_type);var typeLbl=types.length?types.join(' · '):(t.name||'—');return'<div class="ti"><div class="tr1"><span class="tn">'+typeLbl+(t.edited_at?'<span class="ebadge">edited</span>':'')+(t.is_recurring?'<span class="rbadge">🔄 '+t.recur_frequency+'</span>':'')+'</span>'+stag(t.status)+'</div><div class="tm">'+(t.role_area||'')+' '+(t.result_category?'· '+t.result_category:'')+'</div>'+ebar(t.eta_minutes,t.actual_minutes)+(t.edited_at?taskCardHist(t.id):'')+'</div>';}
 
@@ -237,7 +237,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 var members=[],tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
-var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false;
+var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
   winning:['you think you doing something don\'t you? 😂','okay okay we see you 👀','main character energy right there 🔥','you ate that and left no crumbs','don\'t get too comfy up there 😂'],
@@ -382,7 +382,7 @@ async function load(){
     sb.from('task_history').select('*').order('changed_at',{ascending:false})
   ]);
   members=results[0].data||[];tasks=results[1].data||[];hist=results[2].data||[];
-  await loadRoleNotes();await loadResultPosts();
+  await loadRoleNotes();await loadResultPosts();await loadTrash();
   render();
 }
 
@@ -395,7 +395,7 @@ function mst(id){
   return{total:tot,done:don,late:lat,rate:rt,avgA:aA,avgE:aE,noR:mine.filter(function(t){return t.result_category==='No result';}).length,nf:mine.filter(function(t){return t.result_category==='Needs review'||(t.notes||'').toLowerCase().includes('follow');}).length};
 }
 function vrd(id){var s=mst(id);if(!s.total)return{label:'No data',cls:'nodata'};if(s.late>=2)return{label:'Falling behind',cls:'behind'};if(s.rate>=80)return{label:'Producing',cls:'producing'};if(s.rate>=50)return{label:'Watch',cls:'watch'};return{label:'Falling behind',cls:'behind'};}
-function stag(s){var m={done:['Done','done'],prog:['In progress','prog'],late:['Late','late'],pending:['Pending','pending']};var p=m[s]||['?','pending'];return'<span class="tag '+p[1]+'">'+p[0]+'</span>';}
+function stag(s){var m={done:['Done','done'],prog:['In progress','prog'],late:['Late','late'],pending:['Pending','pending'],nostart:['Not started','nostart']};var p=m[s]||['?','pending'];return'<span class="tag '+p[1]+'">'+p[0]+'</span>';}
 function ebar(eta,act){if(!eta)return'';var pct=act?Math.min(Math.round(act/eta*100),150):0,over=act>eta,cls=!act?'b':over?'r':'g';return'<div style="margin-top:4px"><div class="erow"><span>ETA '+fm(eta)+(act?' · '+fm(act):'')+'</span><span>'+(act?(over?'+'+fm(act-eta)+' over':'-'+fm(eta-act)+' under'):'—')+'</span></div><div class="btrack"><div class="bfill '+cls+'" style="width:'+Math.min(pct,100)+'%"></div></div></div>';}
 function getTH(tid){return hist.filter(function(h){return h.task_id===tid;});}
 function renderH(tid){return taskCardHist(tid)||'<div style="color:var(--text3);font-size:11px">No changes.</div>';}
@@ -533,7 +533,7 @@ function rCalSum(y,mo){var dim=new Date(y,mo+1,0).getDate(),tot=0,don=0,lat=0;fo
 function taskCheckHTML(t){
   if(!canEditTask(t))return'';
   var done=t.status==='done';
-  if(!done&&t.status!=='prog'&&t.status!=='pending'&&t.status!=='late')return'';
+  if(!done&&t.status!=='prog'&&t.status!=='pending'&&t.status!=='late'&&t.status!=='nostart')return'';
   return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+(done?' checked disabled':'')+'><span class="tchk-box'+(done?' done':'')+'"></span></label>';
 }
 
@@ -546,7 +546,7 @@ function renderCalTaskRow(t,extra){
 function rMyTasks(){
   var list=el('myTasksList'),panel=el('myTasksPanel');if(!list||!panel)return;
   if(!cu){panel.style.display='none';return;}
-  var open=tasks.filter(function(t){return t.member_id===cu.id&&(t.status==='prog'||t.status==='pending');}).sort(function(a,b){return new Date(b.logged_at)-new Date(a.logged_at);});
+  var open=tasks.filter(function(t){return t.member_id===cu.id&&(t.status==='prog'||t.status==='pending'||t.status==='nostart');}).sort(function(a,b){return new Date(b.logged_at)-new Date(a.logged_at);});
   panel.style.display='block';
   if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or check a completed day below.</div>';return;}
   list.innerHTML=open.map(function(t){return renderCalTaskRow(t);}).join('');
@@ -694,8 +694,8 @@ function rCharts(){
   var cd={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#444',font:{size:10}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#444',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}}};
   if(charts.c)charts.c.destroy();charts.c=new Chart(el('cc'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{min:0,max:100,ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'%';}})})})})});
   if(charts.t)charts.t.destroy();charts.t=new Chart(el('ct'),{type:'bar',data:{labels:lbl,datasets:[{label:'Actual',data:aA,backgroundColor:'#5b9cf6',borderRadius:4,borderSkipped:false},{label:'ETA',data:aE,backgroundColor:'#a78bfa',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'h';}})})})})}); 
-  var sc=[tasks.filter(function(t){return t.status==='done';}).length,tasks.filter(function(t){return t.status==='prog';}).length,tasks.filter(function(t){return t.status==='pending';}).length,tasks.filter(function(t){return t.status==='late';}).length];
-  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Pending','Late'],datasets:[{data:sc,backgroundColor:['#7fff6e','#5b9cf6','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
+  var sc=[tasks.filter(function(t){return t.status==='done';}).length,tasks.filter(function(t){return t.status==='prog';}).length,tasks.filter(function(t){return t.status==='nostart';}).length,tasks.filter(function(t){return t.status==='pending';}).length,tasks.filter(function(t){return t.status==='late';}).length];
+  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Not started','Pending','Late'],datasets:[{data:sc,backgroundColor:['#7fff6e','#5b9cf6','#888','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
   if(charts.l)charts.l.destroy();charts.l=new Chart(el('cl'),{type:'bar',data:{labels:lbl,datasets:[{data:lts,backgroundColor:'#ff5c5c',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
   var rc={};tasks.forEach(function(t){if(t.result_category)rc[t.result_category]=(rc[t.result_category]||0)+1;});var rl=Object.keys(rc).slice(0,8),rd=rl.map(function(l){return rc[l];});
   if(charts.r)charts.r.destroy();charts.r=new Chart(el('cr'),{type:'bar',data:{labels:rl,datasets:[{data:rd,backgroundColor:'#34d399',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{indexAxis:'y',scales:{x:cd.scales.x,y:{ticks:{color:'#888',font:{size:9}},grid:{display:false},border:{display:false}}}})});
@@ -719,7 +719,7 @@ function dc(type){
   var cfgs={
     completion:{ti:'Completion rate',st:members.map(function(m){var s=mst(m.id);return'<div class="dstat"><div class="dstat-l">'+m.name+'</div><div class="dstat-v" style="color:'+(s.rate>=80?'var(--accent)':s.rate>=50?'var(--amber)':'var(--red)')+'">'+s.rate+'%</div></div>';}),li:tasks},
     time:{ti:'Time vs ETA',st:members.map(function(m){var s=mst(m.id),d=s.avgA&&s.avgE?s.avgA-s.avgE:null;return'<div class="dstat"><div class="dstat-l">'+m.name+'</div><div class="dstat-v" style="color:'+(d===null?'var(--text)':d>0?'var(--red)':'var(--accent)')+'">'+(d===null?'—':(d>0?'+':'')+fm(Math.abs(d)))+'</div></div>';}),li:tasks.filter(function(t){return t.actual_minutes||t.eta_minutes;})},
-    status:{ti:'By status',st:[['Done',tasks.filter(function(t){return t.status==='done';}).length,'var(--accent)'],['In progress',tasks.filter(function(t){return t.status==='prog';}).length,'var(--blue)'],['Pending',tasks.filter(function(t){return t.status==='pending';}).length,'var(--amber)'],['Late',tasks.filter(function(t){return t.status==='late';}).length,'var(--red)']].map(function(x){return'<div class="dstat"><div class="dstat-l">'+x[0]+'</div><div class="dstat-v" style="color:'+x[2]+'">'+x[1]+'</div></div>';}),li:tasks},
+    status:{ti:'By status',st:[['Done',tasks.filter(function(t){return t.status==='done';}).length,'var(--accent)'],['In progress',tasks.filter(function(t){return t.status==='prog';}).length,'var(--blue)'],['Not started',tasks.filter(function(t){return t.status==='nostart';}).length,'#888'],['Pending',tasks.filter(function(t){return t.status==='pending';}).length,'var(--amber)'],['Late',tasks.filter(function(t){return t.status==='late';}).length,'var(--red)']].map(function(x){return'<div class="dstat"><div class="dstat-l">'+x[0]+'</div><div class="dstat-v" style="color:'+x[2]+'">'+x[1]+'</div></div>';}),li:tasks},
     late:{ti:'Late tasks',st:members.map(function(m){var l=mt(m.id).filter(function(t){return t.status==='late';}).length;return'<div class="dstat"><div class="dstat-l">'+m.name+'</div><div class="dstat-v" style="color:'+(l>0?'var(--red)':'var(--accent)')+'">'+l+'</div></div>';}),li:tasks.filter(function(t){return t.status==='late';})},
     results:{ti:'Results by type',st:Object.entries(tasks.reduce(function(a,t){if(t.result_category)a[t.result_category]=(a[t.result_category]||0)+1;return a;},{})).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(x){return'<div class="dstat"><div class="dstat-l">'+x[0]+'</div><div class="dstat-v">'+x[1]+'</div></div>';}),li:tasks.filter(function(t){return t.result_category;})},
     trend:{ti:'Tasks — last 14 days',st:[],li:tasks.filter(function(t){var d=new Date(t.logged_at),c=new Date();c.setDate(c.getDate()-14);return d>=c;})}
@@ -936,7 +936,12 @@ async function saveT(){
 
 function delT(tid,btn){
   if(btn.textContent==='Del'||btn.textContent==='Delete'){btn.textContent='Sure?';setTimeout(function(){if(btn.textContent==='Sure?')btn.textContent='Del';},3000);return;}
-  (async function(){await sb.from('tasks').delete().eq('id',tid);closeDrill();el('dd').classList.remove('open');toast('Task deleted');await load();})();
+  (async function(){
+    var t=tasks.find(function(x){return x.id===tid;});
+    if(t){var ok=await moveToTrash('task',tid,t,(parseTT(t.task_type)[0]||t.name||'Task'));if(!ok){toast('Could not move to trash','error');return;}}
+    else{await sb.from('tasks').delete().eq('id',tid);}
+    closeDrill();el('dd').classList.remove('open');toast('Moved to trash — restore from Trash page');await load();
+  })();
 }
 
 // MEMBER MODAL
@@ -959,7 +964,14 @@ function delM(){
   var eid=el('meid').value;if(!eid)return;
   var btn=el('mdel');
   if(btn.textContent==='Delete'){btn.textContent='Confirm?';setTimeout(function(){if(btn.textContent==='Confirm?')btn.textContent='Delete';},3000);return;}
-  (async function(){await sb.from('tasks').delete().eq('member_id',eid);var r=await sb.from('members').delete().eq('id',eid);if(r.error){toast('Error','error');return;}closeMM();toast('Member deleted');await load();})();
+  (async function(){
+    var m=members.find(function(x){return x.id===eid;});if(!m){toast('Error','error');return;}
+    var mine=tasks.filter(function(t){return t.member_id===eid;});
+    for(var i=0;i<mine.length;i++)await moveToTrash('task',mine[i].id,mine[i],parseTT(mine[i].task_type)[0]||mine[i].name||'Task');
+    var ok=await moveToTrash('member',eid,m,m.name||'Member');
+    if(!ok){toast('Could not move to trash','error');return;}
+    closeMM();toast('Moved to trash — restore from Trash page');await load();
+  })();
 }
 
 
@@ -1033,6 +1045,7 @@ function gp(page,btn){
   if(page==='intelligence')rIntel();
   if(page==='library')rLib();
   if(page==='results'){refreshResFilters();rResults();}
+  if(page==='trash')rTrash();
   if(page==='roles')rRoles();
   if(page==='compare')rCompare();
 }
@@ -1313,19 +1326,99 @@ function askDelResult(id,btn){
 async function confirmDelResult(id,btn){
   if(resultBusy)return;
   resultBusy=true;btn.disabled=true;btn.textContent='Deleting...';
-  var r=await sb.rpc('delete_result_post',{post_id:id});
-  if(r.error||!r.data){
-    var fb=await sb.from('result_posts').delete().eq('id',id).select('id');
-    if(fb.error||!fb.data||!fb.data.length){
-      resultBusy=false;
-      toast('Run the QUICK FIX block at the top of supabase_migration.sql in Supabase SQL Editor','error');
-      rResults();
-      return;
+  var item=resultPosts.find(function(x){return x.id===id;});
+  var ok=item?await moveToTrash('result',id,item,item.title||'Result'):false;
+  if(!ok){
+    var r=await sb.rpc('delete_result_post',{post_id:id});
+    if(r.error||!r.data){
+      var fb=await sb.from('result_posts').delete().eq('id',id).select('id');
+      if(fb.error||!fb.data||!fb.data.length){
+        resultBusy=false;
+        toast('Could not delete — run supabase_migration.sql in SQL Editor','error');
+        rResults();
+        return;
+      }
     }
   }
   resultBusy=false;
   resultPosts=resultPosts.filter(function(x){return x.id!==id;});
-  toast('Result deleted');rResults();render();
+  toast(ok?'Moved to trash — restore from Trash page':'Result deleted');rResults();render();
+}
+
+// TRASH & RECOVERY
+async function loadTrash(){
+  var local=(ls('4k_trash')||[]).filter(function(x){return x.local;});
+  try{
+    var r=await sb.from('trash_bin').select('*').order('deleted_at',{ascending:false});
+    trashItems=(r.data||[]).concat(local);
+  }catch(e){trashItems=local;}
+}
+function getTrashPool(){
+  if(!cu)return trashItems.slice();
+  if(cu.isAdmin)return trashItems.slice();
+  return trashItems.filter(function(t){
+    if(t.deleted_by===cu.id)return true;
+    var p=t.payload||{};
+    return p.member_id===cu.id;
+  });
+}
+function trashTypeLabel(t){return t==='task'?'Task':t==='result'?'Result':t==='member'?'Profile':'Item';}
+function trashTypeIcon(t){return t==='task'?'📋':t==='result'?'🎯':t==='member'?'👤':'🗑️';}
+function rTrash(){
+  var box=el('trashList');if(!box)return;
+  var q=(el('trashSearch')?el('trashSearch').value:'').toLowerCase();
+  var filt=el('trashFilter')?el('trashFilter').value:'all';
+  var list=getTrashPool();
+  if(filt!=='all')list=list.filter(function(t){return t.item_type===filt;});
+  if(q)list=list.filter(function(t){return(t.title||'').toLowerCase().includes(q)||t.item_type.includes(q);});
+  if(!list.length){box.innerHTML='<div class="trash-empty">Trash is empty — deleted tasks, results, and profiles will appear here for recovery.</div>';return;}
+  box.innerHTML=list.map(function(t){
+    var by=members.find(function(m){return m.id===t.deleted_by;});
+    var meta='Deleted '+new Date(t.deleted_at).toLocaleString()+(by?' · by '+by.name:'');
+    return'<div class="trash-item" data-tid="'+t.id+'"><div class="trash-icon">'+trashTypeIcon(t.item_type)+'</div><div class="trash-body"><div class="trash-title">'+esc(t.title||'Untitled')+'</div><div class="trash-meta">'+esc(meta)+'</div></div><span class="trash-type">'+trashTypeLabel(t.item_type)+'</span><div class="trash-actions"><button class="btn sm p" data-restore="'+t.id+'">Restore</button><button class="btn sm danger" data-purge="'+t.id+'">Delete forever</button></div></div>';
+  }).join('');
+  qsa('[data-restore]',box).forEach(function(btn){btn.onclick=function(){restoreTrashItem(this.dataset.restore);};});
+  qsa('[data-purge]',box).forEach(function(btn){btn.onclick=function(){purgeTrashItem(this.dataset.purge,this);};});
+}
+async function moveToTrash(type,id,payload,title){
+  try{
+    var r=await sb.rpc('move_to_trash',{p_type:type,p_id:id,p_payload:payload,p_title:title,p_deleted_by:cu?cu.id:null});
+    if(!r.error&&r.data){await loadTrash();return true;}
+  }catch(e){}
+  var local={id:'local_'+Date.now()+'_'+Math.random().toString(36).slice(2),item_type:type,item_id:id,title:title,payload:payload,deleted_by:cu?cu.id:null,deleted_at:new Date().toISOString(),local:true};
+  var lt=ls('4k_trash')||[];lt.unshift(local);lss('4k_trash',lt);
+  if(type==='task'){await sb.from('task_history').delete().eq('task_id',id);await sb.from('tasks').delete().eq('id',id);}
+  else if(type==='result'){await sb.rpc('delete_result_post',{post_id:id});}
+  else if(type==='member'){await sb.from('members').delete().eq('id',id);}
+  trashItems=lt.concat(trashItems.filter(function(x){return!x.local}));
+  return true;
+}
+async function restoreTrashItem(trashId){
+  var item=trashItems.find(function(x){return x.id===trashId;});
+  if(!item){toast('Item not found','error');return;}
+  if(item.local){
+    var p=item.payload;
+    if(item.item_type==='task')await sb.from('tasks').insert([p]);
+    else if(item.item_type==='result')await sb.from('result_posts').insert([p]);
+    else if(item.item_type==='member')await sb.from('members').insert([p]);
+    var lt=(ls('4k_trash')||[]).filter(function(x){return x.id!==trashId;});lss('4k_trash',lt);
+  }else{
+    var r=await sb.rpc('restore_from_trash',{p_trash_id:trashId});
+    if(r.error||!r.data){toast(r.error?r.error.message:'Could not restore — run trash migration SQL','error');return;}
+  }
+  toast('Restored ✓');await load();if(el('page-trash').classList.contains('active'))rTrash();
+}
+async function purgeTrashItem(trashId,btn){
+  if(btn.dataset.confirm!=='yes'){btn.textContent='Sure?';btn.dataset.confirm='yes';setTimeout(function(){if(btn.dataset.confirm==='yes'){btn.textContent='Delete forever';btn.dataset.confirm='';}},3000);return;}
+  var item=trashItems.find(function(x){return x.id===trashId;});
+  if(item&&item.local){
+    var lt=(ls('4k_trash')||[]).filter(function(x){return x.id!==trashId;});lss('4k_trash',lt);
+  }else{
+    var r=await sb.rpc('purge_from_trash',{p_trash_id:trashId});
+    if(r.error){toast('Could not remove','error');return;}
+  }
+  trashItems=trashItems.filter(function(x){return x.id!==trashId;});
+  toast('Permanently deleted');rTrash();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
@@ -1336,7 +1429,7 @@ el('DD').addEventListener('click',function(e){if(e.target===el('DD'))closeDrill(
 el('dd').querySelector('button').addEventListener('click',function(){el('dd').classList.remove('open');});
 
 // REALTIME
-sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){loadResultPosts();if(el('page-results').classList.contains('active'))rResults();render();}).subscribe();
+sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){loadResultPosts();if(el('page-results').classList.contains('active'))rResults();render();}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){loadTrash();if(el('page-trash').classList.contains('active'))rTrash();}).subscribe();
 
 initLogin();
 initSidebar();

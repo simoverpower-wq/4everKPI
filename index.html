@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>4everKPI</title>
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -11,9 +13,35 @@
 </head>
 <body>
 <div class="login-screen" id="LS">
-  <div class="login-box">
-    <div class="login-logo">4everKPI</div>
-    <div class="login-sub">Agency Operations — Select your name</div>
+  <div class="login-layout">
+    <div class="login-hero">
+      <img src="icon.png" alt="4everKPI" class="login-icon">
+      <div class="login-brand">4everKPI</div>
+      <div class="login-tagline">Agency operations, measured.</div>
+      <p class="login-lead">One place for your team to log work, track outcomes, and see what's actually moving the agency forward — without spreadsheets, guesswork, or "did anyone follow up on that?"</p>
+      <div class="login-solves">
+        <div class="login-solves-title">What this solves</div>
+        <div class="login-solve"><span class="login-solve-icon">📊</span><div><strong>No visibility</strong><span>See who logged what, completion rates, and real results — live on the dashboard.</span></div></div>
+        <div class="login-solve"><span class="login-solve-icon">⏱️</span><div><strong>Time & accountability</strong><span>Track ETAs vs actual time, late tasks, and streaks so nothing slips through.</span></div></div>
+        <div class="login-solve"><span class="login-solve-icon">🎯</span><div><strong>Outcomes over busywork</strong><span>Log results with proof, compare performance, and know what's working.</span></div></div>
+        <div class="login-solve"><span class="login-solve-icon">👥</span><div><strong>Role clarity</strong><span>Task libraries, role guides, and tailored suggestions per person — everyone knows their lane.</span></div></div>
+      </div>
+      <div class="login-roadmap">
+        <div class="login-roadmap-title">On the horizon</div>
+        <p class="login-roadmap-note">Ideas we're exploring — no dates, no guarantees. Core KPI tracking stays the focus.</p>
+        <ul class="login-roadmap-list">
+          <li><strong>Personality-aware AI</strong> — tailored insights and actionable requests based on how you work</li>
+          <li><strong>Notion + Google Drive sync</strong> — connect docs and files to your workflow</li>
+          <li><strong>Stronger security</strong> — tighter access controls and data protection</li>
+          <li><strong>Per-category dashboards</strong> — deeper tracking per role area (e.g. Reddit rev, proof charts). Possible expansion; still evaluating fit with the KPI-first mission</li>
+        </ul>
+      </div>
+    </div>
+    <div class="login-box">
+      <div class="login-box-head">
+        <img src="icon.png" alt="" class="login-box-icon">
+        <div><div class="login-logo">Sign in</div><div class="login-sub">Select your name to continue</div></div>
+      </div>
     <div id="step1">
       <div class="sw"><span class="si">🔍</span><input id="msearch" placeholder="Search name..." oninput="filterM()" autocomplete="off"></div>
       <button class="login-gear" id="loginGear" onclick="toggleLoginEdit()" title="Admin: reorder login names">⚙️</button>
@@ -26,12 +54,13 @@
       <button class="lbtn" onclick="doLogin()">Enter</button>
       <div class="lerr" id="lerr"></div>
     </div>
+    </div>
   </div>
 </div>
 <div class="app" id="APP" style="display:none">
   <aside class="sidebar" id="sidebar">
     <div class="sb-top">
-      <div class="logo"><div class="ldot"></div><span class="logo-text">4everKPI</span></div>
+      <div class="logo"><img src="icon.png" alt="" class="logo-icon"><span class="logo-text">4everKPI</span></div>
       <button class="sb-toggle" id="sbToggle" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Toggle sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
     </div>
     <nav class="sb-nav">
@@ -49,6 +78,7 @@
         <button class="btn-log-task" onclick="openT()" title="Log task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log task</span></button>
         <button class="ni" onclick="gp('library',this)" title="Task library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="ni-text">Task library</span></button>
         <button class="ni" onclick="gp('results',this)" title="Results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-text">Results</span></button>
+        <button class="ni ao" onclick="gp('trash',this)" title="Trash & recovery"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="ni-text">Trash</span></button>
       </div>
       <div class="sb-section">
         <div class="nlbl">Team</div>
@@ -123,6 +153,11 @@
       </div>
       <div class="res-grid" id="resGrid"></div>
     </div>
+    <div class="page" id="page-trash">
+      <div class="ph"><div><div class="pt">Trash & recovery</div><div class="ps">Restore accidentally deleted tasks, results, or profiles</div></div></div>
+      <div class="trash-toolbar"><input class="res-search" id="trashSearch" placeholder="🔍 Search trash..." oninput="rTrash()"><select class="res-filter" id="trashFilter" onchange="rTrash()"><option value="all">All types</option><option value="task">Tasks</option><option value="result">Results</option><option value="member">Profiles</option></select></div>
+      <div class="trash-list" id="trashList"></div>
+    </div>
     <div class="page" id="page-profile"><div class="ph"><div><button class="btn sm" onclick="gp('dashboard',document.querySelector('.ni'))">← Back</button></div><div id="pedit"></div></div><div id="pcontent"></div></div>
     <div class="page" id="page-roles"><div class="ph"><div><div class="pt">Role guides</div><div class="ps">Who does what — drag to reorder</div></div><button class="btn p ao" onclick="openM()">+ Add member</button></div><div class="sw" style="margin-bottom:14px"><span class="si">🔍</span><input id="rsearch" placeholder="Search by name..." oninput="rRoles()" autocomplete="off"></div><div id="rlist"></div></div>
     <div class="page" id="page-rolenotes"><div class="ph"><div><button class="btn sm" onclick="gp('library',document.querySelector('.ni[onclick*=library]'))">← Back to library</button><div class="pt" id="rnTitle" style="margin-top:10px">Role notes</div><div class="ps" id="rnMeta">Shared notes for this role category</div></div></div><textarea class="rn-editor" id="rnContent" placeholder="Write meeting notes, face-to-face conversations, reminders, or anything the team needs to remember..."></textarea><div class="rn-actions"><button class="btn p" onclick="saveRoleNotes()">Save notes</button></div></div>
@@ -138,7 +173,7 @@
     <div class="bsel"><div class="bsel-lbl">Task type <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
     <div class="fg"><label>Description (optional)</label><input id="tname" placeholder="More detail..."></div>
     <div class="bsel"><div class="bsel-lbl">Result category <span style="font-size:10px;color:var(--text3);font-weight:400">(tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
-    <div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div>
+    <div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div>
     <div class="fg"><label>ETA</label><div class="tgrid" id="etag"></div><div class="etasug" id="etas"></div></div>
     <div class="fg"><label>Actual time</label><div class="tgrid" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
