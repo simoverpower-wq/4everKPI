@@ -1,5 +1,22 @@
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
-const sb=supabase.createClient(SBU,SBK);
+var sb=null;
+try{
+  if(typeof supabase==='undefined')throw new Error('Supabase JS library did not load — check index.html script tags');
+  sb=supabase.createClient(SBU,SBK);
+  console.log('[4KPI] Supabase client initialized',SBU);
+}catch(e){
+  console.error('[4KPI] Supabase init FAILED:',e);
+}
+function logKPI(stage,extra){
+  var info={members:members.length,tasks:tasks.length,hist:hist.length,user:cu?cu.name:null};
+  if(extra)Object.keys(extra).forEach(function(k){info[k]=extra[k];});
+  console.log('[4KPI]',stage,info);
+}
+function sbErr(label,r){
+  if(!r||!r.error)return null;
+  console.error('[4KPI]',label,r.error.message||r.error,r.status,r.statusText);
+  return r.error;
+}
 const COLORS={purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},teal:{bg:'rgba(52,211,153,.15)',text:'#34d399'},coral:{bg:'rgba(251,113,133,.15)',text:'#fb7185'},blue:{bg:'rgba(91,156,246,.15)',text:'#5b9cf6'},amber:{bg:'rgba(255,184,48,.15)',text:'#ffb830'},neongreen:{bg:'rgba(57,255,20,.15)',text:'#39ff14'},gold:{bg:'rgba(255,215,0,.15)',text:'#ffd700'},violet:{bg:'rgba(238,130,238,.15)',text:'#ee82ee'},cyan:{bg:'rgba(0,255,255,.15)',text:'#00ffff'},red:{bg:'rgba(255,60,60,.15)',text:'#ff4444'},lime:{bg:'rgba(50,205,50,.15)',text:'#32cd32'},midnight:{bg:'rgba(100,120,200,.15)',text:'#8899dd'},rose:{bg:'rgba(255,100,150,.15)',text:'#ff6496'},orange:{bg:'rgba(255,150,50,.15)',text:'#ff9632'},sky:{bg:'rgba(100,200,255,.15)',text:'#64c8ff'}};
 
 const HELP={
@@ -146,6 +163,7 @@ var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:tr
 function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);saveSettings();}
 
 async function saveSettings(){
+  if(!sb)return;
   try{
     var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:nowISO()}]);
@@ -153,48 +171,64 @@ async function saveSettings(){
 }
 
 async function loadSettings(){
+  if(!sb)return;
   try{
     var r=await sb.from('settings').select('value').eq('key','agency_prefs').single();
+    if(r.error&&r.error.code!=='PGRST116')sbErr('settings',r);
     if(r.data&&r.data.value){
       var v=r.data.value;
-      RCOLS=v.rcols||{};customRA=v.cra||{};delBase=v.del||{tasks:{},rc:[],rcByRole:{}};if(!delBase.rcByRole)delBase.rcByRole={};customRC=v.crc||[];customRCByRole=v.crcr||{};catMeta=v.cm||{};catOrder=v.co||null;loginOrder=v.lo||null;rolesOrder=v.ro||null;memberNavAccess=v.mna||{};
-      lss('4k_mna',memberNavAccess);
+      RCOLS=v.rcols||{};customRA=v.cra||{};delBase=v.del||{tasks:{},rc:[],rcByRole:{}};if(!delBase.rcByRole)delBase.rcByRole={};customRC=v.crc||[];customRCByRole=v.crcr||{};catMeta=v.cm||{};catOrder=v.co||null;loginOrder=v.lo||null;rolesOrder=v.ro||null;
+      if(v.mna&&typeof v.mna==='object'){memberNavAccess=v.mna;lss('4k_mna',memberNavAccess);}
     }
-  }catch(e){console.log('No saved settings yet');}
+  }catch(e){console.error('[4KPI] loadSettings failed',e);}
 }
 function getNavAccess(mid){
   var m=members.find(function(x){return x.id===mid;});
-  if(!m||m.is_admin)return NAV_TAB_DEFS.reduce(function(a,t){a[t.id]=true;return a;},{});
-  return Object.assign({},DEFAULT_MEMBER_NAV,memberNavAccess[mid]||{});
+  if(m&&m.is_admin)return NAV_TAB_DEFS.reduce(function(a,t){a[t.id]=true;return a;},{});
+  var base=Object.assign({},DEFAULT_MEMBER_NAV);
+  var custom=(mid&&memberNavAccess[mid])?memberNavAccess[mid]:null;
+  if(custom&&typeof custom==='object'){
+    NAV_TAB_DEFS.forEach(function(t){
+      if(Object.prototype.hasOwnProperty.call(custom,t.id))base[t.id]=!!custom[t.id];
+    });
+  }
+  return base;
+}
+function syncUserRole(){
+  var isAdmin=!!(cu&&cu.isAdmin);
+  document.body.classList.toggle('is-admin',isAdmin);
+  qsa('[data-admin-only]').forEach(function(node){node.hidden=!isAdmin;});
 }
 function applyNavAccess(){
   if(!cu)return;
+  syncUserRole();
   var access=getNavAccess(cu.id);
   qsa('[data-nav]').forEach(function(node){
     var key=node.dataset.nav;
-    node.style.display=access[key]!==false?'':'none';
+    var show=access[key]!==false;
+    node.hidden=!show;
+    node.style.display=show?'':'none';
   });
   qsa('[data-require-nav]').forEach(function(node){
     var key=node.dataset.requireNav;
-    node.style.display=access[key]!==false?'':'none';
+    var show=access[key]!==false;
+    node.hidden=!show;
+    node.style.display=show?'':'none';
   });
   var sidebar=el('sidebar');
   if(sidebar){
     qsa('.sb-section',sidebar).forEach(function(sec){
       var items=qsa('[data-nav]',sec);
-      var any=items.some(function(n){return n.style.display!=='none';});
+      var any=items.some(function(n){return!n.hidden&&n.style.display!=='none';});
       sec.style.display=any?'':'none';
     });
     var trashWrap=sidebar.querySelector('.sb-trash');
     if(trashWrap){
       var trashOn=access.trash!==false;
-      var wipeOn=cu&&cu.isAdmin;
+      var wipeOn=!!(cu&&cu.isAdmin);
       trashWrap.style.display=trashOn||wipeOn?'':'none';
     }
   }
-  qsa('[data-admin-only]').forEach(function(node){
-    node.style.display=cu&&cu.isAdmin?'':'none';
-  });
 }
 function bindBubble(node,onTap,ignoreSel){
   node.addEventListener('click',function(e){
@@ -221,13 +255,16 @@ function renderMemberNavAccess(mid){
   var box=el('mNavAccess');if(!box)return;
   var access=getNavAccess(mid);
   box.innerHTML=NAV_TAB_DEFS.map(function(t){
-    return'<label class="nav-access-item"><input type="checkbox" data-navkey="'+t.id+'"'+(access[t.id]!==false?' checked':'')+'><span>'+t.label+'</span></label>';
+    return'<label class="nav-access-item"><input type="checkbox" data-navkey="'+t.id+'"'+(access[t.id]!==false?' checked':'')+'><span class="nav-access-lbl">'+t.label+'</span></label>';
   }).join('');
 }
 function readMemberNavAccess(mid){
   var access={};
+  NAV_TAB_DEFS.forEach(function(t){access[t.id]=DEFAULT_MEMBER_NAV[t.id]!==false;});
   qsa('[data-navkey]',el('mNavAccess')).forEach(function(inp){access[inp.dataset.navkey]=inp.checked;});
-  memberNavAccess[mid]=access;saveAll();
+  memberNavAccess[mid]=access;
+  saveAll();
+  logKPI('nav access saved for '+mid,{access:access});
 }
 function toggleMobileNav(){
   var sb=el('sidebar'),bd=el('sbBackdrop');
@@ -360,8 +397,12 @@ function qsa(sel,ctx){return(ctx||document).querySelectorAll(sel);}
 
 // LOGIN
 async function initLogin(){
+  if(!sb){console.error('[4KPI] Cannot load login — Supabase client missing');return;}
+  logKPI('initLogin start');
   var r=await sb.from('members').select('*').order('name');
+  sbErr('members (login)',r);
   members=r.data||[];
+  logKPI('initLogin members loaded',{count:members.length});
   await loadSettings();
   renderLG(members);
   var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
@@ -445,13 +486,15 @@ function doLogin(){
     ['p0','p1','p2','p3'].forEach(function(i){el(i).value='';});
     el('p0').focus();return;
   }
-  cu={id:m.id,name:m.name,isAdmin:m.is_admin||false,color:m.color||'teal'};
+  cu={id:m.id,name:m.name,isAdmin:!!m.is_admin,color:m.color||'teal'};
+  console.log('[4KPI] login ok',{id:cu.id,name:cu.name,isAdmin:cu.isAdmin});
   enterApp();
 }
 
 function enterApp(){
   el('LS').classList.add('hidden');
   el('APP').style.display='flex';
+  syncUserRole();
   var c=getMC({color:cu.color});
   var av=el('uav');
   av.style.background=c.bg;av.style.color=c.text;av.textContent=ini(cu.name);
@@ -462,27 +505,59 @@ function enterApp(){
   el('quote').textContent=QT[new Date().getDay()%QT.length];
   var ht=el('humorToggle');if(ht)ht.checked=!humorOff;
   initSidebar();
-  refreshAppData(true);
+  fetchAndRender(true);
 }
 
-var loadSeq=0,rtSubscribed=false;
-async function refreshAppData(showLoadErr){
-  var seq=++loadSeq;
+var rtSubscribed=false;
+async function fetchAndRender(showLoadErr){
+  if(!sb){console.error('[4KPI] fetchAndRender aborted — no Supabase client');if(showLoadErr)toast('App failed to connect to Supabase — refresh the page','error');return;}
+  if(!cu){console.warn('[4KPI] fetchAndRender skipped — not logged in');return;}
+  logKPI('fetchAndRender start');
   try{
     await loadSettings();
-    if(seq!==loadSeq)return;
-    await loadCore(seq);
-    if(seq!==loadSeq)return;
+
+    var mr=await sb.from('members').select('*').order('name');
+    sbErr('members',mr);
+    if(mr.data)members=mr.data;
+    else if(mr.error)members=[];
+
+    var tr=await sb.from('tasks').select('*').order('logged_at',{ascending:false});
+    if(tr.error||!tr.data){
+      sbErr('tasks (ordered)',tr);
+      tr=await sb.from('tasks').select('*');
+      sbErr('tasks (fallback)',tr);
+    }
+    tasks=tr.data||[];
+
+    var hr=await sb.from('task_history').select('*').order('changed_at',{ascending:false});
+    if(hr.error||!hr.data){
+      sbErr('task_history (changed_at)',hr);
+      hr=await sb.from('task_history').select('*');
+      sbErr('task_history (fallback)',hr);
+    }
+    hist=hr.data||[];
+
+    logKPI('fetch complete',{memberCount:members.length,taskCount:tasks.length,histCount:hist.length});
+
+    try{await loadRoleNotes();}catch(e){console.error('[4KPI] loadRoleNotes failed',e);}
+    try{await loadResultPosts();}catch(e){console.error('[4KPI] loadResultPosts failed',e);}
+    try{await loadTrash();}catch(e){console.error('[4KPI] loadTrash failed',e);}
+
+    render();
+    applyNavAccess();
+    logKPI('fetchAndRender done');
+
     if(!rtSubscribed){subscribeRealtime();rtSubscribed=true;}
   }catch(e){
-    console.error('refreshAppData failed',e);
-    if(showLoadErr)toast('Could not load dashboard data — refresh the page','error');
+    console.error('[4KPI] fetchAndRender FAILED:',e);
+    if(showLoadErr)toast('Could not load dashboard data — open browser console (F12) for details','error');
   }
 }
+async function load(){await fetchAndRender(false);}
 
 function logout(){
   cu=null;
-  loadSeq++;
+  syncUserRole();
   el('LS').classList.remove('hidden');
   el('APP').style.display='none';
   el('step2').classList.remove('show');
@@ -490,38 +565,7 @@ function logout(){
   renderLG(members);
 }
 
-// DATA
-async function loadCore(seq){
-  var mr=await sb.from('members').select('*').order('name');
-  if(seq&&seq!==loadSeq)return;
-  if(mr.error){console.error('members load',mr.error);toast('Could not load team members','error');}
-  members=mr.data||[];
-
-  var tr=await sb.from('tasks').select('*').order('logged_at',{ascending:false});
-  if(seq&&seq!==loadSeq)return;
-  if(tr.error){console.error('tasks load',tr.error);toast('Could not load tasks','error');}
-  tasks=tr.data||[];
-
-  var hr=await sb.from('task_history').select('*').order('changed_at',{ascending:false});
-  if(hr.error){
-    hr=await sb.from('task_history').select('*').order('created_at',{ascending:false});
-    if(hr.error)hr=await sb.from('task_history').select('*');
-  }
-  if(seq&&seq!==loadSeq)return;
-  if(hr.error)console.warn('task_history load',hr.error);
-  hist=hr.data||[];
-
-  await loadRoleNotes();
-  await loadResultPosts();
-  await loadTrash();
-  if(seq&&seq!==loadSeq)return;
-  render();
-  applyNavAccess();
-}
-async function load(){
-  await loadCore(loadSeq);
-}
-
+// DATA (mt, mst, etc. below)
 function mt(id){return tasks.filter(function(t){return t.member_id===id;});}
 function mst(id){
   var mine=mt(id),tot=mine.length,don=mine.filter(function(t){return t.status==='done';}).length,lat=mine.filter(function(t){return t.status==='late';}).length,rt=tot?Math.round(don/tot*100):0;
@@ -538,7 +582,8 @@ function renderH(tid){return taskCardHist(tid)||'<div style="color:var(--text3);
 
 // INSIGHTS
 function genIns(){
-  var ins=[],tod=new Date().toDateString(),todT=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===tod;});
+  var box=el('ilist');if(!box)return;
+  var ins=[],tod=new Date().toDateString(),todT=tasks.filter(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===tod;});
   members.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has logged 0 tasks today.'});});
   members.forEach(function(m){var mine=mt(m.id).filter(function(t){return t.actual_minutes&&t.eta_minutes;});if(mine.length<2)return;var ae=mine.reduce(function(s,t){return s+t.eta_minutes;},0)/mine.length,aa=mine.reduce(function(s,t){return s+t.actual_minutes;},0)/mine.length,d=Math.round(aa-ae);if(d>20)ins.push({t:'warn',i:'🕐',txt:'<strong>'+m.name+'</strong> averages <strong>+'+fm(d)+'</strong> over ETA.'});if(d<-15)ins.push({t:'good',i:'⚡',txt:'<strong>'+m.name+'</strong> is <strong>'+fm(Math.abs(d))+' under ETA</strong>.'});});
   members.forEach(function(m){var s=mst(m.id);if(s.late>=3)ins.push({t:'bad',i:'🚨',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late tasks</strong>.'});else if(s.late>=1)ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late task'+(s.late>1?'s':'')+'</strong>.'});});
@@ -555,7 +600,7 @@ function genIns(){
     var rt=r.result_type||'Result';
     ins.unshift({t:'good',i:'🎯',txt:'<strong>'+(rm?rm.name:'Someone')+'</strong> posted <strong>'+(r.title||'a result')+'</strong> · '+rt+' · '+fmtDT(r.created_at).split(', ').pop()});
   });
-  el('ilist').innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks to generate insights.</div>';
+  box.innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks to generate insights.</div>';
 }
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
@@ -567,6 +612,7 @@ function injectDashHelp(){
 }
 function render(){
   try{
+    logKPI('render start');
     rKPIs();rPulse();genIns();rMembers();injectPageHelp();
     var ap=function(n){return el('page-'+n).classList.contains('active');};
     if(ap('calendar')){renderCal();rMyTasks();}
@@ -578,11 +624,13 @@ function render(){
     if(ap('roles'))rRoles();
     if(ap('compare'))rCompare();
     if(ap('trash'))rTrash();
-  }catch(e){console.error('render failed',e);}
+    logKPI('render complete');
+  }catch(e){console.error('[4KPI] render failed',e);}
 }
 
 function rKPIs(){
-  var box=el('krow');if(!box)return;
+  var box=el('krow');
+  if(!box){console.error('[4KPI] rKPIs: #krow element not found');return;}
   var tot=tasks.length,don=tasks.filter(function(t){return t.status==='done';}).length,lat=tasks.filter(function(t){return t.status==='late';}).length;
   var res=tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';}).length;
   var rt=tot?Math.round(don/tot*100):0;
@@ -1122,6 +1170,7 @@ async function saveM(){
   closeMM();toast(eid?name+' updated ✓':name+' added ✓');
   if(eid&&cu&&cu.id===eid){cu.color=color;var c=getMC({color:color});el('uav').style.background=c.bg;el('uav').style.color=c.text;}
   await load();
+  if(savedId&&cu&&cu.id===savedId&&!is_admin)applyNavAccess();
 }
 
 function delM(){
@@ -1617,7 +1666,7 @@ async function confirmWipeData(){
     tasks=[];hist=[];resultPosts=[];trashItems=[];feedbackList=[];roleNotesCache={};
     closeWipeModal();
     toast('All agency data erased — team accounts kept');
-    await refreshAppData(false);
+    await fetchAndRender(false);
   }catch(e){
     console.error('wipe failed',e);
     toast('Could not erase data — run supabase_migration.sql','error');
@@ -1639,7 +1688,8 @@ function resetLocalPrefs(){
 }
 
 function subscribeRealtime(){
-  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)load();}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)load();}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)load();}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
+  if(!sb||!cu)return;
+  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
