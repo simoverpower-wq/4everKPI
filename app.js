@@ -167,7 +167,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 var members=[],tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
-var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[];
+var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],sResultType=null;
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
   winning:['you think you doing something don\'t you? 😂','okay okay we see you 👀','main character energy right there 🔥','you ate that and left no crumbs','don\'t get too comfy up there 😂'],
@@ -343,6 +343,12 @@ function genIns(){
   if(tot>0){if(rt>=80)ins.push({t:'good',i:'✅',txt:'Completion rate is <strong>'+rt+'%</strong>.'});else if(rt>=50)ins.push({t:'warn',i:'📊',txt:'Completion rate is <strong>'+rt+'%</strong> — room to improve.'});else ins.push({t:'bad',i:'🔴',txt:'Only <strong>'+rt+'%</strong> completion.'});}
   var tp=members.map(function(m){return{m:m,s:mst(m.id)};}).filter(function(x){return x.s.total>0;}).sort(function(a,b){return b.s.rate-a.s.rate;})[0];
   if(tp&&tp.s.rate>0)ins.push({t:'good',i:'⭐',txt:'<strong>'+tp.m.name+'</strong> is top performer at <strong>'+tp.s.rate+'%</strong>.'});
+  var todRes=resultPosts.filter(function(r){return new Date(r.created_at).toDateString()===tod;});
+  todRes.slice(0,6).forEach(function(r){
+    var rm=members.find(function(x){return x.id===r.member_id;});
+    var rt=r.result_type||'Result';
+    ins.unshift({t:'good',i:'🎯',txt:'<strong>'+(rm?rm.name:'Someone')+'</strong> posted <strong>'+(r.title||'a result')+'</strong> · '+rt+' · '+new Date(r.created_at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})});
+  });
   el('ilist').innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks to generate insights.</div>';
 }
 
@@ -1012,19 +1018,77 @@ async function loadResultPosts(){
   }catch(e){resultPosts=[];}
 }
 function parseResFiles(r){
-  var files=r.files;
+  var files=r.file_urls||r.files;
   if(!files)return[];
   if(typeof files==='string'){try{files=JSON.parse(files);}catch(e){return[];}}
-  return Array.isArray(files)?files:[];
+  if(!Array.isArray(files))return[];
+  return files.map(function(item){
+    if(typeof item==='object'&&item&&item.url)return item;
+    if(typeof item!=='string')return null;
+    if(item.charAt(0)==='{'){try{return JSON.parse(item);}catch(e){}}
+    return{name:item.split('/').pop()||'File',url:item,type:''};
+  }).filter(Boolean);
 }
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function getResultsPool(){
+  if(!cu)return resultPosts.slice();
+  if(cu.isAdmin)return resultPosts.slice();
+  var ids={};
+  getTeamVisible().forEach(function(m){ids[m.id]=true;});
+  ids[cu.id]=true;
+  return resultPosts.filter(function(r){return ids[r.member_id];});
+}
+function refreshResFilters(){
+  var mf=el('resMemberFilter');
+  if(mf){
+    var cur=mf.value,pool=cu&&cu.isAdmin?members.slice():getTeamVisible().slice();
+    if(cu&&!pool.some(function(m){return m.id===cu.id;}))pool.push(cu);
+    mf.innerHTML='<option value="all">All members</option><option value="mine">My results</option>'+pool.map(function(m){return'<option value="'+m.id+'">'+esc(m.name)+'</option>';}).join('');
+    if(cur&&Array.from(mf.options).some(function(o){return o.value===cur;}))mf.value=cur;
+  }
+  var tf=el('resTypeFilter');
+  if(tf){
+    var curT=tf.value;
+    tf.innerHTML='<option value="all">All types</option>'+getRC().map(function(r){return'<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('');
+    if(curT&&Array.from(tf.options).some(function(o){return o.value===curT;}))tf.value=curT;
+  }
+}
+function renderResTypeChips(){
+  var box=el('resTypeChips');if(!box)return;
+  var types=getRC(),active=el('resTypeFilter')?el('resTypeFilter').value:'all';
+  box.innerHTML='<button type="button" class="res-chip'+(active==='all'?' on':'')+'" data-rt="all">All</button>'+types.map(function(t){
+    return'<button type="button" class="res-chip'+(active===t?' on':'')+'" data-rt="'+esc(t)+'">'+esc(t)+'</button>';
+  }).join('');
+  qsa('.res-chip',box).forEach(function(btn){btn.onclick=function(){var tf=el('resTypeFilter');if(tf)tf.value=this.dataset.rt;rResults();};});
+}
+function fmtResDate(d){
+  var dt=new Date(d),now=new Date();
+  if(dt.toDateString()===now.toDateString())return'Today · '+dt.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+  return dt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:dt.getFullYear()!==now.getFullYear()?'numeric':undefined})+' · '+dt.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+}
 function rResults(){
   var grid=el('resGrid');if(!grid)return;
+  refreshResFilters();
   var q=(el('resSearch')?el('resSearch').value:'').toLowerCase();
-  var filt=el('resFilter')?el('resFilter').value:'all';
-  var list=resultPosts.slice();
-  if(filt==='mine'&&cu)list=list.filter(function(r){return r.member_id===cu.id;});
+  var memberF=el('resMemberFilter')?el('resMemberFilter').value:'all';
+  var typeF=el('resTypeFilter')?el('resTypeFilter').value:'all';
+  var dateF=el('resDateFilter')?el('resDateFilter').value:'all';
+  var list=getResultsPool();
+  if(memberF==='mine'&&cu)list=list.filter(function(r){return r.member_id===cu.id;});
+  else if(memberF!=='all')list=list.filter(function(r){return r.member_id===memberF;});
+  if(typeF!=='all')list=list.filter(function(r){return r.result_type===typeF;});
+  if(dateF!=='all'){
+    var now=new Date();
+    list=list.filter(function(r){
+      var d=new Date(r.created_at);
+      if(dateF==='today')return d.toDateString()===now.toDateString();
+      if(dateF==='week')return now-d<7*86400000;
+      if(dateF==='month')return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();
+      return true;
+    });
+  }
   if(q)list=list.filter(function(r){var m=members.find(function(x){return x.id===r.member_id;});return(r.title||'').toLowerCase().includes(q)||(r.result_type||'').toLowerCase().includes(q)||(r.notes||'').toLowerCase().includes(q)||(m?m.name:'').toLowerCase().includes(q);});
+  renderResTypeChips();
   if(!list.length){grid.innerHTML='<div class="res-empty">No results yet — hit "+ Add result" to log your first win with screenshots.</div>';return;}
   grid.innerHTML=list.map(function(r){
     var m=members.find(function(x){return x.id===r.member_id;}),c=getMC(m),files=parseResFiles(r);
@@ -1034,13 +1098,25 @@ function rResults(){
     if(imgs.length)media+='<div class="res-imgs">'+imgs.map(function(f){return'<a href="'+esc(f.url)+'" target="_blank" rel="noopener"><img src="'+esc(f.url)+'" alt=""></a>';}).join('')+'</div>';
     if(others.length)media+='<div class="res-files">'+others.map(function(f){return'<a href="'+esc(f.url)+'" target="_blank" rel="noopener" class="res-file-link">📎 '+esc(f.name)+'</a>';}).join('')+'</div>';
     var del=(cu&&(cu.isAdmin||r.member_id===cu.id))?'<button class="btn sm danger res-del" data-rid="'+r.id+'">Delete</button>':'';
-    return'<div class="res-card"><div class="res-head"><div class="res-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="res-meta"><div class="res-author">'+esc(m?m.name:'Unknown')+'</div><div class="res-date">'+new Date(r.created_at).toLocaleString()+'</div></div><span class="res-type">'+esc(r.result_type||'Result')+'</span></div><div class="res-title">'+esc(r.title)+'</div>'+(r.notes?'<div class="res-notes">'+esc(r.notes)+'</div>':'')+media+(del?'<div class="res-foot">'+del+'</div>':'')+'</div>';
+    return'<div class="res-card"><div class="res-head"><div class="res-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="res-meta"><div class="res-author">'+esc(m?m.name:'Unknown')+'</div><div class="res-date">'+fmtResDate(r.created_at)+'</div></div><span class="res-type">'+esc(r.result_type||'Result')+'</span></div><div class="res-title">'+esc(r.title)+'</div>'+(r.notes?'<div class="res-notes">'+esc(r.notes)+'</div>':'')+media+(del?'<div class="res-foot">'+del+'</div>':'')+'</div>';
   }).join('');
   qsa('.res-del',grid).forEach(function(btn){btn.onclick=function(){delResult(this.dataset.rid);};});
 }
+function bResultTypes(){
+  var RC=getRC(),wrap=el('brtype');if(!wrap)return;
+  wrap.innerHTML=RC.map(function(r){return'<span class="sb'+(sResultType===r?' on':'')+'" data-rtype="'+esc(r)+'">'+esc(r)+'</span>';}).join('')+'<button type="button" class="add-bub" onclick="el(\'rtypead\').classList.add(\'show\')">+ Add</button>';
+  qsa('[data-rtype]',wrap).forEach(function(s){s.onclick=function(){sResultType=this.dataset.rtype;bResultTypes();};});
+}
+function addResultType(){
+  var val=cap(el('rtypei').value.trim());if(!val)return;
+  el('rtypei').value='';el('rtypead').classList.remove('show');
+  if(!customRC.includes(val)&&!BRC.includes(val))customRC.push(val);
+  sResultType=val;saveAll();bResultTypes();toast('"'+val+'" added');
+}
 function openResultModal(){
   el('rtitle').value='';el('rnotes').value='';pendingResultFiles=[];el('filePreviews').innerHTML='';
-  var sel=el('rtype');if(sel)sel.innerHTML=getRC().map(function(r){return'<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('');
+  sResultType=getRC()[0]||null;el('rtypead').classList.remove('show');
+  bResultTypes();
   el('RM').classList.add('open');
 }
 function closeResultModal(){el('RM').classList.remove('open');pendingResultFiles=[];el('filePreviews').innerHTML='';}
@@ -1064,30 +1140,51 @@ async function uploadResultFiles(files){
   var out=[];
   for(var i=0;i<files.length;i++){
     var f=files[i],safe=f.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=(cu?cu.id:'anon')+'/'+Date.now()+'_'+i+'_'+safe;
-    var up=await sb.storage.from('result-files').upload(path,f,{upsert:false});
+    var up=await sb.storage.from('result-files').upload(path,f,{upsert:false,contentType:f.type||undefined});
     if(up.error)throw up.error;
     var pub=sb.storage.from('result-files').getPublicUrl(path);
     out.push({name:f.name,url:pub.data.publicUrl,type:f.type||''});
   }
   return out;
 }
+function fireConfetti(){
+  var c=document.createElement('canvas');
+  c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:99999';
+  c.width=window.innerWidth;c.height=window.innerHeight;
+  document.body.appendChild(c);
+  var ctx=c.getContext('2d'),colors=['#7fff6e','#ffb830','#5b9cf6','#fb7185','#a78bfa','#34d399'],parts=[];
+  for(var i=0;i<130;i++)parts.push({x:Math.random()*c.width,y:-Math.random()*c.height*.5,vx:(Math.random()-.5)*8,vy:Math.random()*4+2,r:Math.random()*6+3,color:colors[Math.floor(Math.random()*colors.length)],rot:Math.random()*360,vr:(Math.random()-.5)*12});
+  var frames=0;
+  (function tick(){
+    ctx.clearRect(0,0,c.width,c.height);
+    var alive=false;
+    parts.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;p.vy+=0.18;p.rot+=p.vr;
+      if(p.y<c.height+24){alive=true;ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);ctx.fillStyle=p.color;ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r);ctx.restore();}
+    });
+    frames++;
+    if(alive&&frames<200)requestAnimationFrame(tick);else c.remove();
+  })();
+}
 async function saveResult(){
   var title=el('rtitle').value.trim();
   if(!title){toast('Title required','error');return;}
+  if(!sResultType){toast('Pick a result type','error');return;}
   if(!cu)return;
   var btn=el('rsaveBtn');btn.disabled=true;btn.textContent='Uploading...';
   try{
     var files=pendingResultFiles.length?await uploadResultFiles(pendingResultFiles):[];
-    var r=await sb.from('result_posts').insert([{member_id:cu.id,title:title,result_type:el('rtype').value,notes:el('rnotes').value.trim()||null,files:files}]);
-    if(r.error){toast('Could not save — run supabase_migration.sql first','error');return;}
-    toast('Result posted ✓');closeResultModal();await loadResultPosts();rResults();
-  }catch(e){toast('Upload failed — check storage bucket setup','error');}
+    var payload={member_id:cu.id,title:title,result_type:sResultType,notes:el('rnotes').value.trim()||null,file_urls:files.map(function(f){return JSON.stringify(f);})};
+    var r=await sb.from('result_posts').insert([payload]);
+    if(r.error){toast(r.error.message||'Could not save result','error');return;}
+    fireConfetti();toast('Result posted ✓');closeResultModal();await loadResultPosts();rResults();render();
+  }catch(e){toast((e&&e.message)||'Upload failed — check storage bucket setup','error');}
   btn.disabled=false;btn.textContent='Post result';
 }
 async function delResult(id){
   if(!confirm('Delete this result?'))return;
   await sb.from('result_posts').delete().eq('id',id);
-  toast('Deleted');await loadResultPosts();rResults();
+  toast('Deleted');await loadResultPosts();rResults();render();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}

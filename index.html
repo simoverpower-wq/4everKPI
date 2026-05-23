@@ -116,7 +116,13 @@
     <div class="page" id="page-library"><div class="ph"><div><div class="pt">Task library</div><div class="ps">Click to log · Drag to reorder · Admins edit everything</div></div></div><div class="bcats" id="bcats"></div></div>
     <div class="page" id="page-results">
       <div class="ph"><div><div class="pt">Results</div><div class="ps">Log wins & upload screenshots or proof files</div></div><button class="btn p" onclick="openResultModal()">+ Add result</button></div>
-      <div class="res-toolbar"><input class="res-search" id="resSearch" placeholder="🔍 Search results..." oninput="rResults()"><select class="res-filter" id="resFilter" onchange="rResults()"><option value="all">Everyone</option><option value="mine">My results</option></select></div>
+      <div class="res-toolbar">
+        <input class="res-search" id="resSearch" placeholder="🔍 Search results..." oninput="rResults()">
+        <select class="res-filter" id="resMemberFilter" onchange="rResults()"><option value="all">All members</option></select>
+        <select class="res-filter" id="resTypeFilter" onchange="rResults()"><option value="all">All types</option></select>
+        <select class="res-filter" id="resDateFilter" onchange="rResults()"><option value="all">All time</option><option value="today">Today</option><option value="week">This week</option><option value="month">This month</option></select>
+      </div>
+      <div class="res-type-chips" id="resTypeChips"></div>
       <div class="res-grid" id="resGrid"></div>
     </div>
     <div class="page" id="page-profile"><div class="ph"><div><button class="btn sm" onclick="gp('dashboard',document.querySelector('.ni'))">← Back</button></div><div id="pedit"></div></div><div id="pcontent"></div></div>
@@ -181,7 +187,7 @@
   <div class="modal" style="max-width:520px">
     <div class="modal-title">Add result</div>
     <div class="fg"><label>Title</label><input id="rtitle" placeholder="e.g. Booked call with lead"></div>
-    <div class="fg"><label>Result type</label><select id="rtype"></select></div>
+    <div class="bsel"><div class="bsel-lbl">Result type</div><div class="bwrap" id="brtype"></div><div class="badd" id="rtypead"><input id="rtypei" placeholder="Add result type..." onkeydown="if(event.key==='Enter')addResultType()"><button class="btn sm" onclick="addResultType()">Add</button><button class="btn sm" onclick="document.getElementById('rtypead').classList.remove('show')">✕</button></div></div>
     <div class="fg"><label>Notes (optional)</label><textarea id="rnotes" placeholder="What happened? Any context..."></textarea></div>
     <div class="fg"><label>Screenshots & files</label><div class="file-drop" id="fileDrop" onclick="el('rfiles').click()"><input type="file" id="rfiles" multiple accept="image/*,.pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.txt" style="display:none" onchange="previewResultFiles()"><div class="file-drop-inner"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><div>Click or drop files here</div><div style="font-size:10px;color:var(--text3);margin-top:4px">Screenshots, PDFs, images</div></div></div><div class="file-previews" id="filePreviews"></div></div>
     <div class="ma"><button class="btn" onclick="closeResultModal()">Cancel</button><button class="btn p" id="rsaveBtn" onclick="saveResult()">Post result</button></div>

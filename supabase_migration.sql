@@ -52,9 +52,12 @@ CREATE TABLE IF NOT EXISTS result_posts (
   title TEXT NOT NULL,
   result_type TEXT,
   notes TEXT,
-  files JSONB DEFAULT '[]'::jsonb,
+  file_urls TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- If you created result_posts earlier without file_urls, run this:
+ALTER TABLE result_posts ADD COLUMN IF NOT EXISTS file_urls TEXT[] DEFAULT '{}';
 
 ALTER TABLE result_posts ENABLE ROW LEVEL SECURITY;
 
