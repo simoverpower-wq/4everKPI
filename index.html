@@ -123,7 +123,7 @@
     </div>
     <div class="page" id="page-calendar">
       <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Click any day — check off tasks when done</div></div></div>
-      <div class="mytasks-panel" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My open tasks</div><div class="mytasks-sub">Check off when finished — shows in edited history</div></div><div class="mytasks-list" id="myTasksList"></div></div>
+      <div class="mytasks-panel" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My open tasks</div><div class="mytasks-sub">Scheduled work still in progress — edit or check off right here</div></div><div class="mytasks-list" id="myTasksList"></div></div>
       <div class="ctop"><div class="cnav"><button onclick="chM(-1)">‹ Prev</button><button onclick="goT()">Today</button><button onclick="chM(1)">Next ›</button><span id="cml" style="font-size:15px;font-weight:600;line-height:32px;padding:0 6px"></span></div><input class="calsrch" id="csrch" placeholder="🔍 Filter member..." oninput="renderCal()"></div>
       <div class="ddetail" id="dd"><div class="ddhead"><div class="ddtitle" id="ddt">—</div><div style="display:flex;align-items:center;gap:8px"><input class="ddsrch" id="ddsrch" placeholder="🔍 Search name..." oninput="filterDD()"><button class="btn sm" onclick="document.getElementById('dd').classList.remove('open')">✕</button></div></div><div id="ddc"></div></div>
       <div class="cwrap"><div class="cgrid" id="cgrid"></div></div>
@@ -181,10 +181,18 @@
     <div class="bsel"><div class="bsel-lbl">Assign to <span class="bsel-hint">(tap multiple)</span></div><input class="mem-srch" id="massignsrch" placeholder="🔍 Search member..." oninput="bMembers()"><div class="bwrap" id="bm"></div></div>
     <div class="bsel"><div class="bsel-lbl">Role area</div><div class="bwrap" id="br"></div><div class="badd" id="brad"><input id="bri" placeholder="Add role..." onkeydown="if(event.key==='Enter')addBub('role')"><button class="btn sm" onclick="addBub('role')">Add</button><button class="btn sm" onclick="document.getElementById('brad').classList.remove('show')">✕</button></div></div>
     <div class="bsel"><div class="bsel-lbl">Task type <span class="bsel-hint">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
-    <div id="occBanner" class="occ-banner" style="display:none"></div>
+    <div id="editScopeSec" class="edit-scope-sec" style="display:none">
+      <div class="edit-scope-lbl">Apply changes to</div>
+      <div class="edit-scope-ops">
+        <button type="button" class="escope on" data-scope="day" onclick="setEditScope('day',this)">This day only</button>
+        <button type="button" class="escope" data-scope="future" onclick="setEditScope('future',this)">This &amp; future</button>
+        <button type="button" class="escope" data-scope="all" onclick="setEditScope('all',this)">Entire series</button>
+      </div>
+      <div class="edit-scope-note" id="editScopeNote"></div>
+    </div>
     <div class="fg fg-desc"><label>Description / notes <span class="bsel-hint">(optional — room for details, links, day-to-day updates)</span></label><textarea id="tname" class="task-desc-area" placeholder="What is this task? Add context, steps, links, or notes you can update anytime…"></textarea></div>
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
-    <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart"></div></div>
+    <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
     <div class="fg"><label>ETA</label><div class="tgrid tgrid-scroll" id="etag"></div><div class="etasug" id="etas"></div></div>
     <div class="fg"><label>Actual time <span class="bsel-hint">(optional — only fill out after completing the task)</span></label><div class="tgrid tgrid-scroll" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
@@ -253,6 +261,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524"></script>
+<script src="app.js?v=20260524b"></script>
 </body>
 </html>

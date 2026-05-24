@@ -1,4 +1,4 @@
-const APP_VER='20260524.1';
+const APP_VER='20260524.2';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -169,9 +169,26 @@ function pickOv(ov,key,base){return Object.prototype.hasOwnProperty.call(ov,key)
 function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'pending'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
 function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(function(t){if(!t.is_recurring||!t.recur_frequency||!t.logged_at)return false;if(new Date(t.logged_at).toDateString()===ds)return false;return recursOnDate(t,ds);}).map(function(t){return mergeOccurrence(t,key);});}
 function tasksForDay(ds){var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});return logged.concat(getRecurringVirtualTasks(ds));}
-function syncOccBanner(show,label){var b=el('occBanner');if(!b)return;if(!show){b.style.display='none';b.innerHTML='';return;}b.style.display='block';b.innerHTML='Editing <strong>'+label+'</strong> only — description, start time, and notes for this day won\'t change other repeats.';}
-function fillTaskModalFromTask(t,isOcc){el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';sEta=t.eta_minutes||null;sAct=t.actual_minutes||null;isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';if(isOcc){el('rtog').style.pointerEvents='none';el('recwrap').style.opacity='.55';}else{el('rtog').style.pointerEvents='';el('recwrap').style.opacity='';}}
+function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
+function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey)return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key>=anchorKey)delete ovs[key];});return ovs;}
+function showEditScope(show,anchorKey,defaultScope){var sec=el('editScopeSec');if(!sec)return;if(!show){sec.style.display='none';editScope='all';return;}sec.style.display='block';editOccDate=anchorKey||editOccDate||dsToKey(new Date().toDateString());editScope=defaultScope||'day';qsa('.escope',sec).forEach(function(b){b.classList.toggle('on',b.dataset.scope===editScope);});updateEditScopeNote();syncRecurLock();}
+function setEditScope(scope,btn){
+  editScope=scope;qsa('.escope').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');
+  var eid=el('teid').value,orig=eid?tasks.find(function(t){return t.id===eid;}):null;
+  if(orig&&orig.is_recurring){
+    var anchor=editOccDate||dsToKey(new Date().toDateString());
+    if(scope==='all')fillTaskModalFromTask(orig);else fillTaskModalFromTask(mergeOccurrence(orig,anchor));
+    markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
+  }
+  updateEditScopeNote();syncRecurLock();
+}
+function updateEditScopeNote(){var note=el('editScopeNote');if(!note)return;var d=editOccDate?dateFromKey(editOccDate):null,lbl=d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'this day';if(editScope==='day')note.textContent='Only '+lbl+' changes. Other repeats stay the same.';else if(editScope==='future')note.textContent='Updates from '+lbl+' forward. Earlier days keep what they had.';else note.textContent='Updates every past and future repeat — including days before today.';}
+function syncRecurLock(){var lock=!!(el('teid')&&el('teid').value&&isRec&&editScope==='day');el('rtog').style.pointerEvents=lock?'none':'';el('recwrap').style.opacity=lock?'.55':'';}
+function fillTaskModalFromTask(t){el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';sEta=t.eta_minutes||null;sAct=t.actual_minutes||null;isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';syncRecurLock();}
 function markTimeBtn(id,mins){if(!mins)return;qsa('#'+id+' .tbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.dataset.mins,10)===mins);});}
+function taskScheduleLabel(t){if(t._isOccurrence&&t._occurrenceDate){var d=dateFromKey(t._occurrenceDate);return d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):t._occurrenceDate;}var ld=parseDT(t.logged_at);return ld?ld.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'—';}
+function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.length){var last=h[0],fn=FL[last.field_changed]||last.field_changed;return'Last edit: '+fn+' · '+fmtDT(last.changed_at||last.created_at);}if(t.edited_at)return'Last updated · '+fmtDT(t.edited_at);return'';}
+function renderMyTaskCard(t){var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'Task');var meta=[t.role_area||'',t.scheduled_start_time?'Start '+fmtStartTime(t.scheduled_start_time):'',t.eta_minutes?'ETA '+fm(t.eta_minutes):'',t.is_recurring?'🔄 '+t.recur_frequency:''].filter(Boolean).join(' · ');var desc=(t.name||'').trim();if(types.length&&desc===types[0])desc='';var editBtn='';if(canEditTask(t))editBtn='<button type="button" class="btn sm" data-et="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+'>Edit</button>';var editLine=lastEditSummary(t);return'<div class="mytask-card">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="mytask-date">'+taskScheduleLabel(t)+'</div><div class="mytask-name">'+typeLbl+'</div><div class="mytask-meta">'+meta+'</div>'+(desc?'<div class="mytask-desc">'+esc(desc)+'</div>':'')+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div><div class="mytask-side">'+stag(t.status)+editBtn+'</div></div>';}
 
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{};
 
@@ -402,7 +419,7 @@ const TIMES=buildTimePresets(720);
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
-var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null;
+var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
@@ -794,11 +811,16 @@ function rMyTasks(){
     if(t.status==='done'||t.status==='late')return;
     if(!open.some(function(x){return x.id===t.id&&x._isOccurrence;}))open.push(t);
   });
-  open.sort(function(a,b){var ta=a.scheduled_start_time||'99:99',tb=b.scheduled_start_time||'99:99';return ta.localeCompare(tb);});
+  open.sort(function(a,b){
+    var da=a._occurrenceDate||dsToKey(a.logged_at?new Date(a.logged_at).toDateString():todayDs),db=b._occurrenceDate||dsToKey(b.logged_at?new Date(b.logged_at).toDateString():todayDs);
+    if(da!==db)return da.localeCompare(db);
+    return(a.scheduled_start_time||'99:99').localeCompare(b.scheduled_start_time||'99:99');
+  });
   panel.style.display='block';
-  if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or check a completed day below.</div>';return;}
-  list.innerHTML=open.map(function(t){return renderCalTaskRow(t);}).join('');
+  if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or pick a day on the calendar below.</div>';return;}
+  list.innerHTML=open.map(function(t){return renderMyTaskCard(t);}).join('');
   bindCompleteChecks(list);
+  qsa('[data-et]',list).forEach(function(btn){bindEditTaskBtn(btn);});
 }
 
 function buildDayHTML(dT,sq){
@@ -1130,14 +1152,14 @@ function chkETA(){var tt=sTTs[0],mid=sMids[0];if(!tt||!mid)return;var sim=tasks.
 
 function bTimeG(id,vn){el(id).innerHTML=TIMES.map(function(t){return'<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';}).join('');qsa('.tbtn',el(id)).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,parseInt(this.dataset.mins,10),this);});});}
 function selT(id,v,mins,btn){qsa('#'+id+' .tbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(v==='eta')sEta=mins;else sAct=mins;}
-function togRec(){if(editOccDate)return;isRec=!isRec;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';if(!isRec)recFreq=null;}
-function setRec(f,btn){if(editOccDate)return;recFreq=f;qsa('.rbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
+function togRec(){if(editScope==='day'&&el('teid').value)return;isRec=!isRec;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';if(!isRec)recFreq=null;}
+function setRec(f,btn){if(editScope==='day'&&el('teid').value)return;recFreq=f;qsa('.rbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
 
 // TASK MODAL
 function openT(){
   closeMobileNav();
   if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
-  editOccDate=null;syncOccBanner(false);
+  editOccDate=null;editScope='all';showEditScope(false);
   el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='done';el('tstart').value='';
   sMids=cu?[cu.id]:[];
   var me=cu?members.find(function(x){return x.id===cu.id;}):null;
@@ -1155,15 +1177,17 @@ function openT(){
 }
 function openTFor(mid){openT();sMids=[mid];var m=members.find(function(x){return x.id===mid;});if(m)sRoles=parseMemberRoles(m);bMembers();bRoles();bTTs();bRCs();}
 function openEditSelf(){openEM(cu.id);}
-function closeTM(){editOccDate=null;syncOccBanner(false);el('TM').classList.remove('open');closeDrill();}
+function closeTM(){editOccDate=null;editScope='all';showEditScope(false);el('TM').classList.remove('open');closeDrill();}
 
 function openET(tid){
   var t=tasks.find(function(x){return x.id===tid;});if(!t)return;if(!canEditTask(t)){toast('You can only edit your own tasks','error');return;}
-  editOccDate=null;syncOccBanner(false);
+  var todayKey=dsToKey(new Date().toDateString());
+  editOccDate=t.is_recurring?todayKey:null;
+  if(t.is_recurring)showEditScope(true,todayKey,'all');else showEditScope(false);
   el('tmtitle').textContent='Edit task';el('tsave').textContent='Update task';el('teid').value=tid;
   sMids=[t.member_id];sRoles=t.role_area?[t.role_area]:[];sTTs=parseTT(t.task_type);
   sRCs=t.result_category?t.result_category.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
-  fillTaskModalFromTask(t,false);
+  fillTaskModalFromTask(t);
   ['brad','bttad','brcad'].forEach(function(id){el(id).classList.remove('show');});
   bMembers();bRoles();bTTs();bRCs();bTimeG('etag','eta');bTimeG('actg','act');
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
@@ -1173,14 +1197,12 @@ function openET(tid){
 
 function openETOcc(tid,dateKey){
   var t=tasks.find(function(x){return x.id===tid;});if(!t||!t.is_recurring)return;if(!canEditTask(t)){toast('You can only edit your own tasks','error');return;}
-  editOccDate=dateKey;
-  var merged=mergeOccurrence(t,dateKey),d=dateFromKey(dateKey);
-  var label=d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):dateKey;
-  syncOccBanner(true,label);
-  el('tmtitle').textContent='Edit recurring task';el('tsave').textContent='Save this day';el('teid').value=tid;
+  editOccDate=dateKey;showEditScope(true,dateKey,'day');
+  var merged=mergeOccurrence(t,dateKey);
+  el('tmtitle').textContent='Edit recurring task';el('tsave').textContent='Save changes';el('teid').value=tid;
   sMids=[t.member_id];sRoles=t.role_area?[t.role_area]:[];sTTs=parseTT(t.task_type);
   sRCs=t.result_category?t.result_category.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
-  fillTaskModalFromTask(merged,true);
+  fillTaskModalFromTask(merged);
   ['brad','bttad','brcad'].forEach(function(id){el(id).classList.remove('show');});
   bMembers();bRoles();bTTs();bRCs();bTimeG('etag','eta');bTimeG('actg','act');
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
@@ -1194,27 +1216,42 @@ async function saveT(){
   if(!sTTs.length){toast('Select at least one task type','error');return;}
   var name=el('tname').value.trim(),status=el('tstat').value,notes=el('tnotes').value.trim(),resultStr=sRCs.join(', '),startTime=el('tstart').value||null;
   var ttStr=taskTypesStr(),baseName=name||sTTs[0];
+  var patch={name:baseName,notes:notes,status:status,eta_minutes:sEta||null,actual_minutes:sAct||null,scheduled_start_time:startTime};
 
-  if(eid&&editOccDate){
+  if(eid){
     var orig=tasks.find(function(t){return t.id===eid;});
     if(!orig){toast('Task not found','error');return;}
-    var ovs=parseOverrides(orig),prev=ovs[editOccDate]||{};
-    ovs[editOccDate]={name:name,notes:notes,status:status,eta_minutes:sEta||null,actual_minutes:sAct||null,scheduled_start_time:startTime};
-    var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',eid);
-    if(r.error){toast('Error saving this day','error');return;}
-    toast('Day updated ✓');closeTM();await load();return;
+    if(orig.is_recurring){
+      var anchor=editOccDate||dsToKey(new Date().toDateString()),scope=editScope||'day',ovs=parseOverrides(orig);
+      if(scope==='day'){
+        ovs[anchor]=patch;
+        var rd=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',eid);
+        if(rd.error){toast('Error saving this day','error');return;}
+        toast('This day updated ✓');closeTM();await load();return;
+      }
+      if(scope==='future'){
+        ovs=freezePastOverrides(orig,anchor);
+        var pf=Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs});
+        var rf=await sb.from('tasks').update(pf).eq('id',eid);
+        if(rf.error){toast('Error updating future tasks','error');return;}
+        toast('This & future updated ✓');closeTM();await load();return;
+      }
+      var ra=await sb.from('tasks').update(Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:{}})).eq('id',eid);
+      if(ra.error){toast('Error updating series','error');return;}
+      toast('Entire series updated ✓');closeTM();await load();return;
+    }
   }
 
   var payload={name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime};
   if(eid){
     payload.member_id=sMids[0];
-    var orig=tasks.find(function(t){return t.id===eid;});
-    if(orig){var fields=['status','role_area','task_type','result_category','eta_minutes','actual_minutes','notes','member_id','name','scheduled_start_time'];for(var i=0;i<fields.length;i++){var f=fields[i];if(String(orig[f]||'')!==String(payload[f]||''))await sb.from('task_history').insert([{task_id:eid,changed_by:cu.id,field_changed:f,old_value:String(orig[f]||''),new_value:String(payload[f]||''),changed_at:nowISO()}]);}}
+    var orig2=tasks.find(function(t){return t.id===eid;});
+    if(orig2){var fields=['status','role_area','task_type','result_category','eta_minutes','actual_minutes','notes','member_id','name','scheduled_start_time'];for(var i=0;i<fields.length;i++){var f=fields[i];if(String(orig2[f]||'')!==String(payload[f]||''))await sb.from('task_history').insert([{task_id:eid,changed_by:cu.id,field_changed:f,old_value:String(orig2[f]||''),new_value:String(payload[f]||''),changed_at:nowISO()}]);}}
     payload.edited_at=nowISO();payload.edited_by=cu.id;
     var r=await sb.from('tasks').update(payload).eq('id',eid);if(r.error){toast('Error updating','error');return;}toast('Task updated ✓');
   }else{
     var rows=sMids.map(function(mid){var p=Object.assign({},payload);p.member_id=mid;return p;});
-    var r=await sb.from('tasks').insert(rows);if(r.error){toast('Error saving','error');return;}
+    var r2=await sb.from('tasks').insert(rows);if(r2.error){toast('Error saving','error');return;}
     toast(rows.length>1?rows.length+' tasks logged ✓':'Task logged ✓');
   }
   closeTM();await load();

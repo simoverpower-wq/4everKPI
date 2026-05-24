@@ -266,6 +266,16 @@ body.is-admin .wipe-btn{display:flex !important}
 .task-desc-area{min-height:140px;line-height:1.55;font-size:13px}
 .task-notes-area{min-height:72px;line-height:1.5}
 .occ-banner{background:rgba(127,255,110,.08);border:1px solid rgba(127,255,110,.22);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);line-height:1.45}
+.edit-scope-sec{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.edit-scope-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:600}
+.edit-scope-ops{display:flex;flex-wrap:wrap;gap:6px}
+.escope{background:var(--bg4);border:1px solid var(--border);border-radius:999px;padding:7px 12px;font-size:11px;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.escope:hover{border-color:rgba(127,255,110,.35);color:var(--text)}
+.escope.on{border-color:var(--accent);color:var(--accent);background:rgba(127,255,110,.08)}
+.edit-scope-note{font-size:11px;color:var(--text2);margin-top:8px;line-height:1.45}
+.time-input{color:var(--text)!important;color-scheme:dark;background:var(--bg3)!important;border:1px solid var(--border2)!important;border-radius:7px;padding:8px 10px;font-size:14px;font-weight:600;letter-spacing:.02em}
+.time-input::-webkit-calendar-picker-indicator{filter:invert(78%) sepia(52%) saturate(600%) hue-rotate(65deg) brightness(105%);opacity:1;cursor:pointer;transform:scale(1.15)}
+.time-input:focus{border-color:var(--accent)!important;outline:none;box-shadow:0 0 0 2px rgba(127,255,110,.12)}
 .task-desc-preview{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.45;white-space:normal;word-break:break-word}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .ma{display:flex;gap:7px;justify-content:flex-end;margin-top:14px}
@@ -324,8 +334,16 @@ body.is-admin .wipe-btn{display:flex !important}
 .mytasks-head{margin-bottom:12px}
 .mytasks-title{font-size:14px;font-weight:600}
 .mytasks-sub{font-size:11px;color:var(--text2);margin-top:2px}
-.mytasks-list{display:flex;flex-direction:column;gap:8px}
+.mytasks-list{display:flex;flex-direction:column;gap:10px}
 .mytasks-empty{font-size:12px;color:var(--text3);padding:8px 0}
+.mytask-card{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.mytask-main{flex:1;min-width:0}
+.mytask-date{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;font-weight:600;margin-bottom:4px}
+.mytask-name{font-size:13px;font-weight:600;line-height:1.35;margin-bottom:4px}
+.mytask-meta{font-size:11px;color:var(--text2);line-height:1.45;margin-bottom:4px}
+.mytask-desc{font-size:11px;color:var(--text2);line-height:1.45;margin-top:6px;white-space:pre-wrap;word-break:break-word}
+.mytask-edit{font-size:10px;color:var(--text3);margin-top:6px;font-style:italic}
+.mytask-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
 .cal-task{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;transition:all .15s}
 .cal-task.done{opacity:.75}
 .cal-task-body{flex:1;min-width:0}
