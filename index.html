@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524f">
+<link rel="stylesheet" href="style.css?v=20260524g">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -81,6 +81,7 @@
       <div class="sb-section">
         <div class="nlbl">Work</div>
         <button class="btn-log-task" data-nav="log_task" onclick="openT()" title="Log task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log task</span></button>
+        <button class="ni" data-nav="tasks" onclick="gp('tasks',this)" title="Team tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="ni-text">Team tasks</span></button>
         <button class="ni" data-nav="library" onclick="gp('library',this)" title="Task library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="ni-text">Task library</span></button>
         <button class="ni" data-nav="results" onclick="gp('results',this)" title="Results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-text">Results</span></button>
       </div>
@@ -122,12 +123,24 @@
       </div>
     </div>
     <div class="page" id="page-calendar">
-      <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Click any day — check off tasks when done</div></div></div>
-      <div class="mytasks-panel" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My open tasks</div><div class="mytasks-sub">Scheduled work still in progress — edit or check off right here</div></div><div class="mytasks-list" id="myTasksList"></div></div>
-      <div class="ctop"><div class="cnav"><button onclick="chM(-1)">‹ Prev</button><button onclick="goT()">Today</button><button onclick="chM(1)">Next ›</button><span id="cml" style="font-size:15px;font-weight:600;line-height:32px;padding:0 6px"></span></div><input class="calsrch" id="csrch" placeholder="🔍 Filter member..." oninput="renderCal()"></div>
-      <div class="ddetail" id="dd"><div class="ddhead"><div class="ddtitle" id="ddt">—</div><div style="display:flex;align-items:center;gap:8px"><input class="ddsrch" id="ddsrch" placeholder="🔍 Search name..." oninput="filterDD()"><button class="btn sm" onclick="document.getElementById('dd').classList.remove('open')">✕</button></div></div><div id="ddc"></div></div>
+      <div class="ph"><div><div class="pt">Calendar</div><div class="ps">Month view — click any day to jump to Team tasks for that date</div></div></div>
+      <div class="ctop"><div class="cnav"><button onclick="chM(-1)">‹ Prev</button><button onclick="goT()">Today</button><button onclick="chM(1)">Next ›</button><span id="cml" style="font-size:15px;font-weight:600;line-height:32px;padding:0 6px"></span></div><input class="calsrch" id="csrch" placeholder="🔍 Filter member on grid..." oninput="renderCal()"></div>
       <div class="cwrap"><div class="cgrid" id="cgrid"></div></div>
       <div class="csum" id="csum"></div>
+    </div>
+    <div class="page" id="page-tasks">
+      <div class="ph"><div><div class="pt">Team tasks</div><div class="ps">Your open work up top — everyone’s lineup for the day below</div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
+      <div class="mytasks-panel mytasks-panel-prominent" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My open tasks</div><div class="mytasks-sub">Still in progress — check off, edit, or delete here</div></div><div class="mytasks-list" id="myTasksList"></div></div>
+      <div class="lineup-section">
+        <div class="lineup-toolbar">
+          <div class="lineup-toolbar-left">
+            <div class="lineup-label">Everyone’s lineup</div>
+            <div class="lineup-date-nav"><button type="button" class="btn sm" onclick="chLineupDay(-1)">‹</button><button type="button" class="btn sm" onclick="goLineupToday()">Today</button><button type="button" class="btn sm" onclick="chLineupDay(1)">›</button><span class="lineup-date-lbl" id="lineupDateLbl">—</span></div>
+          </div>
+          <input class="lineup-srch" id="lineupSrch" placeholder="🔍 Filter by name..." oninput="filterLineup()">
+        </div>
+        <div class="lineup-list" id="lineupList"></div>
+      </div>
     </div>
     
     <div class="page" id="page-compare">
@@ -194,7 +207,7 @@
       </div>
     </div>
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
-    <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
+    <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="nostart">Not started yet</option><option value="prog">In progress</option><option value="done">Done</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
     <div class="fg"><label>ETA</label><div class="tgrid tgrid-scroll" id="etag"></div><div class="etasug" id="etas"></div></div>
     <div class="fg"><label>Actual time <span class="bsel-hint">(optional — only fill out after completing the task)</span></label><div class="tgrid tgrid-scroll" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
@@ -288,6 +301,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524f"></script>
+<script src="app.js?v=20260524g"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-const APP_VER='20260524.6';
+const APP_VER='20260524.7';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -33,9 +33,10 @@ const HELP={
   kpi_team:'Everyone with an account on 4everKPI — admins and team members included. This stays in sync whenever someone is added or removed.',
   insights:'Live insights are like a coach shouting tips from the sideline. They pop up automatically when something needs attention or when someone is crushing it.',
   team:'Your full team roster on the dashboard — every account, always up to date. Click anyone to see their profile. Search to find someone by name.',
-  calendar:'A month-view calendar of who did what and when. Click any day to open a detailed list. The colored dots are like sticky notes showing tasks on that date.',
+  calendar:'A month-view calendar of who did what and when. Click any day to open Team tasks for that date. The colored dots show tasks on that date.',
   cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
   cal_summary:'A quick recap of the whole month — total tasks, how many finished, how many late, and the overall completion rate.',
+  tasks:'Your task command center — your open work at the top, then everyone\'s lineup for the day in separate blocks. Check tasks off, uncheck them, edit, or delete from here.',
   performance:'Charts that turn your task data into pictures — like report cards with graphs. Click any chart to see the full list of tasks behind it.',
   chart_completion:'Shows each person\'s completion rate as a bar. Taller green bars = more tasks finished. It\'s like comparing test scores across the class.',
   chart_time:'Compares how long tasks actually took (blue) vs how long people estimated (purple). If blue is taller, they took longer than expected — like thinking a drive is 10 minutes but it takes 20.',
@@ -242,10 +243,10 @@ var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks
 var NAV_TAB_DEFS=[
   {id:'dashboard',label:'Dashboard',group:'Overview'},{id:'calendar',label:'Calendar',group:'Overview'},{id:'performance',label:'Performance',group:'Overview'},{id:'compare',label:'Compare',group:'Overview'},
   {id:'oversight',label:'Oversight',group:'Overview',adminDefault:false},{id:'intelligence',label:'Intelligence',group:'Overview',adminDefault:false},
-  {id:'log_task',label:'Log task',group:'Work'},{id:'library',label:'Task library',group:'Work'},{id:'results',label:'Results',group:'Work'},{id:'trash',label:'Trash',group:'Work'},
+  {id:'log_task',label:'Log task',group:'Work'},{id:'tasks',label:'Team tasks',group:'Work'},{id:'library',label:'Task library',group:'Work'},{id:'results',label:'Results',group:'Work'},{id:'trash',label:'Trash',group:'Work'},
   {id:'add_member',label:'Add member',group:'Team',adminDefault:false},{id:'roles',label:'Role guides',group:'Team'}
 ];
-var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,library:true,results:true,trash:true,add_member:false,roles:true};
+var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,tasks:true,library:true,results:true,trash:true,add_member:false,roles:true};
 
 function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);saveSettings();}
 
@@ -467,7 +468,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -730,7 +731,7 @@ function genIns(){
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
 
-function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-calendar':['calendar'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
+function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-calendar':['calendar'],'page-tasks':['tasks'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
 function injectDashHelp(){
   var pt=el('pulseTitle');if(pt&&!pt.querySelector('.help-end'))pt.innerHTML='Agency pulse<span class="help-end">'+hBtn('pulse')+'</span>';
   var st=el('streak');if(st&&!st.querySelector('.help-end')){var n=st.textContent;st.innerHTML=n+'<span class="help-end">'+hBtn('streak')+'</span>';}
@@ -740,7 +741,8 @@ function render(){
     logKPI('render start');
     rKPIs();rPulse();genIns();rMembers();injectPageHelp();
     var ap=function(n){return el('page-'+n).classList.contains('active');};
-    if(ap('calendar')){renderCal();rMyTasks();}
+    if(ap('calendar'))renderCal();
+    if(ap('tasks'))rTasksPage();
     if(ap('performance'))rCharts();
     if(ap('oversight'))rOversight();
     if(ap('intelligence'))rIntel();
@@ -864,7 +866,7 @@ function taskCheckHTML(t){
   var done=t.status==='done';
   if(!done&&t.status!=='prog'&&t.status!=='pending'&&t.status!=='late'&&t.status!=='nostart')return'';
   var occ=t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'';
-  return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked disabled':'')+'><span class="tchk-box'+(done?' done':'')+'"></span></label>';
+  return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box'+(done?' done':'')+'"></span></label>';
 }
 
 function renderCalTaskRow(t,extra){
@@ -890,78 +892,124 @@ function rMyTasks(){
     return(a.scheduled_start_time||'99:99').localeCompare(b.scheduled_start_time||'99:99');
   });
   panel.style.display='block';
-  if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or pick a day on the calendar below.</div>';return;}
+  if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or pick a day below.</div>';return;}
   list.innerHTML=open.map(function(t){return renderMyTaskCard(t);}).join('');
   bindCompleteChecks(list);
   qsa('[data-et]',list).forEach(function(btn){bindEditTaskBtn(btn);});
   qsa('[data-dt]',list).forEach(function(btn){bindDeleteTaskBtn(btn);});
 }
 
-function buildDayHTML(dT,sq){
+function buildLineupHTML(dT,sq){
   var q=(sq||'').toLowerCase(),bM={};
   dT.forEach(function(t){if(!bM[t.member_id])bM[t.member_id]=[];bM[t.member_id].push(t);});
   var mids=Object.keys(bM);
+  if(cu){mids.sort(function(a,b){if(a===cu.id)return-1;if(b===cu.id)return 1;return 0;});}
   if(q){mids.sort(function(a,b){var ma=members.find(function(x){return x.id===a;}),mb=members.find(function(x){return x.id===b;});var ha=(ma?ma.name:'').toLowerCase().includes(q),hb=(mb?mb.name:'').toLowerCase().includes(q);return ha&&!hb?-1:!ha&&hb?1:0;});mids=mids.filter(function(mid){var m=members.find(function(x){return x.id===mid;});return(m?m.name:'').toLowerCase().includes(q);});}
-  if(!mids.length)return'<div style="color:var(--text3);font-size:13px">No tasks match search.</div>';
+  if(!mids.length)return'<div class="lineup-empty">No tasks match your search.</div>';
   return mids.map(function(mid){
-    var m=members.find(function(x){return x.id===mid;}),c=getMC(m),mT=bM[mid];
-    var don=mT.filter(function(t){return t.status==='done';}).length,lat=mT.filter(function(t){return t.status==='late';}).length;
-    var html='<div style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="av" style="width:28px;height:28px;font-size:10px;background:'+c.bg+';color:'+c.text+';border-radius:6px">'+ini(m?m.name:'?')+'</div><div style="font-size:13px;font-weight:600">'+(m?m.name:'Unknown')+'</div><div style="font-size:11px;color:var(--text2)">'+mT.length+' tasks · '+don+' done'+(lat>0?' · '+lat+' late':'')+'</div></div>';
+    var m=members.find(function(x){return x.id===mid;}),c=getMC(m),mT=bM[mid],isMe=cu&&mid===cu.id;
+    var don=mT.filter(function(t){return t.status==='done';}).length,lat=mT.filter(function(t){return t.status==='late';}).length,open=mT.length-don;
+    var html='<div class="lineup-member'+(isMe?' lineup-me':'')+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
+    html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(isMe?' <span class="lineup-you-badge">You</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
+    html+='<div class="lineup-member-tasks">';
     mT.forEach(function(t){
       var acts=taskActions(t);
-      html+=renderCalTaskRow(t)+ (acts?'<div style="margin:4px 0 8px 36px">'+acts+'</div>':'');
+      html+=renderCalTaskRow(t)+(acts?'<div class="lineup-task-actions">'+acts+'</div>':'');
     });
-    html+='</div>';return html;
+    html+='</div></div>';return html;
   }).join('');
 }
+function buildDayHTML(dT,sq){return buildLineupHTML(dT,sq);}
+
+function lineupDateLabel(){
+  var d=lineupDate||new Date();
+  return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+function rLineup(){
+  var list=el('lineupList'),lbl=el('lineupDateLbl');if(!list)return;
+  var ds=(lineupDate||new Date()).toDateString();
+  curDayT=tasksForDay(ds);
+  if(lbl)lbl.textContent=lineupDateLabel();
+  var sq=el('lineupSrch')?el('lineupSrch').value:'';
+  list.innerHTML=curDayT.length?buildLineupHTML(curDayT,sq):'<div class="lineup-empty">No tasks scheduled for this day.</div>';
+  bindLineupActions(list);
+}
+function rTasksPage(){rMyTasks();rLineup();}
+function filterLineup(){rLineup();}
+function chLineupDay(n){lineupDate=lineupDate||new Date();lineupDate.setDate(lineupDate.getDate()+n);rLineup();}
+function goLineupToday(){lineupDate=new Date();rLineup();}
 
 function openDD(ds){
-  var dT=tasksForDay(ds);curDayT=dT;
-  el('ddt').textContent=ds+' — '+dT.length+' task'+(dT.length!==1?'s':'');
-  el('ddsrch').value='';
-  el('ddc').innerHTML=dT.length?buildDayHTML(dT,''):'<div style="color:var(--text3);font-size:13px">No tasks logged this day.</div>';
-  el('dd').classList.add('open');
-  el('dd').scrollIntoView({behavior:'smooth',block:'nearest'});
-  bindDayActions();
+  lineupDate=new Date(ds);
+  var btn=document.querySelector('[data-nav="tasks"]');
+  gp('tasks',btn||null);
+  var sec=el('lineupList');if(sec)sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function filterDD(){
-  el('ddc').innerHTML=curDayT.length?buildDayHTML(curDayT,el('ddsrch').value):'<div style="color:var(--text3);font-size:13px">No tasks.</div>';
-  bindDayActions();
+function bindLineupActions(ctx){
+  var root=ctx||el('lineupList')||document;
+  qsa('[data-et]',root).forEach(function(btn){bindEditTaskBtn(btn);});
+  qsa('[data-dt]',root).forEach(function(btn){bindDeleteTaskBtn(btn);});
+  bindCompleteChecks(root);
 }
-
-function bindDayActions(){
-  qsa('[data-et]').forEach(function(btn){bindEditTaskBtn(btn);});
-  qsa('[data-dt]').forEach(function(btn){bindDeleteTaskBtn(btn);});
-  bindCompleteChecks(el('ddc'));
-}
+function bindDayActions(){bindLineupActions();}
 
 function bindCompleteChecks(ctx){
   qsa('[data-complete]',ctx||document).forEach(function(chk){
+    if(chk._tchkBound)return;
+    chk._tchkBound=true;
     chk.onchange=function(){
-      if(this.checked)completeTask(this.dataset.complete,this.dataset.occ||null);
-      else this.checked=true;
+      toggleTaskComplete(this.dataset.complete,this.dataset.occ||null,this.checked,this);
     };
   });
 }
 
-async function completeTask(tid,occDate){
+async function toggleTaskComplete(tid,occDate,checked,chkEl){
+  if(checked)await completeTask(tid,occDate,chkEl);
+  else await uncompleteTask(tid,occDate,chkEl);
+}
+
+async function completeTask(tid,occDate,chkEl){
   var t=tasks.find(function(x){return x.id===tid;});
-  if(!t||!canEditTask(t)){toast('You can only complete your own tasks','error');return;}
+  if(!t||!canEditTask(t)){toast('You can only complete your own tasks','error');if(chkEl)chkEl.checked=false;return;}
   if(occDate){
-    var ovs=parseOverrides(t),prev=(ovs[occDate]&&ovs[occDate].status)||t.status;
-    if(prev==='done')return;
-    ovs[occDate]=Object.assign({},ovs[occDate]||{},{status:'done'});
+    var ovs=parseOverrides(t),merged=mergeOccurrence(t,occDate),prevStatus=merged.status;
+    if(prevStatus==='done')prevStatus=t.status||'nostart';
+    ovs[occDate]=Object.assign({},ovs[occDate]||{},{status:'done',_revertStatus:prevStatus});
     var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
-    if(r.error){toast('Could not update task','error');return;}
+    if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
     toast('Task marked done ✓');await load();return;
   }
   if(t.status==='done')return;
   var old=t.status;
   await sb.from('task_history').insert([{task_id:tid,changed_by:cu.id,field_changed:'status',old_value:old,new_value:'done',changed_at:nowISO()}]);
-  var r=await sb.from('tasks').update({status:'done',edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
-  if(r.error){toast('Could not update task','error');return;}
+  var r2=await sb.from('tasks').update({status:'done',edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
+  if(r2.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
   toast('Task marked done ✓');
+  await load();
+}
+
+async function uncompleteTask(tid,occDate,chkEl){
+  var t=tasks.find(function(x){return x.id===tid;});
+  if(!t||!canEditTask(t)){toast('You can only update your own tasks','error');if(chkEl)chkEl.checked=true;return;}
+  if(occDate){
+    var ovs=parseOverrides(t),patch=Object.assign({},ovs[occDate]||{});
+    var revert=patch._revertStatus||t.status||'nostart';
+    patch.status=revert;
+    delete patch._revertStatus;
+    ovs[occDate]=patch;
+    var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
+    if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
+    toast('Task unchecked ✓');await load();return;
+  }
+  if(t.status!=='done')return;
+  var revert2='nostart';
+  var h=getTH(tid).find(function(x){return x.field_changed==='status'&&x.new_value==='done';});
+  if(h&&h.old_value)revert2=h.old_value;
+  await sb.from('task_history').insert([{task_id:tid,changed_by:cu.id,field_changed:'status',old_value:'done',new_value:revert2,changed_at:nowISO()}]);
+  var r2=await sb.from('tasks').update({status:revert2,edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
+  if(r2.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
+  toast('Task unchecked ✓');
   await load();
 }
 
@@ -1239,7 +1287,7 @@ function openT(){
   closeMobileNav();
   if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
   editOccDate=null;editScope='all';
-  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='done';el('tstart').value='';
+  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='nostart';el('tstart').value='';
   sMids=cu?[cu.id]:[];
   var me=cu?members.find(function(x){return x.id===cu.id;}):null;
   sRoles=me?parseMemberRoles(me):[];
@@ -1298,7 +1346,7 @@ async function saveT(){
   var eid=el('teid').value;
   if(!sMids.length){toast('Select at least one member','error');return;}
   if(!sTTs.length){toast('Select at least one task type','error');return;}
-  var name=el('tname').value.trim(),status=el('tstat').value,notes=el('tnotes').value.trim(),resultStr=sRCs.join(', '),startTime=el('tstart').value||null;
+  var name=el('tname').value.trim(),status=el('tstat').value||'nostart',notes=el('tnotes').value.trim(),resultStr=sRCs.join(', '),startTime=el('tstart').value||null;
   var ttStr=taskTypesStr(),baseName=name||sTTs[0];
   var patch={name:baseName,notes:notes,status:status,eta_minutes:sEta||null,actual_minutes:sAct||null,scheduled_start_time:startTime};
 
@@ -1399,7 +1447,7 @@ async function confirmDeleteTask(){
     if(!ok2){toast('Could not move to trash','error');return;}
     toast('Moved to trash ✓');
   }
-  closeDeleteModal();closeDrill();if(el('dd'))el('dd').classList.remove('open');await load();
+  closeDeleteModal();closeDrill();await load();
 }
 
 // MEMBER MODAL
@@ -1508,7 +1556,8 @@ function gp(page,btn){
   qsa('.ni').forEach(function(b){b.classList.remove('active');});
   el('page-'+page).classList.add('active');
   if(btn&&btn.classList&&btn.classList.contains('ni'))btn.classList.add('active');
-  if(page==='calendar'){renderCal();rMyTasks();}
+  if(page==='calendar')renderCal();
+  if(page==='tasks')rTasksPage();
   if(page==='performance')rCharts();
   if(page==='oversight')rOversight();
   if(page==='intelligence')rIntel();
@@ -1949,7 +1998,6 @@ function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.t
 // MODAL CLOSE ON BACKDROP
 ['TM','MM','ECM','FBM','RM','WPM','DM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
-var ddEl=el('dd');if(ddEl){var ddBtn=ddEl.querySelector('button');if(ddBtn)ddBtn.addEventListener('click',function(){ddEl.classList.remove('open');});}
 
 console.log('[4KPI] app version',APP_VER);
 initLogin();
