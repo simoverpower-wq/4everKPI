@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524e">
+<link rel="stylesheet" href="style.css?v=20260524f">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -199,7 +199,7 @@
     <div class="fg"><label>Actual time <span class="bsel-hint">(optional — only fill out after completing the task)</span></label><div class="tgrid tgrid-scroll" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
     <div id="recwrap" style="display:none;margin-bottom:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Repeat every</div><div class="recops"><button class="rbtn" onclick="setRec('Daily',this)">Daily</button><button class="rbtn" onclick="setRec('3 days',this)">3 days</button><button class="rbtn" onclick="setRec('5 days',this)">5 days</button><button class="rbtn" onclick="setRec('1 week',this)">1 week</button><button class="rbtn" onclick="setRec('2 weeks',this)">2 weeks</button><button class="rbtn" onclick="setRec('1 month',this)">1 month</button></div></div>
-    <div id="editScopeSec" class="edit-scope-sec edit-scope-hint">
+    <div id="editScopeSec" class="edit-scope-sec" style="display:none">
       <div class="edit-scope-lbl">Apply changes to</div>
       <div class="edit-scope-ops">
         <button type="button" class="escope on" data-scope="day" onclick="setEditScope('day',this)">This day only</button>
@@ -211,6 +211,22 @@
     <div class="fg"><label>Blockers / follow-ups</label><textarea id="tnotes" class="task-notes-area" placeholder="Anything blocking progress or needing a follow-up…"></textarea></div>
     <input type="hidden" id="teid">
     <div class="ma"><button class="btn" onclick="closeTM()">Cancel</button><button class="btn p" id="tsave" onclick="saveT()">Save task</button></div>
+  </div>
+</div>
+<div class="mov" id="DM">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-title" id="dmtitle">Delete task</div>
+    <p class="wipe-copy" id="dmdesc">This task will be moved to Trash.</p>
+    <div id="delScopeSec" class="edit-scope-sec" style="display:none">
+      <div class="edit-scope-lbl">Remove</div>
+      <div class="edit-scope-ops">
+        <button type="button" class="escope on" data-dscope="day" onclick="setDelScope('day',this)">This day only</button>
+        <button type="button" class="escope" data-dscope="future" onclick="setDelScope('future',this)">This &amp; future</button>
+        <button type="button" class="escope" data-dscope="all" onclick="setDelScope('all',this)">Entire series</button>
+      </div>
+      <div class="edit-scope-note" id="delScopeNote"></div>
+    </div>
+    <div class="ma"><button class="btn" onclick="closeDeleteModal()">Cancel</button><button class="btn danger" onclick="confirmDeleteTask()">Delete</button></div>
   </div>
 </div>
 <div class="mov" id="MM">
@@ -272,6 +288,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524e"></script>
+<script src="app.js?v=20260524f"></script>
 </body>
 </html>

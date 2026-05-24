@@ -364,7 +364,8 @@ body.is-admin .wipe-btn{display:flex !important}
 .mytask-meta{font-size:11px;color:var(--text2);line-height:1.45;margin-bottom:4px}
 .mytask-desc{font-size:11px;color:var(--text2);line-height:1.45;margin-top:6px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 .mytask-edit{font-size:10px;color:var(--text3);margin-top:6px;font-style:italic}
-.mytask-side{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.mytask-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.mytask-actions-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .cal-task{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;transition:all .15s}
 .cal-task.done{opacity:.75}
 .cal-task-body{flex:1;min-width:0}
