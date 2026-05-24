@@ -278,7 +278,9 @@ $$;
 
 GRANT EXECUTE ON FUNCTION wipe_agency_data() TO anon, authenticated;
 
--- Phase 1 go-live: clear test tasks/logs but keep result posts (e.g. Shock's proof upload)
+-- Inactive members: not yet tracking KPIs (excluded from pulse, insights, oversight warnings)
+ALTER TABLE members ADD COLUMN IF NOT EXISTS is_inactive BOOLEAN DEFAULT false;
+UPDATE members SET is_inactive = false WHERE is_inactive IS NULL;
 CREATE OR REPLACE FUNCTION wipe_test_data_keep_results()
 RETURNS jsonb
 LANGUAGE plpgsql

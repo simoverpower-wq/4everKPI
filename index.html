@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524k">
+<link rel="stylesheet" href="style.css?v=20260524m">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -204,13 +204,18 @@
     <div class="task-desc-block fg-desc" id="taskDescBlock">
       <div class="task-desc-head">
         <div class="task-desc-head-left">
-          <label class="task-desc-label" for="tname">Task details</label>
-          <p class="task-desc-hint">Optional — toggle on when you want steps, links, or context. Off keeps logging fast.</p>
+          <label class="task-desc-label" for="tname">Task description <span class="req-star">*</span></label>
+          <p class="task-desc-hint">Required — who you’re overseeing, steps, links, checklists. This is what shows on Team tasks.</p>
         </div>
-        <div class="task-desc-toggle"><span class="task-desc-toglbl">Details</span><div class="tog" id="descTog" onclick="togTaskDesc()" title="Show task details"></div></div>
+      </div>
+      <div class="task-desc-toolbar">
+        <button type="button" class="btn sm desc-fmt" onclick="insertDescFormat('bullet')">• Bullet</button>
+        <button type="button" class="btn sm desc-fmt" onclick="insertDescFormat('check')">☐ Checkbox</button>
+        <button type="button" class="btn sm desc-fmt" onclick="insertDescFormat('checkdone')">☑ Done</button>
+        <button type="button" class="btn sm desc-fmt" onclick="insertDescFormat('num')">1. Number</button>
       </div>
       <div id="descBody" class="task-desc-body">
-        <textarea id="tname" class="task-desc-area" placeholder="Example:&#10;• Open the lead sheet and filter today’s rows&#10;• Use DM template #2 for first touch&#10;• Note any replies in blockers below&#10;&#10;Add as much detail as you want…"></textarea>
+        <textarea id="tname" class="task-desc-area" required placeholder="Example — be specific:&#10;• Overseeing: Logan — Reddit rev accounts&#10;• Check all DM replies from yesterday&#10;[ ] Pull screenshot for proof&#10;[ ] Flag anything stuck in blockers&#10;&#10;This description shows for everyone on Team tasks."></textarea>
       </div>
     </div>
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
@@ -255,6 +260,7 @@
     <div class="frow"><div class="fg"><label>Name</label><input id="mname"></div><div class="fg"><label>PIN (4 digits)</label><input id="mpin" type="password" maxlength="4" placeholder="••••"></div></div>
     <div class="fg"><label>Admin?</label><select id="madmin" onchange="syncMAccessSec()"><option value="false">No — Team member</option><option value="true">Yes — Admin</option></select></div>
     <div class="fg"><label>Role title</label><input id="mrole" placeholder="e.g. Lead Searching"></div>
+    <div class="fg"><label>Tracking status</label><select id="minactive"><option value="false">Active — include in KPIs &amp; pulse</option><option value="true">Inactive — not tracking yet</option></select><p class="field-hint">Inactive members are hidden from agency pulse and “hasn’t logged today” warnings until you start tracking their work.</p></div>
     <div class="fg"><label>Role tags (comma separated)</label><input id="mtags" placeholder="e.g. Lead Searching, Chatters"></div>
     <div class="fg"><label>Role description</label><textarea id="mdesc" placeholder="What does this person do?"></textarea></div>
     <div class="fg"><label>Color</label><div class="cpgrid" id="mcolorgrid"></div><input type="hidden" id="mcolor" value="#34d399"></div>
@@ -308,6 +314,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524k"></script>
+<script src="app.js?v=20260524m"></script>
 </body>
 </html>

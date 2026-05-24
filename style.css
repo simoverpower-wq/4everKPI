@@ -174,7 +174,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .av{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
 .mn{font-size:13px;font-weight:600}.mr{font-size:11px;color:var(--text2)}
 .vd{font-size:10px;font-weight:700;padding:3px 7px;border-radius:5px}
-.vd.producing{background:rgba(127,255,110,.1);color:var(--accent)}.vd.watch{background:rgba(255,184,48,.1);color:var(--amber)}.vd.behind{background:rgba(255,92,92,.1);color:var(--red)}.vd.nodata{background:var(--bg3);color:var(--text3)}
+.vd.producing{background:rgba(127,255,110,.1);color:var(--accent)}.vd.watch{background:rgba(255,184,48,.1);color:var(--amber)}.vd.behind{background:rgba(255,92,92,.1);color:var(--red)}.vd.nodata{background:var(--bg3);color:var(--text3)}.vd.inactive{background:rgba(136,153,221,.1);color:var(--steel,#8899dd)}
 .mstats{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:11px}
 .ms{background:var(--bg3);border-radius:6px;padding:7px 8px}
 .msl{font-size:9px;color:var(--text3);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
@@ -275,6 +275,26 @@ body.is-admin .wipe-btn{display:flex !important}
 .task-desc-area{min-height:200px;line-height:1.65;font-size:14px;color:var(--text)!important;caret-color:var(--accent);-webkit-text-fill-color:var(--text);background:var(--bg3)!important;border:1px solid var(--border2)!important;border-radius:10px;padding:12px 14px;width:100%;font-family:'DM Sans',sans-serif;resize:vertical}
 .task-desc-area:focus{border-color:rgba(127,255,110,.45)!important;box-shadow:0 0 0 3px rgba(127,255,110,.08);outline:none}
 .task-desc-area::placeholder{color:var(--text3);opacity:1;line-height:1.55}
+.task-desc-toolbar{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 8px}
+.desc-fmt{font-size:11px;padding:5px 10px;border-radius:8px;background:var(--bg4);border-color:var(--border2)}
+.desc-fmt:hover{border-color:rgba(127,255,110,.35);color:var(--accent)}
+.req-star{color:var(--red);font-weight:700}
+.field-hint{font-size:11px;color:var(--text3);margin:6px 0 0;line-height:1.45}
+.task-desc-emphasis{margin:8px 0 10px;padding:10px 12px;background:linear-gradient(180deg,rgba(127,255,110,.07) 0%,rgba(255,255,255,.02) 100%);border:1px solid rgba(127,255,110,.2);border-radius:10px}
+.task-desc-emphasis.empty{border-color:var(--border2);background:var(--bg4);font-size:11px;color:var(--text3);font-style:italic}
+.task-desc-emphasis-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:6px}
+.task-desc-emphasis-body{font-size:13px;line-height:1.6;color:var(--text);word-break:break-word}
+.task-desc-emphasis-body .task-desc-line{margin-bottom:2px}
+.task-desc-emphasis-body .task-desc-bullet{padding-left:14px;position:relative;margin-bottom:3px}
+.task-desc-emphasis-body .task-desc-bullet::before{content:'•';position:absolute;left:0;color:var(--accent);font-weight:700}
+.task-desc-emphasis-body .task-desc-num{margin-bottom:3px;padding-left:2px;color:var(--text2)}
+.task-desc-emphasis-body .task-desc-check{font-family:ui-monospace,monospace;font-size:12px;color:var(--text2);margin-bottom:3px}
+.task-desc-emphasis-body .task-desc-check.done{color:var(--accent);text-decoration:line-through;opacity:.85}
+.task-desc-emphasis-body .task-desc-spacer{height:6px}
+.inactive-badge{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:rgba(136,153,221,.12);color:var(--steel,#8899dd);padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.inactive-note{font-size:11px;color:var(--text3);background:var(--bg3);border:1px dashed var(--border2);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.45}
+.role-card-inactive{opacity:.88;border-style:dashed!important}
+.mcard.inactive{opacity:.78;border-style:dashed}
 .text-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45;word-break:break-word;max-width:240px}
 .text-clamp-3{-webkit-line-clamp:3;max-width:220px}
 .text-clamp-4{-webkit-line-clamp:4;max-width:100%}
