@@ -436,6 +436,11 @@ body.is-admin .wipe-btn{display:flex !important}
 .mytask-edit{font-size:10px;color:var(--text3);margin-top:6px;font-style:italic}
 .mytask-actions{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .mytask-actions-row{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.task-drag-item[draggable]{cursor:grab}
+.task-drag-item.task-dragging{opacity:.55}
+.task-drag-item.task-drag-over{outline:2px dashed var(--accent);outline-offset:2px}
+.task-drag-handle{color:var(--text3);font-size:15px;line-height:1;cursor:grab;user-select:none;flex-shrink:0;margin-top:2px;padding-right:2px}
+.task-drag-handle:hover{color:var(--text2)}
 .cal-task{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;transition:all .15s}
 .cal-task.done{opacity:.82;border-color:rgba(127,255,110,.18)}
 .cal-task-body{flex:1;min-width:0}
