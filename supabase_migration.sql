@@ -1,5 +1,11 @@
 -- Run this in the Supabase SQL Editor for 4everKPI new features
 
+-- ========== QUICK FIX: Inactive member toggle "Error saving" ==========
+-- Run this if marking a member Inactive fails in the app.
+
+ALTER TABLE members ADD COLUMN IF NOT EXISTS is_inactive BOOLEAN DEFAULT false;
+UPDATE members SET is_inactive = false WHERE is_inactive IS NULL;
+
 -- ========== QUICK FIX: Results delete/edit not working ==========
 -- Run this block first if deletes show an error in the app.
 
