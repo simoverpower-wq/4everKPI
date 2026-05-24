@@ -1,4 +1,4 @@
-const APP_VER='20260525.02';
+const APP_VER='20260525.03';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -172,31 +172,51 @@ function syncInactiveMembersFromSettings(){members.forEach(function(m){if(inacti
 function isInactiveColumnError(err){if(!err)return false;var msg=(err.message||'')+(err.details||'')+(err.hint||'');return err.code==='PGRST204'||/is_inactive|column.*does not exist|Could not find the/i.test(msg);}
 function memberPayloadWithoutInactive(payload){var p=Object.assign({},payload);delete p.is_inactive;return p;}
 function getOverseerId(){
-  if(overseerId&&members.some(function(m){return m.id===overseerId;}))return overseerId;
+  var oid=overseerId;
+  if(oid&&members.some(function(m){return String(m.id)===String(oid);}))return oid;
+  if(cu&&cu.isAdmin&&members.some(function(m){return String(m.id)===String(cu.id);}))return cu.id;
   var admin=members.find(function(m){return m.is_admin;});
   return admin?admin.id:null;
 }
-function isOverseerMember(m){return!!(m&&m.id===getOverseerId());}
-function cuIsOverseer(){return!!(cu&&cu.id===getOverseerId());}
+function isOverseerMember(m){return!!(m&&String(m.id)===String(getOverseerId()));}
+function cuIsOverseer(){return!!(cu&&String(cu.id)===String(getOverseerId()));}
 function ensureOverseerDefault(){
-  if(overseerId&&members.some(function(m){return m.id===overseerId;}))return;
+  if(overseerId&&members.some(function(m){return String(m.id)===String(overseerId);}))return;
+  if(cu&&cu.isAdmin){overseerId=cu.id;lss('4k_oid',overseerId);saveAll();return;}
   var admin=members.find(function(m){return m.is_admin;});
   if(admin){overseerId=admin.id;lss('4k_oid',overseerId);saveAll();}
 }
+function setOverseerId(mid){
+  if(!cu||!cu.isAdmin){toast('Only admins can set the overseer','error');return;}
+  if(!mid||!members.some(function(m){return String(m.id)===String(mid);})){toast('Member not found','error');return;}
+  overseerId=mid;
+  lss('4k_oid',overseerId);
+  saveAll();
+  var nm=(members.find(function(m){return String(m.id)===String(mid);})||{}).name||'Member';
+  toast(nm+' is now the agency overseer ✓');
+  syncOverseerUI();
+  rMembers();genIns();
+  if(el('page-roles').classList.contains('active'))rRoles();
+}
+function claimOverseerRole(){if(!cu||!cu.isAdmin)return;setOverseerId(cu.id);}
+function setOverseerFromModal(){var eid=el('meid').value;if(!eid)return;setOverseerId(eid);closeMM();}
 function memberFirstName(m){return(m&&m.name)?m.name.split(' ')[0]:'them';}
 function memberLogBtnHtml(m){
   if(!cu||!m||isInactiveMember(m))return'';
+  var isSelf=String(m.id)===String(cu.id);
   if(cuIsOverseer()){
-    if(isOverseerMember(m))return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log my task</button>';
+    if(isOverseerMember(m)||isSelf)return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log my task</button>';
     return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log for '+memberFirstName(m)+'</button>';
   }
-  if(cu.id===m.id)return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log task</button>';
+  if(isSelf)return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log task</button>';
   return'';
 }
 function syncOverseerUI(){
-  var btn=el('transferOwnerBtn');
-  if(btn)btn.hidden=!cuIsOverseer();
+  var transfer=el('transferOwnerBtn'),claim=el('claimOverseerBtn');
+  if(transfer)transfer.hidden=!cuIsOverseer();
+  if(claim)claim.hidden=!cu||!cu.isAdmin||cuIsOverseer();
   if(cu){var ur=el('urole');if(ur)ur.textContent=cuIsOverseer()?'Overseer':(cu.isAdmin?'Admin':'Team member');}
+  var ver=el('appVerLbl');if(ver)ver.textContent='v'+APP_VER;
 }
 function getActiveMembers(){return members.filter(function(m){return!isInactiveMember(m);});}
 function getTrackedTasks(){var ids=getActiveMembers().map(function(m){return m.id;});return tasks.filter(function(t){return ids.indexOf(t.member_id)>=0;});}
@@ -625,7 +645,7 @@ const HUMOR={
 };
 
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
-function fm(m){if(!m&&m!==0)return'—';if(m<60)return m+'m';var h=Math.floor(m/60),mn=m%60;return mn?h+'h '+mn+'m':h+'h';}
+function fm(m){return fmtLogTime(m);}
 function ini(n){return(n||'??').slice(0,2).toUpperCase();}
 function isC(m){return(m.role_tags||'').toLowerCase().includes('chatter');}
 function el(id){return document.getElementById(id);}
@@ -1661,8 +1681,8 @@ async function confirmDeleteTask(){
 }
 
 // MEMBER MODAL
-function openM(){if(!cu||!cu.isAdmin||getNavAccess(cu.id).add_member===false){toast('You don\'t have access to add members','error');return;}el('mmtitle').textContent='Add team member';el('meid').value='';el('mdel').style.display='none';['mname','mrole','mtags','mdesc','mpin'].forEach(function(id){el(id).value='';});el('madmin').value='false';el('minactive').value='false';el('mcolor').value='#34d399';renderSwatches('mcolorgrid','mcolor','#34d399');syncMAccessSec();el('MM').classList.add('open');}
-function openEM(mid){var m=members.find(function(x){return x.id===mid;});if(!m)return;var col=(m.color&&m.color.charAt(0)==='#')?m.color:(getMC(m).text);el('mmtitle').textContent='Edit member';el('meid').value=mid;el('mdel').style.display='flex';el('mname').value=m.name||'';el('mrole').value=m.role||'';el('mtags').value=m.role_tags||'';el('mdesc').value=m.description||'';el('mpin').value=m.pin||'';el('madmin').value=m.is_admin?'true':'false';el('minactive').value=isInactiveMember(m)?'true':'false';el('mcolor').value=col;renderSwatches('mcolorgrid','mcolor',col);syncMAccessSec();el('MM').classList.add('open');}
+function openM(){if(!cu||!cu.isAdmin||getNavAccess(cu.id).add_member===false){toast('You don\'t have access to add members','error');return;}el('mmtitle').textContent='Add team member';el('meid').value='';el('mdel').style.display='none';var oBtn=el('msetoverseer');if(oBtn)oBtn.style.display='none';['mname','mrole','mtags','mdesc','mpin'].forEach(function(id){el(id).value='';});el('madmin').value='false';el('minactive').value='false';el('mcolor').value='#34d399';renderSwatches('mcolorgrid','mcolor','#34d399');syncMAccessSec();el('MM').classList.add('open');}
+function openEM(mid){var m=members.find(function(x){return x.id===mid;});if(!m)return;var col=(m.color&&m.color.charAt(0)==='#')?m.color:(getMC(m).text);el('mmtitle').textContent='Edit member';el('meid').value=mid;el('mdel').style.display='flex';el('mname').value=m.name||'';el('mrole').value=m.role||'';el('mtags').value=m.role_tags||'';el('mdesc').value=m.description||'';el('mpin').value=m.pin||'';el('madmin').value=m.is_admin?'true':'false';el('minactive').value=isInactiveMember(m)?'true':'false';el('mcolor').value=col;renderSwatches('mcolorgrid','mcolor',col);syncMAccessSec();var oBtn=el('msetoverseer');if(oBtn){oBtn.style.display=(cu&&cu.isAdmin)?'inline-flex':'none';oBtn.textContent=isOverseerMember(m)?'Agency overseer ✓':'Set as agency overseer';oBtn.disabled=!!isOverseerMember(m);}el('MM').classList.add('open');}
 function closeMM(){el('MM').classList.remove('open');}
 
 async function saveM(){

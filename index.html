@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.02';
+  var V='20260525.03';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.02">
+<link rel="stylesheet" href="style.css?v=20260525.03">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -112,6 +112,7 @@
     <div class="sb-bot">
       <div class="upill"><div class="uav-wrap"><div class="uav" id="uav" onclick="openEditSelf()">?</div><div class="uav-dot"></div></div><div class="upill-info"><div class="uname" id="uname">—</div><div class="urole" id="urole">—</div></div></div>
       <div class="sb-actions">
+        <button class="sb-action" id="claimOverseerBtn" hidden onclick="claimOverseerRole()" title="Become agency overseer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span class="ni-text">I'm the overseer</span></button>
         <button class="sb-action" id="transferOwnerBtn" hidden onclick="openTransferM()" title="Transfer overseer role"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg><span class="ni-text">Transfer ownership</span></button>
         <button class="sb-action" onclick="openFeedback()" title="Feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="ni-text">Feedback</span></button>
         <button class="sb-action out-btn" onclick="logout()" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="ni-text">Sign out</span></button>
@@ -123,7 +124,7 @@
   <button class="mob-menu" id="mobMenu" onclick="toggleMobileNav()" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <main class="main">
     <div class="page active" id="page-dashboard">
-      <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
+      <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div><span class="app-ver-lbl" id="appVerLbl"></span></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
       <div class="pbar dash-pulse">
         <div class="pleft">
           <div class="orb-wrap"><canvas id="orb" width="48" height="48"></canvas><div class="orb-pct" id="opct">0%</div></div>
@@ -285,7 +286,7 @@
       <p class="nav-access-note">Choose which tabs this person can see. Admins always see everything.</p>
     </div>
     <input type="hidden" id="meid">
-    <div class="ma"><button class="btn danger" id="mdel" onclick="delM()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeMM()">Cancel</button><button class="btn p" onclick="saveM()">Save</button></div>
+    <div class="ma"><button class="btn sm" id="msetoverseer" type="button" onclick="setOverseerFromModal()" style="display:none;margin-right:auto">Set as agency overseer</button><button class="btn danger" id="mdel" onclick="delM()" style="display:none">Delete</button><button class="btn" onclick="closeMM()">Cancel</button><button class="btn p" onclick="saveM()">Save</button></div>
   </div>
 </div>
 <div class="mov" id="TransferM">
@@ -337,6 +338,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.02"></script>
+<script src="app.js?v=20260525.03"></script>
 </body>
 </html>
