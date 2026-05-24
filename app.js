@@ -1,4 +1,4 @@
-const APP_VER='20260524.9';
+const APP_VER='20260524.10';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -193,6 +193,42 @@ function resolveTaskOccDate(t,occDate){
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
+function overrideFieldsFromPatch(patch){return{name:patch.name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
+function scrubOverrideForSave(o){var c=Object.assign({},o);if(c.status!=='done')delete c._revertStatus;return c;}
+function preserveRecurMeta(ovs){var out={};if(ovs._stopAfter)out._stopAfter=ovs._stopAfter;return out;}
+function buildSeriesOverrides(orig,anchor,scope,patch){
+  var old=parseOverrides(orig),fields=overrideFieldsFromPatch(patch),meta=preserveRecurMeta(old);
+  if(scope==='day'){
+    var dayO=Object.assign({},old,meta);
+    dayO[anchor]=scrubOverrideForSave(Object.assign({},old[anchor]||{},fields));
+    return dayO;
+  }
+  if(scope==='future'){
+    var futO=freezePastOverrides(orig,anchor);
+    if(meta._stopAfter)futO._stopAfter=meta._stopAfter;
+    listOccurrenceKeys(orig).forEach(function(key){
+      if(key<anchor)return;
+      if(futO._stopAfter&&key>=futO._stopAfter)return;
+      if(futO[key]&&futO[key].skipped)return;
+      if(patch.status==='done')futO[key]=scrubOverrideForSave(Object.assign({},futO[key]||{},fields));
+      else delete futO[key];
+    });
+    return futO;
+  }
+  var allO=Object.assign({},meta);
+  Object.keys(old).forEach(function(k){
+    if(k.charAt(0)==='_')return;
+    if(old[k]&&old[k].skipped)allO[k]={skipped:true};
+  });
+  if(patch.status==='done'){
+    listOccurrenceKeys(orig).forEach(function(key){
+      if(allO._stopAfter&&key>=allO._stopAfter)return;
+      if(allO[key]&&allO[key].skipped)return;
+      allO[key]=scrubOverrideForSave(Object.assign({},fields));
+    });
+  }
+  return allO;
+}
 function syncScopeVisibility(defaultScope){
   var sec=el('editScopeSec');if(!sec)return;
   var eid=el('teid').value;
@@ -1375,21 +1411,20 @@ async function saveT(){
     var orig=tasks.find(function(t){return t.id===eid;});
     if(!orig){toast('Task not found','error');return;}
     if(orig.is_recurring){
-      var anchor=editOccDate||dsToKey(new Date().toDateString()),scope=editScope||'day',ovs=parseOverrides(orig);
+      var anchor=editOccDate||dsToKey(new Date().toDateString()),scope=editScope||'day';
+      var ovs=buildSeriesOverrides(orig,anchor,scope,patch);
       if(scope==='day'){
-        ovs[anchor]=patch;
         var rd=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',eid);
         if(rd.error){toast('Error saving this day','error');return;}
         toast('This day updated ✓');closeTM();await load();return;
       }
       if(scope==='future'){
-        ovs=freezePastOverrides(orig,anchor);
         var pf=Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs});
         var rf=await sb.from('tasks').update(pf).eq('id',eid);
         if(rf.error){toast('Error updating future tasks','error');return;}
         toast('This & future updated ✓');closeTM();await load();return;
       }
-      var ra=await sb.from('tasks').update(Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:{}})).eq('id',eid);
+      var ra=await sb.from('tasks').update(Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs})).eq('id',eid);
       if(ra.error){toast('Error updating series','error');return;}
       toast('Entire series updated ✓');closeTM();await load();return;
     }
