@@ -1,4 +1,4 @@
-const APP_VER='20260524.7';
+const APP_VER='20260524.8';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -180,9 +180,10 @@ function recursOnDate(t,ds){
   return true;
 }
 function pickOv(ov,key,base){return Object.prototype.hasOwnProperty.call(ov,key)?ov[key]:base;}
-function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'pending'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
+function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'nostart'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
 function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(function(t){if(!t.is_recurring||!t.recur_frequency||!t.logged_at)return false;if(new Date(t.logged_at).toDateString()===ds)return false;return recursOnDate(t,ds);}).map(function(t){return mergeOccurrence(t,key);});}
-function tasksForDay(ds){var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});return logged.concat(getRecurringVirtualTasks(ds));}
+function tasksForDay(ds){var key=dsToKey(ds);var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;}).map(function(t){return t.is_recurring?mergeOccurrence(t,key):t;});return logged.concat(getRecurringVirtualTasks(ds));}
+function resolveTaskOccDate(t,occDate){if(occDate)return occDate;if(t&&t._occurrenceDate)return t._occurrenceDate;if(lineupDate)return dsToKey(lineupDate.toDateString());return dsToKey(new Date().toDateString());}
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
@@ -235,7 +236,7 @@ function renderMyTaskCard(t){
     acts+='</div>'+stag(t.status)+'</div>';
   }else acts='<div class="mytask-actions">'+stag(t.status)+'</div>';
   var editLine=lastEditSummary(t);
-  return'<div class="mytask-card">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="mytask-date">'+taskScheduleLabel(t)+'</div><div class="mytask-name">'+typeLbl+'</div><div class="mytask-meta">'+meta+'</div>'+(desc?'<div class="mytask-desc" title="'+esc(desc)+'">'+esc(desc)+'</div>':'')+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
+  return'<div class="mytask-card'+(t.status==='done'?' mytask-done':'')+'">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="mytask-date">'+taskScheduleLabel(t)+'</div><div class="mytask-name">'+typeLbl+'</div><div class="mytask-meta">'+meta+'</div>'+(desc?'<div class="mytask-desc" title="'+esc(desc)+'">'+esc(desc)+'</div>':'')+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
 }
 
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{};
@@ -865,7 +866,11 @@ function taskCheckHTML(t){
   if(!canEditTask(t))return'';
   var done=t.status==='done';
   if(!done&&t.status!=='prog'&&t.status!=='pending'&&t.status!=='late'&&t.status!=='nostart')return'';
-  var occ=t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'';
+  var occ='';
+  if(t.is_recurring||t._isOccurrence){
+    var dk=resolveTaskOccDate(t,t._occurrenceDate||null);
+    if(dk)occ=' data-occ="'+dk+'"';
+  }
   return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box'+(done?' done':'')+'"></span></label>';
 }
 
@@ -876,24 +881,46 @@ function renderCalTaskRow(t,extra){
   return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top"><span class="cal-task-name">'+typeLbl+'</span>'+stag(t.status)+'</div><div class="cal-task-meta">'+meta+'</div>'+taskDescLine(t)+(t.edited_at?taskCardHist(t.id):'')+'</div></div>';
 }
 
+function getMyTaskItems(){
+  if(!cu)return[];
+  var todayDs=new Date().toDateString(),todayKey=dsToKey(todayDs),seen={},items=[];
+  function add(t){var k=t.id+(t._occurrenceDate||'');if(seen[k])return;seen[k]=true;items.push(t);}
+  tasksForDay(todayDs).forEach(function(t){if(t.member_id===cu.id)add(t);});
+  tasks.filter(function(t){
+    return t.member_id===cu.id&&!t.is_recurring&&(t.status==='prog'||t.status==='pending'||t.status==='nostart')&&new Date(t.logged_at).toDateString()!==todayDs;
+  }).forEach(add);
+  var d=new Date();d.setHours(0,0,0,0);
+  for(var i=1;i<=60;i++){
+    var nd=new Date(d);nd.setDate(nd.getDate()+i);
+    getRecurringVirtualTasks(nd.toDateString()).forEach(function(t){
+      if(t.member_id!==cu.id)return;
+      if(t.status==='done'||t.status==='late')return;
+      add(t);
+    });
+  }
+  items.sort(function(a,b){
+    var da=a._occurrenceDate||dsToKey(a.logged_at?new Date(a.logged_at).toDateString():todayDs),db=b._occurrenceDate||dsToKey(b.logged_at?new Date(b.logged_at).toDateString():todayDs);
+    var aToday=da===todayKey,bToday=db===todayKey;
+    if(aToday&&!bToday)return-1;if(!aToday&&bToday)return 1;
+    if(da!==db)return da.localeCompare(db);
+    var aDone=a.status==='done'?1:0,bDone=b.status==='done'?1:0;
+    if(aDone!==bDone)return aDone-bDone;
+    return(a.scheduled_start_time||'99:99').localeCompare(b.scheduled_start_time||'99:99');
+  });
+  return items;
+}
+
 function rMyTasks(){
   var list=el('myTasksList'),panel=el('myTasksPanel');if(!list||!panel)return;
   if(!cu){panel.style.display='none';return;}
-  var open=tasks.filter(function(t){return t.member_id===cu.id&&(t.status==='prog'||t.status==='pending'||t.status==='nostart');});
-  var todayDs=new Date().toDateString();
-  getRecurringVirtualTasks(todayDs).forEach(function(t){
-    if(t.member_id!==cu.id)return;
-    if(t.status==='done'||t.status==='late')return;
-    if(!open.some(function(x){return x.id===t.id&&x._isOccurrence;}))open.push(t);
-  });
-  open.sort(function(a,b){
-    var da=a._occurrenceDate||dsToKey(a.logged_at?new Date(a.logged_at).toDateString():todayDs),db=b._occurrenceDate||dsToKey(b.logged_at?new Date(b.logged_at).toDateString():todayDs);
-    if(da!==db)return da.localeCompare(db);
-    return(a.scheduled_start_time||'99:99').localeCompare(b.scheduled_start_time||'99:99');
-  });
+  var items=getMyTaskItems(),todayKey=dsToKey(new Date().toDateString());
+  var todayDone=items.filter(function(t){var dk=t._occurrenceDate||dsToKey(new Date(t.logged_at).toDateString());return dk===todayKey&&t.status==='done';}).length;
+  var titleEl=panel.querySelector('.mytasks-title'),subEl=panel.querySelector('.mytasks-sub');
+  if(titleEl)titleEl.textContent='My tasks';
+  if(subEl)subEl.textContent=todayDone?'Today’s work stays here after you check it off — '+todayDone+' done so far':'Open work plus today’s tasks — check off when done, they stay visible';
   panel.style.display='block';
-  if(!open.length){list.innerHTML='<div class="mytasks-empty">No open tasks — log one from the dashboard or pick a day below.</div>';return;}
-  list.innerHTML=open.map(function(t){return renderMyTaskCard(t);}).join('');
+  if(!items.length){list.innerHTML='<div class="mytasks-empty">No tasks yet — log one above or pick a day in the lineup below.</div>';return;}
+  list.innerHTML=items.map(function(t){return renderMyTaskCard(t);}).join('');
   bindCompleteChecks(list);
   qsa('[data-et]',list).forEach(function(btn){bindEditTaskBtn(btn);});
   qsa('[data-dt]',list).forEach(function(btn){bindDeleteTaskBtn(btn);});
@@ -972,13 +999,14 @@ async function toggleTaskComplete(tid,occDate,checked,chkEl){
 async function completeTask(tid,occDate,chkEl){
   var t=tasks.find(function(x){return x.id===tid;});
   if(!t||!canEditTask(t)){toast('You can only complete your own tasks','error');if(chkEl)chkEl.checked=false;return;}
-  if(occDate){
-    var ovs=parseOverrides(t),merged=mergeOccurrence(t,occDate),prevStatus=merged.status;
+  if(t.is_recurring){
+    var anchor=resolveTaskOccDate(t,occDate);
+    var ovs=parseOverrides(t),merged=mergeOccurrence(t,anchor),prevStatus=merged.status;
     if(prevStatus==='done')prevStatus=t.status||'nostart';
-    ovs[occDate]=Object.assign({},ovs[occDate]||{},{status:'done',_revertStatus:prevStatus});
+    ovs[anchor]=Object.assign({},ovs[anchor]||{},{status:'done',_revertStatus:prevStatus});
     var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
-    toast('Task marked done ✓');await load();return;
+    toast('This day marked done ✓');await load();return;
   }
   if(t.status==='done')return;
   var old=t.status;
@@ -992,15 +1020,16 @@ async function completeTask(tid,occDate,chkEl){
 async function uncompleteTask(tid,occDate,chkEl){
   var t=tasks.find(function(x){return x.id===tid;});
   if(!t||!canEditTask(t)){toast('You can only update your own tasks','error');if(chkEl)chkEl.checked=true;return;}
-  if(occDate){
-    var ovs=parseOverrides(t),patch=Object.assign({},ovs[occDate]||{});
+  if(t.is_recurring){
+    var anchor=resolveTaskOccDate(t,occDate);
+    var ovs=parseOverrides(t),patch=Object.assign({},ovs[anchor]||{});
     var revert=patch._revertStatus||t.status||'nostart';
     patch.status=revert;
     delete patch._revertStatus;
-    ovs[occDate]=patch;
+    ovs[anchor]=patch;
     var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
-    toast('Task unchecked ✓');await load();return;
+    toast('This day unchecked ✓');await load();return;
   }
   if(t.status!=='done')return;
   var revert2='nostart';
