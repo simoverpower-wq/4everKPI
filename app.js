@@ -1,4 +1,4 @@
-const APP_VER='20260524.15';
+const APP_VER='20260524.16';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -563,20 +563,21 @@ function removeRC(val,roles){
 function getCatInfo(role){var ov=catMeta[role]||{},b=BRA[role]||{};return{icon:ov.icon||b.icon||'📌',desc:ov.desc||b.desc||'',name:ov.name||role};}
 function getRCol(r){return RCOLS[r]||'#888';}
 
-function buildEtaPresets(){
+function fmtLogTime(m){
+  if(!m&&m!==0)return'—';
+  if(m>=720)return'12h+';
+  if(m<60)return m+' mins';
+  var h=Math.floor(m/60),mn=m%60,hPart=h===1?'1 hour':h+' hours';
+  if(!mn)return hPart;
+  return hPart+' '+mn+' mins';
+}
+function buildLogTimePresets(){
   var a=[];
   for(var m=10;m<=120;m+=10)a.push({l:fmtLogTime(m),m:m});
   [150,180,240,300,360,480,600,720].forEach(function(m){a.push({l:fmtLogTime(m),m:m});});
   return a;
 }
-function buildActPresets(){
-  var a=[15,30,45].map(function(m){return{l:fmtLogTime(m),m:m};});
-  for(var m=60;m<=120;m+=10)a.push({l:fmtLogTime(m),m:m});
-  [150,180,240,300,360,480,600,720].forEach(function(m){a.push({l:fmtLogTime(m),m:m});});
-  return a;
-}
-const ETA_TIMES=buildEtaPresets();
-const ACT_TIMES=buildActPresets();
+const LOG_TIME_PRESETS=buildLogTimePresets();
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
@@ -596,14 +597,6 @@ const HUMOR={
 };
 
 function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):'';}
-function fmtLogTime(m){
-  if(!m&&m!==0)return'—';
-  if(m>=720)return'12h+';
-  if(m<60)return m+' min';
-  var h=Math.floor(m/60),mn=m%60,hLbl=h===1?'1 hr':h+' hrs';
-  if(!mn)return hLbl;
-  return hLbl+' '+mn+' min';
-}
 function fm(m){if(!m&&m!==0)return'—';if(m<60)return m+'m';var h=Math.floor(m/60),mn=m%60;return mn?h+'h '+mn+'m':h+'h';}
 function ini(n){return(n||'??').slice(0,2).toUpperCase();}
 function isC(m){return(m.role_tags||'').toLowerCase().includes('chatter');}
@@ -1412,12 +1405,12 @@ function timeGridSections(list){
   ].filter(function(g){return g.items.length;});
 }
 function bTimeG(id,vn,presets){
-  var list=presets||(vn==='eta'?ETA_TIMES:ACT_TIMES),box=el(id);
+  var list=presets||LOG_TIME_PRESETS,box=el(id);
   if(!box)return;
   box.classList.add('tgrid-sectioned');
   var html='';
   timeGridSections(list).forEach(function(g){
-    html+='<div class="tgrid-section"><div class="tgrid-section-lbl">'+g.t+'</div><div class="tgrid-section-btns">';
+    html+='<div class="tgrid-section"><div class="tgrid-section-lbl">'+g.t+'</div><div class="tgrid-section-btns'+(g.t.indexOf('1–2')>=0?' tgrid-section-btns-wide':'')+'">';
     g.items.forEach(function(t){html+='<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';});
     html+='</div></div>';
   });
