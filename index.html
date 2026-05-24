@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524d">
+<link rel="stylesheet" href="style.css?v=20260524e">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -48,7 +48,7 @@
         <div><div class="login-logo">Sign in</div><div class="login-sub">Select your name to continue</div></div>
       </div>
     <div id="step1">
-      <div class="sw"><span class="si">🔍</span><input id="msearch" placeholder="Search name..." oninput="filterM()" autocomplete="off"></div>
+      <div class="sw"><span class="si">🔍</span><input id="msearch" type="search" name="kpi_member_filter_x" placeholder="Search name..." oninput="filterM()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore readonly></div>
       <button class="login-gear" id="loginGear" onclick="toggleLoginEdit()" title="Admin: reorder login names">⚙️</button>
       <div class="lgrid" id="lgrid"></div>
     </div>
@@ -181,10 +181,17 @@
     <div class="bsel"><div class="bsel-lbl">Assign to <span class="bsel-hint">(tap multiple)</span></div><input class="mem-srch" id="massignsrch" placeholder="🔍 Search member..." oninput="bMembers()"><div class="bwrap" id="bm"></div></div>
     <div class="bsel"><div class="bsel-lbl">Role area</div><div class="bwrap" id="br"></div><div class="badd" id="brad"><input id="bri" placeholder="Add role..." onkeydown="if(event.key==='Enter')addBub('role')"><button class="btn sm" onclick="addBub('role')">Add</button><button class="btn sm" onclick="document.getElementById('brad').classList.remove('show')">✕</button></div></div>
     <div class="bsel"><div class="bsel-lbl">Task type <span class="bsel-hint">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
-    <div class="task-desc-block fg-desc">
-      <label class="task-desc-label" for="tname">Task details</label>
-      <p class="task-desc-hint">Take your time here — steps, links, context, what “done” looks like. Others can speed-run; you can write as much as you need.</p>
-      <textarea id="tname" class="task-desc-area" placeholder="Example:&#10;• Open the lead sheet and filter today’s rows&#10;• Use DM template #2 for first touch&#10;• Note any replies in blockers below&#10;&#10;Add as much detail as you want…"></textarea>
+    <div class="task-desc-block fg-desc" id="taskDescBlock">
+      <div class="task-desc-head">
+        <div class="task-desc-head-left">
+          <label class="task-desc-label" for="tname">Task details</label>
+          <p class="task-desc-hint">Optional — toggle on when you want steps, links, or context. Off keeps logging fast.</p>
+        </div>
+        <div class="task-desc-toggle"><span class="task-desc-toglbl">Details</span><div class="tog" id="descTog" onclick="togTaskDesc()" title="Show task details"></div></div>
+      </div>
+      <div id="descBody" class="task-desc-body">
+        <textarea id="tname" class="task-desc-area" placeholder="Example:&#10;• Open the lead sheet and filter today’s rows&#10;• Use DM template #2 for first touch&#10;• Note any replies in blockers below&#10;&#10;Add as much detail as you want…"></textarea>
+      </div>
     </div>
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
     <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="done">Done</option><option value="prog">In progress</option><option value="nostart">Not started yet</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
@@ -265,6 +272,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524d"></script>
+<script src="app.js?v=20260524e"></script>
 </body>
 </html>

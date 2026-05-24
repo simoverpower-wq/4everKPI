@@ -1,4 +1,4 @@
-const APP_VER='20260524.4';
+const APP_VER='20260524.5';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -136,8 +136,11 @@ function taskTypesStr(){return sTTs.length?sTTs.join(', '):'';}
 function parseTT(s){if(!s)return[];return s.split(',').map(function(x){return x.trim();}).filter(Boolean);}
 function filterByPeriod(list,period){if(period==='all')return list;var now=new Date(),cut=new Date();if(period==='today'){return list.filter(function(t){return new Date(t.logged_at).toDateString()===now.toDateString();});}if(period==='7d'){cut.setDate(cut.getDate()-7);}else if(period==='30d'){cut.setDate(cut.getDate()-30);}return list.filter(function(t){return new Date(t.logged_at)>=cut;});}
 function fmtField(f,v){if(f==='eta_minutes'||f==='actual_minutes')return fm(parseInt(v,10)||0);if(f==='scheduled_start_time')return fmtStartTime(v);if(f==='status'){var m={done:'Done',prog:'In progress',nostart:'Not started yet',pending:'Pending',late:'Late'};return m[v]||v;}return v||'—';}
-function taskDescLine(t){var d=(t.name||'').trim();return d?'<div class="task-desc-preview">'+esc(d).replace(/\n/g,'<br>')+'</div>':'';}
-function taskCardHist(tid){var h=getTH(tid);if(!h.length)return'';return'<div class="hist-inline"><div class="hist-inline-title">✏️ Edit history</div>'+h.map(function(x){var c=members.find(function(m){return m.id===x.changed_by;});var fn=FL[x.field_changed]||x.field_changed;return'<div class="hist-change"><strong>'+(c?c.name:'Someone')+'</strong> changed <strong>'+fn+'</strong> from "'+fmtField(x.field_changed,x.old_value)+'" to "'+fmtField(x.field_changed,x.new_value)+'"<div class="hist-meta">'+fmtDT(x.changed_at||x.created_at)+'</div></div>';}).join('')+'</div>';}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+function truncCell(text,lines){text=(text||'').trim();if(!text)return'—';var cls=lines===3?' text-clamp-3':lines===4?' text-clamp-4':'';return'<span class="text-clamp'+cls+'" title="'+esc(text)+'">'+esc(text)+'</span>';}
+function histVal(v){v=String(v||'—');return'<span class="hist-val" title="'+esc(v)+'">'+esc(v)+'</span>';}
+function taskDescLine(t){var d=(t.name||'').trim();return d?'<div class="task-desc-preview" title="'+esc(d)+'">'+esc(d)+'</div>':'';}
+function taskCardHist(tid){var h=getTH(tid);if(!h.length)return'';return'<div class="hist-inline"><div class="hist-inline-title">✏️ Edit history</div>'+h.map(function(x){var c=members.find(function(m){return m.id===x.changed_by;});var fn=FL[x.field_changed]||x.field_changed;return'<div class="hist-change"><strong>'+(c?c.name:'Someone')+'</strong> changed <strong>'+fn+'</strong> from '+histVal(fmtField(x.field_changed,x.old_value))+' to '+histVal(fmtField(x.field_changed,x.new_value))+'<div class="hist-meta">'+fmtDT(x.changed_at||x.created_at)+'</div></div>';}).join('')+'</div>';}
 function renderTaskLine(t){var types=parseTT(t.task_type);var typeLbl=types.length?types.join(' · '):(t.name||'—');var timeMeta=(t.role_area||'')+(t.result_category?' · '+t.result_category:'')+(t.scheduled_start_time?' · Start '+fmtStartTime(t.scheduled_start_time):'');return'<div class="ti"><div class="tr1"><span class="tn">'+typeLbl+(t.edited_at?'<span class="ebadge">edited</span>':'')+(t.is_recurring?'<span class="rbadge">🔄 '+t.recur_frequency+'</span>':'')+(t._isOccurrence?'<span class="rbadge">📅 day</span>':'')+'</span>'+stag(t.status)+'</div><div class="tm">'+timeMeta+'</div>'+taskDescLine(t)+ebar(t.eta_minutes,t.actual_minutes)+(t.edited_at?taskCardHist(t.id):'')+'</div>';}
 
 const PAL=[{n:'Neon Green',h:'#7fff6e'},{n:'Electric Blue',h:'#5b9cf6'},{n:'Purple',h:'#a78bfa'},{n:'Hot Pink',h:'#fb7185'},{n:'Teal',h:'#34d399'},{n:'Amber',h:'#ffb830'},{n:'Cyan',h:'#00ffff'},{n:'Gold',h:'#ffd700'},{n:'Lime',h:'#32cd32'},{n:'Orange',h:'#ff9632'},{n:'Red',h:'#ff4444'},{n:'Sky Blue',h:'#64c8ff'},{n:'Violet',h:'#ee82ee'},{n:'Rose',h:'#ff6496'},{n:'Coral',h:'#ff7f50'},{n:'Mint',h:'#98ff98'},{n:'Lavender',h:'#b57bee'},{n:'Peach',h:'#ffb347'},{n:'Steel',h:'#8899dd'},{n:'Ruby',h:'#e0115f'},{n:'Turquoise',h:'#40e0d0'},{n:'Magenta',h:'#ff00ff'},{n:'Indigo',h:'#6366f1'},{n:'Emerald',h:'#10b981'}];
@@ -451,7 +454,7 @@ const TIMES=buildTimePresets(720);
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
-var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all';
+var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true;
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
@@ -484,6 +487,7 @@ async function initLogin(){
   memberAccountTotal=members.length;
   logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
   await loadSettings();
+  setupLoginSearch();
   renderLG(members);
   var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
 }
@@ -540,6 +544,30 @@ function toggleLoginEdit(){
 }
 
 function filterM(){var q=el('msearch').value.toLowerCase();renderLG(q?members.filter(function(m){return m.name.toLowerCase().includes(q);}):members);}
+
+function setupLoginSearch(){
+  var ms=el('msearch');if(!ms)return;
+  ms.value='';
+  ms.setAttribute('autocomplete','off');
+  if(ms.dataset.bound)return;
+  ms.dataset.bound='1';
+  ms.addEventListener('focus',function(){ms.removeAttribute('readonly');});
+  ms.addEventListener('blur',function(){if(!ms.value.trim())ms.setAttribute('readonly','readonly');});
+}
+
+function syncTaskDescUI(expandIfContent){
+  var body=el('descBody'),tog=el('descTog'),block=el('taskDescBlock'),ta=el('tname');
+  if(!body||!tog)return;
+  if(expandIfContent&&ta&&ta.value.trim())descDetailsOn=true;
+  tog.classList.toggle('on',descDetailsOn);
+  body.style.display=descDetailsOn?'block':'none';
+  if(block)block.classList.toggle('collapsed',!descDetailsOn);
+}
+function togTaskDesc(){
+  descDetailsOn=!descDetailsOn;
+  lss('4k_desc_on',descDetailsOn);
+  syncTaskDescUI();
+}
 
 function selM(id,name){
   selPin={id:id,name:name};
@@ -646,6 +674,7 @@ function logout(){
   el('APP').style.display='none';
   el('step2').classList.remove('show');
   el('msearch').value='';
+  setupLoginSearch();
   renderLG(members);
 }
 
@@ -1020,7 +1049,7 @@ function tbl(list){
   if(!list.length)return'<div style="color:var(--text3);font-size:12px;padding:12px 0">No tasks found.</div>';
   var showActCol=cu&&(cu.isAdmin||list.some(function(t){return canEditTask(t);}));var h='<div style="overflow-x:auto"><table class="dtbl"><thead><tr><th>Member</th><th>Task</th><th>Role</th><th>Status</th><th>ETA</th><th>Actual</th><th>Result</th><th>Edited?</th><th>Notes</th><th>Date</th>'+(showActCol?'<th>Actions</th>':'')+'</tr></thead><tbody>';
   var cols=showActCol?11:10;
-  list.slice(0,60).forEach(function(t){var m=members.find(function(x){return x.id===t.member_id;});var ld=parseDT(t.logged_at);h+='<tr><td>'+(m?m.name:'—')+'</td><td>'+(t.task_type||t.name||'—')+(t.is_recurring?' 🔄':'')+'</td><td>'+(t.role_area||'—')+'</td><td>'+stag(t.status)+'</td><td>'+fm(t.eta_minutes)+'</td><td>'+fm(t.actual_minutes)+'</td><td>'+(t.result_category||'—')+'</td><td>'+(t.edited_at?'<span class="ebadge">✏️</span>':'—')+'</td><td style="max-width:120px;word-break:break-word">'+(t.notes||'—')+'</td><td>'+(ld?ld.toLocaleDateString():'—')+'</td>'+(showActCol?'<td>'+taskActions(t)+'</td>':'')+'</tr>';if(t.edited_at)h+='<tr><td colspan="'+cols+'" style="padding-top:0">'+taskCardHist(t.id)+'</td></tr>';});
+  list.slice(0,60).forEach(function(t){var m=members.find(function(x){return x.id===t.member_id;});var ld=parseDT(t.logged_at);var taskLbl=(t.task_type||t.name||'—')+(t.is_recurring?' 🔄':'');h+='<tr><td>'+(m?m.name:'—')+'</td><td class="col-task">'+truncCell(taskLbl,2)+'</td><td>'+truncCell(t.role_area,2)+'</td><td>'+stag(t.status)+'</td><td>'+fm(t.eta_minutes)+'</td><td>'+fm(t.actual_minutes)+'</td><td class="col-result">'+truncCell(t.result_category,2)+'</td><td>'+(t.edited_at?'<span class="ebadge">✏️</span>':'—')+'</td><td class="col-notes">'+truncCell(t.notes,3)+'</td><td>'+(ld?ld.toLocaleDateString():'—')+'</td>'+(showActCol?'<td>'+taskActions(t)+'</td>':'')+'</tr>';if(t.edited_at)h+='<tr class="hist-row"><td colspan="'+cols+'">'+taskCardHist(t.id)+'</td></tr>';});
   h+='</tbody></table></div>';return h;
 }
 
@@ -1211,6 +1240,7 @@ function openT(){
   var al=el('TM').querySelector('.assign-help');if(!al){var lbl=el('TM').querySelector('.bsel .bsel-lbl');if(lbl&&!lbl.querySelector('.help-wrap'))lbl.insertAdjacentHTML('beforeend',' '+hBtn('assign'));}
   var tl=el('TM').querySelectorAll('.bsel .bsel-lbl')[2];if(tl&&!tl.querySelector('.help-wrap'))tl.insertAdjacentHTML('beforeend',' '+hBtn('tasktype'));
   syncScopeVisibility('all');
+  syncTaskDescUI(false);
   el('TM').classList.add('open');
 }
 function openTFor(mid){openT();sMids=[mid];var m=members.find(function(x){return x.id===mid;});if(m)sRoles=parseMemberRoles(m);bMembers();bRoles();bTTs();bRCs();}
@@ -1230,6 +1260,7 @@ function openET(tid){
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
   if(recFreq)qsa('.rbtn').forEach(function(b){if(b.textContent===recFreq)b.classList.add('on');});
   syncScopeVisibility(t.is_recurring?'all':'all');
+  syncTaskDescUI(true);
   el('TM').classList.add('open');
 }
 
@@ -1246,6 +1277,7 @@ function openETOcc(tid,dateKey){
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
   if(recFreq)qsa('.rbtn').forEach(function(b){if(b.textContent===recFreq)b.classList.add('on');});
   syncScopeVisibility('day');
+  syncTaskDescUI(true);
   el('TM').classList.add('open');
 }
 
@@ -1504,7 +1536,6 @@ function parseResFiles(r){
     return{name:item.split('/').pop()||'File',url:item,type:''};
   }).filter(Boolean);
 }
-function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
 function getResultsPool(){
   if(!cu)return resultPosts.slice();
   if(cu.isAdmin)return resultPosts.slice();
