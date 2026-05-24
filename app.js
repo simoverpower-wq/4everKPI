@@ -1,4 +1,4 @@
-const APP_VER='20260525.03';
+const APP_VER='20260525.04';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -128,11 +128,25 @@ function sortByOrder(list,orderKey){var order=orderKey==='login'?loginOrder:role
 function getAssignable(){if(cu&&cu.isAdmin)return members;return members.filter(function(m){return!m.is_admin;});}
 function canEditTask(t){if(!cu||!t)return false;return cu.isAdmin||t.member_id===cu.id;}
 function canDelTask(t){if(!cu||!t)return false;return cu.isAdmin||t.member_id===cu.id;}
-function taskActions(t){
+function taskShortLabel(t){
+  var types=parseTT(t.task_type),lbl=types.length?types.join(' · '):(t.name||'task');
+  lbl=(lbl||'task').trim();
+  return lbl.length>24?lbl.slice(0,22)+'…':lbl;
+}
+function taskActionButtons(t,opts){
+  opts=opts||{};
+  if(!t||(!canEditTask(t)&&!canDelTask(t)))return'';
+  var lbl=taskShortLabel(t),compact=!!opts.compact,labeled=opts.labeled!==false&&!compact;
+  var editLbl=t._isOccurrence?'Edit this day':(labeled?'Edit · '+lbl:'Edit');
+  var delLbl=labeled?'Del · '+lbl:'Del';
   var h='';
-  if(canEditTask(t))h+='<button class="btn sm" data-et="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+'>'+(t._isOccurrence?'Edit day':'Edit')+'</button>';
-  if(canDelTask(t))h+='<button class="btn sm danger" data-dt="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+'>Del</button>';
-  return h?'<div style="display:flex;gap:4px">'+h+'</div>':'';
+  if(canEditTask(t))h+='<button type="button" class="btn sm" data-et="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+' title="Edit '+esc(lbl)+'">'+editLbl+'</button>';
+  if(canDelTask(t))h+='<button type="button" class="btn sm danger" data-dt="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+' title="Delete '+esc(lbl)+'">'+delLbl+'</button>';
+  return h;
+}
+function taskActions(t,opts){
+  var h=taskActionButtons(t,opts);
+  return h?'<div class="task-act-row">'+h+'</div>':'';
 }
 function bindDeleteTaskBtn(btn,stopProp){btn.onclick=function(e){if(stopProp)e.stopPropagation();openDeleteTask(btn.dataset.dt,btn.dataset.occ||null);};}
 function bindEditTaskBtn(btn,stopProp){btn.onclick=function(e){if(stopProp)e.stopPropagation();if(btn.dataset.occ)openETOcc(btn.dataset.et,btn.dataset.occ);else openET(btn.dataset.et);};}
@@ -233,7 +247,12 @@ function insertDescFormat(kind){
   ta.focus();
 }
 function taskCardHist(tid){var h=getTH(tid);if(!h.length)return'';return'<div class="hist-inline"><div class="hist-inline-title">✏️ Edit history</div>'+h.map(function(x){var c=members.find(function(m){return m.id===x.changed_by;});var fn=FL[x.field_changed]||x.field_changed;return'<div class="hist-change"><strong>'+(c?c.name:'Someone')+'</strong> changed <strong>'+fn+'</strong> from '+histVal(fmtField(x.field_changed,x.old_value))+' to '+histVal(fmtField(x.field_changed,x.new_value))+'<div class="hist-meta">'+fmtDT(x.changed_at||x.created_at)+'</div></div>';}).join('')+'</div>';}
-function renderTaskLine(t){var types=parseTT(t.task_type);var typeLbl=types.length?types.join(' · '):(t.name||'—');var timeMeta=(t.role_area||'')+(t.result_category?' · '+t.result_category:'')+(t.scheduled_start_time?' · Start '+fmtStartTime(t.scheduled_start_time):'');return'<div class="ti"><div class="tr1"><span class="tn">'+typeLbl+(t.edited_at?'<span class="ebadge">edited</span>':'')+(t.is_recurring?'<span class="rbadge">🔄 '+t.recur_frequency+'</span>':'')+(t._isOccurrence?'<span class="rbadge">📅 day</span>':'')+'</span>'+stag(t.status)+'</div><div class="tm">'+timeMeta+'</div>'+taskDescLine(t)+ebar(t.eta_minutes,t.actual_minutes)+(t.edited_at?taskCardHist(t.id):'')+'</div>';}
+function renderTaskLine(t,withActions){
+  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'—');
+  var timeMeta=(t.role_area||'')+(t.result_category?' · '+t.result_category:'')+(t.scheduled_start_time?' · Start '+fmtStartTime(t.scheduled_start_time):'');
+  var acts=withActions?taskActions(t,{labeled:true}):'';
+  return'<div class="ti"><div class="tr1"><span class="tn">'+typeLbl+(t.edited_at?'<span class="ebadge">edited</span>':'')+(t.is_recurring?'<span class="rbadge">🔄 '+t.recur_frequency+'</span>':'')+(t._isOccurrence?'<span class="rbadge">📅 day</span>':'')+'</span>'+stag(t.status)+'</div><div class="tm">'+timeMeta+'</div>'+taskDescLine(t)+ebar(t.eta_minutes,t.actual_minutes)+(t.edited_at?taskCardHist(t.id):'')+acts+'</div>';
+}
 
 const PAL=[{n:'Neon Green',h:'#7fff6e'},{n:'Electric Blue',h:'#5b9cf6'},{n:'Purple',h:'#a78bfa'},{n:'Hot Pink',h:'#fb7185'},{n:'Teal',h:'#34d399'},{n:'Amber',h:'#ffb830'},{n:'Cyan',h:'#00ffff'},{n:'Gold',h:'#ffd700'},{n:'Lime',h:'#32cd32'},{n:'Orange',h:'#ff9632'},{n:'Red',h:'#ff4444'},{n:'Sky Blue',h:'#64c8ff'},{n:'Violet',h:'#ee82ee'},{n:'Rose',h:'#ff6496'},{n:'Coral',h:'#ff7f50'},{n:'Mint',h:'#98ff98'},{n:'Lavender',h:'#b57bee'},{n:'Peach',h:'#ffb347'},{n:'Steel',h:'#8899dd'},{n:'Ruby',h:'#e0115f'},{n:'Turquoise',h:'#40e0d0'},{n:'Magenta',h:'#ff00ff'},{n:'Indigo',h:'#6366f1'},{n:'Emerald',h:'#10b981'}];
 
@@ -376,10 +395,7 @@ function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.l
 function renderMyTaskCard(t){
   var acts='';
   if(canEditTask(t)||canDelTask(t)){
-    acts='<div class="mytask-actions"><div class="mytask-actions-row">';
-    if(canEditTask(t))acts+='<button type="button" class="btn sm" data-et="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+'>Edit</button>';
-    if(canDelTask(t))acts+='<button type="button" class="btn sm danger" data-dt="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+'>Del</button>';
-    acts+='</div>'+stag(t.status)+'</div>';
+    acts='<div class="mytask-actions"><div class="mytask-actions-row">'+taskActionButtons(t,{labeled:true})+'</div>'+stag(t.status)+'</div>';
   }else acts='<div class="mytask-actions">'+stag(t.status)+'</div>';
   var editLine=lastEditSummary(t);
   return'<div class="mytask-card'+(t.status==='done'?' mytask-done':'')+'">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="cal-task-top">'+taskDisplayHead(t)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
@@ -969,9 +985,9 @@ function rMembers(){
     var rc=s.rate>=80?'g':s.rate>=50?'a':'r',lc=s.late===0?'g':s.late<=1?'a':'r';
     var dc=s.avgA&&s.avgE?(s.avgA>s.avgE?'r':'g'):'',dv=s.avgA&&s.avgE?((s.avgA>s.avgE?'+':'')+fm(Math.abs(s.avgA-s.avgE))):'—';
     var tHTML='';
-    if(mine.length){mine.forEach(function(t){tHTML+=renderTaskLine(t);if(canEditTask(t)||canDelTask(t))tHTML+='<div style="margin-top:4px">'+taskActions(t)+'</div>';});}
+    if(mine.length){mine.forEach(function(t){tHTML+=renderTaskLine(t,true);});}
     else{tHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;text-align:center">No tasks tracked yet</div>';}
-    var editBtn=cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'';
+    var editBtn=cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit profile</button>':'';
     var logBtn=memberLogBtnHtml(m);
     html+='<div class="mcard '+v.cls+(isC(m)?' chatter':'')+'" draggable="true" data-mid="'+m.id+'">';
     html+='<div class="mhd"><div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div>';
@@ -1048,9 +1064,10 @@ function taskCheckHTML(t){
   return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box"></span></label>';
 }
 
-function renderCalTaskRow(t,extra){
+function renderCalTaskRow(t,extra,withActions){
   var chk=taskCheckHTML(t);
-  return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top">'+taskDisplayHead(t)+stag(t.status)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+(t.edited_at?taskCardHist(t.id):'')+'</div></div>';
+  var acts=withActions?taskActions(t,{labeled:true}):'';
+  return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top">'+taskDisplayHead(t)+stag(t.status)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+(t.edited_at?taskCardHist(t.id):'')+acts+'</div></div>';
 }
 
 function getMyTaskItems(forDate){
@@ -1095,10 +1112,7 @@ function buildLineupHTML(dT,sq){
     var html='<div class="lineup-member'+(isMe?' lineup-me':'')+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
     html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(isMe?' <span class="lineup-you-badge">You</span>':'')+(m&&isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(m&&isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
     html+='<div class="lineup-member-tasks">';
-    mT.forEach(function(t){
-      var acts=taskActions(t);
-      html+=renderCalTaskRow(t)+(acts?'<div class="lineup-task-actions">'+acts+'</div>':'');
-    });
+    mT.forEach(function(t){html+=renderCalTaskRow(t,'',true);});
     html+='</div></div>';return html;
   }).join('');
 }
@@ -1297,7 +1311,7 @@ function tbl(list){
   if(!list.length)return'<div style="color:var(--text3);font-size:12px;padding:12px 0">No tasks found.</div>';
   var showActCol=cu&&(cu.isAdmin||list.some(function(t){return canEditTask(t);}));var h='<div style="overflow-x:auto"><table class="dtbl"><thead><tr><th>Member</th><th>Task</th><th>Role</th><th>Status</th><th>ETA</th><th>Actual</th><th>Result</th><th>Edited?</th><th>Notes</th><th>Date</th>'+(showActCol?'<th>Actions</th>':'')+'</tr></thead><tbody>';
   var cols=showActCol?11:10;
-  list.slice(0,60).forEach(function(t){var m=members.find(function(x){return x.id===t.member_id;});var ld=parseDT(t.logged_at);var taskLbl=(t.task_type||t.name||'—')+(t.is_recurring?' 🔄':'');h+='<tr><td>'+(m?m.name:'—')+'</td><td class="col-task">'+truncCell(taskLbl,2)+'</td><td>'+truncCell(t.role_area,2)+'</td><td>'+stag(t.status)+'</td><td>'+fm(t.eta_minutes)+'</td><td>'+fm(t.actual_minutes)+'</td><td class="col-result">'+truncCell(t.result_category,2)+'</td><td>'+(t.edited_at?'<span class="ebadge">✏️</span>':'—')+'</td><td class="col-notes">'+truncCell(t.notes,3)+'</td><td>'+(ld?ld.toLocaleDateString():'—')+'</td>'+(showActCol?'<td>'+taskActions(t)+'</td>':'')+'</tr>';if(t.edited_at)h+='<tr class="hist-row"><td colspan="'+cols+'">'+taskCardHist(t.id)+'</td></tr>';});
+  list.slice(0,60).forEach(function(t){var m=members.find(function(x){return x.id===t.member_id;});var ld=parseDT(t.logged_at);var taskLbl=(t.task_type||t.name||'—')+(t.is_recurring?' 🔄':'');h+='<tr><td>'+(m?m.name:'—')+'</td><td class="col-task">'+truncCell(taskLbl,2)+'</td><td>'+truncCell(t.role_area,2)+'</td><td>'+stag(t.status)+'</td><td>'+fm(t.eta_minutes)+'</td><td>'+fm(t.actual_minutes)+'</td><td class="col-result">'+truncCell(t.result_category,2)+'</td><td>'+(t.edited_at?'<span class="ebadge">✏️</span>':'—')+'</td><td class="col-notes">'+truncCell(t.notes,3)+'</td><td>'+(ld?ld.toLocaleDateString():'—')+'</td>'+(showActCol?'<td>'+taskActions(t,{compact:true})+'</td>':'')+'</tr>';if(t.edited_at)h+='<tr class="hist-row"><td colspan="'+cols+'">'+taskCardHist(t.id)+'</td></tr>';});
   h+='</tbody></table></div>';return h;
 }
 
