@@ -1,4 +1,4 @@
-const APP_VER='20260524.16';
+const APP_VER='20260524.17';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -21,19 +21,19 @@ function sbErr(label,r){
 const COLORS={purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},teal:{bg:'rgba(52,211,153,.15)',text:'#34d399'},coral:{bg:'rgba(251,113,133,.15)',text:'#fb7185'},blue:{bg:'rgba(91,156,246,.15)',text:'#5b9cf6'},amber:{bg:'rgba(255,184,48,.15)',text:'#ffb830'},neongreen:{bg:'rgba(57,255,20,.15)',text:'#39ff14'},gold:{bg:'rgba(255,215,0,.15)',text:'#ffd700'},violet:{bg:'rgba(238,130,238,.15)',text:'#ee82ee'},cyan:{bg:'rgba(0,255,255,.15)',text:'#00ffff'},red:{bg:'rgba(255,60,60,.15)',text:'#ff4444'},lime:{bg:'rgba(50,205,50,.15)',text:'#32cd32'},midnight:{bg:'rgba(100,120,200,.15)',text:'#8899dd'},rose:{bg:'rgba(255,100,150,.15)',text:'#ff6496'},orange:{bg:'rgba(255,150,50,.15)',text:'#ff9632'},sky:{bg:'rgba(100,200,255,.15)',text:'#64c8ff'}};
 
 const HELP={
-  dashboard:'Your home base — like the scoreboard at a basketball game. Everything the team has logged shows up here so you can see at a glance how the agency is doing today.',
-  pulse:'The agency pulse is like a fitness tracker for the whole team. The green ring fills up as more tasks get marked done — think of it as a gas tank for productivity.',
-  pulse_pct:'This percentage is how many logged tasks are finished. If you logged 10 tasks and 8 are done, that\'s 80%. Higher is better — it means stuff is actually getting completed, not just started.',
-  streak:'The streak counts how many days in a row someone on the team logged at least one task. It\'s like a Snapchat streak but for work — keep it alive by logging something every day!',
-  kpis:'These cards are quick score counters — like points on a leaderboard. Tap any card (except Team size) to see the actual tasks behind the number.',
-  kpi_logged:'Every task anyone on the team has ever logged, all added together. Think of it like counting every lap run at practice — more laps means more effort tracked.',
-  kpi_completed:'Tasks marked as "Done." This is your finished homework pile. The percentage below shows what share of all logged tasks are actually complete.',
-  kpi_late:'Tasks that were missed or finished late — like homework turned in after the deadline. Keep this number low; red means it needs attention.',
-  kpi_tasktime:'Average time tasks actually take once someone logs actual minutes. This tells you how long work really eats up — the core of planning ETAs.',
-  kpi_etaacc:'How actual time compares to ETA across timed tasks. Under estimate (green) means finishing faster than planned; over means tasks run long.',
-  kpi_team:'Active team accounts being tracked for KPIs. Inactive members (not tracking yet) are excluded from pulse and insights.',
-  inactive_member:'Inactive means we haven\'t started logging or tracking this person\'s work yet. They won\'t count against agency pulse or show up in "hasn\'t logged today" warnings.',
-  insights:'Live insights are like a coach shouting tips from the sideline. They pop up automatically when something needs attention or when someone is crushing it.',
+  dashboard:'Your overseer home base — everything you\'ve logged for the team shows up here so you can see at a glance how the agency is pacing today.',
+  pulse:'The agency pulse is your scoreboard for the whole team. The green ring fills up as more tracked tasks get marked done — how much of today\'s lineup is finished.',
+  pulse_pct:'This percentage is how many tracked tasks are finished. If you logged 10 tasks for the team and 8 are done, that\'s 80%. Higher means more of the lineup is complete.',
+  streak:'Counts consecutive days you\'ve logged at least one task for the team. Keep it alive by tracking work every day.',
+  kpis:'Quick score counters for the agency — tap any card (except Team tracking) to see the tasks behind the number.',
+  kpi_logged:'Every task you\'ve logged for the team, all together. Your running tally of what\'s being tracked.',
+  kpi_completed:'Tasks marked as "Done." The percentage below shows what share of tracked tasks are finished.',
+  kpi_late:'Tasks missed or finished late — needs attention before they pile up.',
+  kpi_tasktime:'Average time tasks actually take once you log actual minutes. Core data for planning ETAs and freeing up the day.',
+  kpi_etaacc:'How actual time compares to ETA across timed tasks. Under estimate (green) = faster than planned; over = running long.',
+  kpi_team:'Team members actively being tracked for KPIs. Inactive members (not tracking yet) are excluded from pulse and insights.',
+  inactive_member:'Inactive means you haven\'t started logging or tracking this person\'s work yet. They won\'t count against agency pulse or show up in "nothing tracked today" nudges.',
+  insights:'Live nudges for the overseer — who still needs tasks logged, who\'s over ETA, and how the agency is pacing. Updates as you track the day.',
   team:'Your full team roster on the dashboard — every account, always up to date. Click anyone to see their profile. Search to find someone by name.',
   calendar:'A month-view calendar of who did what and when. Click any day to open Team tasks for that date. The colored dots show tasks on that date.',
   cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
@@ -47,7 +47,7 @@ const HELP={
   chart_results:'Breaks down what kinds of results the team is producing — DMs sent, leads found, etc. Shows which outcomes happen most often.',
   chart_trend:'A line graph of how many tasks were logged each day over the last 2 weeks. Spikes mean busy days; flat lines mean quiet days.',
   oversight:'A "needs help right now" dashboard for admins. Like a teacher\'s desk with all the papers that need grading or follow-up.',
-  os_notlogged:'People who haven\'t logged any tasks today. Like teammates who haven\'t shown up to practice yet.',
+  os_notlogged:'Team members with no tasks logged for them today yet — your cue to log their lineup.',
   os_late:'People who currently have tasks marked as late or missed. These need attention before they pile up.',
   os_overeta:'People who consistently take longer than they estimated. Like someone who always says "5 minutes" but takes 30.',
   os_inprogress:'Tasks currently marked "In progress" — started but not finished. Like open browser tabs you haven\'t closed yet.',
@@ -64,7 +64,7 @@ const HELP={
   intel_recurring:'Tasks set to repeat on a schedule. Shows which repeating jobs the team runs most.',
   library:'The menu of job types your team can do. Tap any bubble to log that task instantly — like speed-dial for common work.',
   roles:'Job descriptions for each person — who does what on the team. Search by name and drag to reorder how they appear.',
-  assign:'Who this task is for. Tap one or more people. Team members can assign to other team members; admins can pick anyone.',
+  assign:'Who this task is for — who you\'re overseeing on this one. Pick one or more people on their lineup.',
   tasktype:'What kind of work it was. Pick one or more types if the task covered multiple things — like tagging a photo with multiple labels.',
   results:'What happened because of the task — "DM sent," "Lead found," etc. Pick all that apply, like checking boxes on a checklist.',
   profile:'One person\'s full stats page. Use the time buttons to zoom in — today, last week, last month, or everything ever.',
@@ -818,7 +818,7 @@ function renderH(tid){return taskCardHist(tid)||'<div style="color:var(--text3);
 function genIns(){
   var box=el('ilist');if(!box)return;
   var ins=[],active=getActiveMembers(),tracked=getTrackedTasks(),tod=new Date().toDateString(),todT=tracked.filter(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===tod;});
-  active.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has logged 0 tasks today.'});});
+  active.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'Log tasks for <strong>'+m.name+'</strong> — nothing tracked yet today.'});});
   active.forEach(function(m){var mine=mt(m.id).filter(function(t){return t.actual_minutes&&t.eta_minutes;});if(mine.length<2)return;var ae=mine.reduce(function(s,t){return s+t.eta_minutes;},0)/mine.length,aa=mine.reduce(function(s,t){return s+t.actual_minutes;},0)/mine.length,d=Math.round(aa-ae);if(d>20)ins.push({t:'warn',i:'🕐',txt:'<strong>'+m.name+'</strong> averages <strong>+'+fm(d)+'</strong> over ETA.'});if(d<-15)ins.push({t:'good',i:'⚡',txt:'<strong>'+m.name+'</strong> is <strong>'+fm(Math.abs(d))+' under ETA</strong>.'});});
   active.forEach(function(m){var s=mst(m.id);if(s.late>=3)ins.push({t:'bad',i:'🚨',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late tasks</strong>.'});else if(s.late>=1)ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late task'+(s.late>1?'s':'')+'</strong>.'});});
   var inactiveCt=members.length-active.length;
@@ -836,7 +836,7 @@ function genIns(){
     var rt=r.result_type||'Result';
     ins.unshift({t:'good',i:'🎯',txt:'<strong>'+(rm?rm.name:'Someone')+'</strong> posted <strong>'+(r.title||'a result')+'</strong> · '+rt+' · '+fmtDT(r.created_at).split(', ').pop()});
   });
-  box.innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks to generate insights.</div>';
+  box.innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks for the team to generate insights.</div>';
 }
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
@@ -890,7 +890,7 @@ function rPulse(){
     if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle='#7fff6e';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
   }
   var op=el('opct');if(op)op.textContent=pct+'%';
-  var ps=el('psub');if(ps)ps.textContent=pct>=80?'Tracked team firing 🔥':pct>=50?'Making moves':'Get those tasks logged';
+  var ps=el('psub');if(ps)ps.textContent=pct>=80?'Tracked team firing 🔥':pct>=50?'Making moves':'Log the team\'s tasks to fill the pulse';
   var str=0;for(var d=0;d<30;d++){var day=new Date();day.setDate(day.getDate()-d);if(tracked.some(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===day.toDateString();}))str++;else if(d>0)break;}
   var st=el('streak');if(st)st.innerHTML='🔥 '+str+' day streak<span class="help-end">'+hBtn('streak')+'</span>';
 }
@@ -910,14 +910,14 @@ function rMembers(){
     var dc=s.avgA&&s.avgE?(s.avgA>s.avgE?'r':'g'):'',dv=s.avgA&&s.avgE?((s.avgA>s.avgE?'+':'')+fm(Math.abs(s.avgA-s.avgE))):'—';
     var tHTML='';
     if(mine.length){mine.forEach(function(t){tHTML+=renderTaskLine(t);if(canEditTask(t)||canDelTask(t))tHTML+='<div style="margin-top:4px">'+taskActions(t)+'</div>';});}
-    else{tHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;text-align:center">No tasks yet</div>';}
+    else{tHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;text-align:center">No tasks tracked yet</div>';}
     var editBtn=cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'';
     html+='<div class="mcard '+v.cls+(isC(m)?' chatter':'')+'" draggable="true" data-mid="'+m.id+'">';
     html+='<div class="mhd"><div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div>';
     html+='<div><div class="mn">'+m.name+(m.is_admin?'<span style="font-size:9px;color:var(--amber);margin-left:5px">ADMIN</span>':'')+(isInactiveMember(m)?'<span class="inactive-badge">Inactive</span>':'')+(isC(m)?'<span style="font-size:9px;color:var(--purple);margin-left:5px">CHATTER</span>':'')+'</div><div class="mr">'+m.role+'</div></div></div><span class="vd '+v.cls+'">'+v.label+'</span></div>';
     html+='<div class="mstats"><div class="ms"><div class="msl">Tasks</div><div class="msv">'+s.total+'</div></div><div class="ms"><div class="msl">Done</div><div class="msv '+rc+'">'+s.rate+'%</div></div><div class="ms"><div class="msl">Late</div><div class="msv '+lc+'">'+s.late+'</div></div><div class="ms"><div class="msl">vs ETA</div><div class="msv '+dc+'">'+dv+'</div></div></div>';
     html+='<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Recent</div>'+tHTML;
-    html+='<div style="display:flex;gap:5px;margin-top:8px"><button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log task</button>'+editBtn+'</div></div>';
+    html+='<div style="display:flex;gap:5px;margin-top:8px"><button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log for '+m.name.split(' ')[0]+'</button>'+editBtn+'</div></div>';
   });
   container.innerHTML=html;
   qsa('.mcard[data-mid]',container).forEach(function(card){
@@ -1293,7 +1293,7 @@ function setProfFilter(f){profileFilter=f;if(profileMid)viewP(profileMid,true);}
 function rOversight(){
   var active=getActiveMembers(),tracked=getTrackedTasks(),tod=new Date().toDateString(),todT=tracked.filter(function(t){return new Date(t.logged_at).toDateString()===tod;}),zero=active.filter(function(m){return!todT.some(function(t){return t.member_id===m.id;});}),latM=active.filter(function(m){return mst(m.id).late>0;}),overE=active.filter(function(m){var s=mst(m.id);return s.avgA&&s.avgE&&s.avgA>s.avgE+15;}),stk=tracked.filter(function(t){return t.status==='prog';}),noR=tracked.filter(function(t){return t.result_category==='No result';}),fu=tracked.filter(function(t){return t.result_category==='Needs review'||(t.notes||'').toLowerCase().includes('follow');}),ed=tracked.filter(function(t){return t.edited_at;});
   var mn=function(t){return(members.find(function(x){return x.id===t.member_id;})||{name:'?'}).name;};
-  el('ogrid').innerHTML='<div class="ocard"><div class="otitle"><span>Not logged today</span><span class="help-slot" data-help="os_notlogged"></span></div>'+(zero.length?zero.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">0 tasks</span></div>';}).join(''):'<div class="oitem"><span>Everyone active</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Has late tasks</span><span class="help-slot" data-help="os_late"></span></div>'+(latM.length?latM.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">'+mst(m.id).late+' late</span></div>';}).join(''):'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Over avg ETA</span><span class="help-slot" data-help="os_overeta"></span></div>'+(overE.length?overE.map(function(m){var s=mst(m.id);return'<div class="oitem"><span>'+m.name+'</span><span class="oval a">+'+fm(s.avgA-s.avgE)+'</span></div>';}).join(''):'<div class="oitem"><span>All within ETA</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>In progress ('+stk.length+')</span><span class="help-slot" data-help="os_inprogress"></span></div>'+(stk.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'Task')+'</span><span class="oval a">Active</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Edited ('+ed.length+')</span><span class="help-slot" data-help="os_edited"></span></div>'+(ed.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Edited</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Follow-up needed ('+fu.length+')</span><span class="help-slot" data-help="os_followup"></span></div>'+(fu.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Follow up</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div>';
+  el('ogrid').innerHTML='<div class="ocard"><div class="otitle"><span>Nothing tracked today</span><span class="help-slot" data-help="os_notlogged"></span></div>'+(zero.length?zero.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">Log tasks</span></div>';}).join(''):'<div class="oitem"><span>Full lineup tracked</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Has late tasks</span><span class="help-slot" data-help="os_late"></span></div>'+(latM.length?latM.map(function(m){return'<div class="oitem"><span>'+m.name+'</span><span class="oval r">'+mst(m.id).late+' late</span></div>';}).join(''):'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Over avg ETA</span><span class="help-slot" data-help="os_overeta"></span></div>'+(overE.length?overE.map(function(m){var s=mst(m.id);return'<div class="oitem"><span>'+m.name+'</span><span class="oval a">+'+fm(s.avgA-s.avgE)+'</span></div>';}).join(''):'<div class="oitem"><span>All within ETA</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>In progress ('+stk.length+')</span><span class="help-slot" data-help="os_inprogress"></span></div>'+(stk.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'Task')+'</span><span class="oval a">Active</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Edited ('+ed.length+')</span><span class="help-slot" data-help="os_edited"></span></div>'+(ed.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Edited</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div><div class="ocard"><div class="otitle"><span>Follow-up needed ('+fu.length+')</span><span class="help-slot" data-help="os_followup"></span></div>'+(fu.slice(0,4).map(function(t){return'<div class="oitem"><span>'+mn(t)+' — '+(t.task_type||'?')+'</span><span class="oval a">Follow up</span></div>';}).join('')||'<div class="oitem"><span>None</span><span class="oval g">✓</span></div>')+'</div>';
   fillHelpSlots();
   el('otasks').innerHTML=tbl(fu.concat(noR).slice(0,20));
   bindDrillActions();
@@ -1312,7 +1312,7 @@ function rRoles(){
   if(q)show=show.filter(function(m){return m.name.toLowerCase().includes(q)||(m.role||'').toLowerCase().includes(q);});
   el('rlist').innerHTML=show.map(function(m){
     var c=getMC(m),tags=(m.role_tags||'').split(',').filter(Boolean),desc=m.description||'No description yet.';
-    return'<div class="role-card'+(isInactiveMember(m)?' role-card-inactive':'')+'" draggable="true" data-rid="'+m.id+'" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rlg);padding:15px;margin-bottom:9px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:9px"><div class="av" style="background:'+c.bg+';color:'+c.text+';width:30px;height:30px;font-size:10px;border-radius:7px">'+ini(m.name)+'</div><div><div style="font-size:13px;font-weight:600">'+m.name+(isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div style="font-size:11px;color:var(--text2)">'+m.role+'</div></div></div>'+(cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:7px">'+desc+'</div>'+(isInactiveMember(m)?'<div class="inactive-note">Not included in agency pulse or “hasn\'t logged today” warnings until tracking starts.</div>':'')+(tags.length?'<div style="display:flex;flex-wrap:wrap;gap:5px">'+tags.map(function(t){return'<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)">'+t.trim()+'</span>';}).join('')+'</div>':'')+'</div>';
+    return'<div class="role-card'+(isInactiveMember(m)?' role-card-inactive':'')+'" draggable="true" data-rid="'+m.id+'" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rlg);padding:15px;margin-bottom:9px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:9px"><div class="av" style="background:'+c.bg+';color:'+c.text+';width:30px;height:30px;font-size:10px;border-radius:7px">'+ini(m.name)+'</div><div><div style="font-size:13px;font-weight:600">'+m.name+(isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div style="font-size:11px;color:var(--text2)">'+m.role+'</div></div></div>'+(cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:7px">'+desc+'</div>'+(isInactiveMember(m)?'<div class="inactive-note">Not included in agency pulse or “nothing tracked today” nudges until you start logging their work.</div>':'')+(tags.length?'<div style="display:flex;flex-wrap:wrap;gap:5px">'+tags.map(function(t){return'<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)">'+t.trim()+'</span>';}).join('')+'</div>':'')+'</div>';
   }).join('');
   qsa('[data-edit]',el('rlist')).forEach(function(btn){var mid=btn.dataset.edit;btn.onclick=function(){openEM(mid);};});
   qsa('.role-card',el('rlist')).forEach(function(card){

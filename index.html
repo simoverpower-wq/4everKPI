@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524p">
+<link rel="stylesheet" href="style.css?v=20260524q">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -18,10 +18,10 @@
       <img src="icon.png" alt="4everKPI" class="login-icon">
       <div class="login-brand">4everKPI</div>
       <div class="login-tagline">Agency operations, measured.</div>
-      <p class="login-lead">One place for your team to log work, track outcomes, and see what's actually moving the agency forward — without spreadsheets, guesswork, or "did anyone follow up on that?"</p>
+      <p class="login-lead">Your overseer command center — log tasks for the team, track time and outcomes, and see what's actually moving the agency forward.</p>
       <div class="login-solves">
         <div class="login-solves-title">What this solves</div>
-        <div class="login-solve"><span class="login-solve-icon">📊</span><div><strong>No visibility</strong><span>See who logged what, completion rates, and real results — live on the dashboard.</span></div></div>
+        <div class="login-solve"><span class="login-solve-icon">📊</span><div><strong>No visibility</strong><span>Track who is doing what, completion rates, and real results — live on the dashboard.</span></div></div>
         <div class="login-solve"><span class="login-solve-icon">⏱️</span><div><strong>Time & accountability</strong><span>Track ETAs vs actual time, late tasks, and streaks so nothing slips through.</span></div></div>
         <div class="login-solve"><span class="login-solve-icon">🎯</span><div><strong>Outcomes over busywork</strong><span>Log results with proof, compare performance, and know what's working.</span></div></div>
         <div class="login-solve"><span class="login-solve-icon">👥</span><div><strong>Role clarity</strong><span>Task libraries, role guides, and tailored suggestions per person — everyone knows their lane.</span></div></div>
@@ -260,7 +260,7 @@
     <div class="frow"><div class="fg"><label>Name</label><input id="mname"></div><div class="fg"><label>PIN (4 digits)</label><input id="mpin" type="password" maxlength="4" placeholder="••••"></div></div>
     <div class="fg"><label>Admin?</label><select id="madmin" onchange="syncMAccessSec()"><option value="false">No — Team member</option><option value="true">Yes — Admin</option></select></div>
     <div class="fg"><label>Role title</label><input id="mrole" placeholder="e.g. Lead Searching"></div>
-    <div class="fg"><label>Tracking status</label><select id="minactive"><option value="false">Active — include in KPIs &amp; pulse</option><option value="true">Inactive — not tracking yet</option></select><p class="field-hint">Inactive members are hidden from agency pulse and “hasn’t logged today” warnings until you start tracking their work.</p></div>
+    <div class="fg"><label>Tracking status</label><select id="minactive"><option value="false">Active — include in KPIs &amp; pulse</option><option value="true">Inactive — not tracking yet</option></select><p class="field-hint">Inactive members are hidden from agency pulse and “nothing tracked today” nudges until you start logging their work.</p></div>
     <div class="fg"><label>Role tags (comma separated)</label><input id="mtags" placeholder="e.g. Lead Searching, Chatters"></div>
     <div class="fg"><label>Role description</label><textarea id="mdesc" placeholder="What does this person do?"></textarea></div>
     <div class="fg"><label>Color</label><div class="cpgrid" id="mcolorgrid"></div><input type="hidden" id="mcolor" value="#34d399"></div>
@@ -314,6 +314,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524p"></script>
+<script src="app.js?v=20260524q"></script>
 </body>
 </html>
