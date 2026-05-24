@@ -1,4 +1,4 @@
-const APP_VER='20260524.2';
+const APP_VER='20260524.4';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -171,20 +171,52 @@ function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(fu
 function tasksForDay(ds){var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});return logged.concat(getRecurringVirtualTasks(ds));}
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey)return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key>=anchorKey)delete ovs[key];});return ovs;}
-function showEditScope(show,anchorKey,defaultScope){var sec=el('editScopeSec');if(!sec)return;if(!show){sec.style.display='none';editScope='all';return;}sec.style.display='block';editOccDate=anchorKey||editOccDate||dsToKey(new Date().toDateString());editScope=defaultScope||'day';qsa('.escope',sec).forEach(function(b){b.classList.toggle('on',b.dataset.scope===editScope);});updateEditScopeNote();syncRecurLock();}
+function syncScopeVisibility(defaultScope){
+  var sec=el('editScopeSec');if(!sec)return;
+  var eid=el('teid').value,ops=sec.querySelector('.edit-scope-ops');
+  sec.style.display='block';
+  sec.classList.toggle('edit-scope-hint',!isRec);
+  if(!isRec){
+    if(ops)ops.style.display='none';
+    editScope='all';
+    var note=el('editScopeNote');
+    if(note)note.textContent=eid?'One-time task — changes apply to this task only. Turn on Recurring to unlock day / future / series options.':'Turn on Recurring task above to schedule repeats — then pick whether changes apply to this day, future days, or the whole series.';
+    syncRecurLock();return;
+  }
+  if(ops)ops.style.display='';
+  editOccDate=editOccDate||dsToKey(new Date().toDateString());
+  if(defaultScope)editScope=defaultScope;
+  var isNew=!eid;
+  qsa('.escope',sec).forEach(function(b){
+    var sc=b.dataset.scope,hide=isNew&&(sc==='day'||sc==='future');
+    b.style.display=hide?'none':'';
+    if(hide&&editScope===sc)editScope='all';
+  });
+  qsa('.escope',sec).forEach(function(b){b.classList.toggle('on',b.style.display!=='none'&&b.dataset.scope===editScope);});
+  updateEditScopeNote();
+  syncRecurLock();
+}
+function showEditScope(show,anchorKey,defaultScope){if(!show){var sec=el('editScopeSec');if(sec)sec.style.display='none';editScope='all';return;}if(anchorKey)editOccDate=anchorKey;syncScopeVisibility(defaultScope);}
 function setEditScope(scope,btn){
   editScope=scope;qsa('.escope').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');
   var eid=el('teid').value,orig=eid?tasks.find(function(t){return t.id===eid;}):null;
   if(orig&&orig.is_recurring){
     var anchor=editOccDate||dsToKey(new Date().toDateString());
-    if(scope==='all')fillTaskModalFromTask(orig);else fillTaskModalFromTask(mergeOccurrence(orig,anchor));
+    if(scope==='all')fillTaskModalFromTask(orig,false);else fillTaskModalFromTask(mergeOccurrence(orig,anchor),false);
     markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
   }
   updateEditScopeNote();syncRecurLock();
 }
-function updateEditScopeNote(){var note=el('editScopeNote');if(!note)return;var d=editOccDate?dateFromKey(editOccDate):null,lbl=d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'this day';if(editScope==='day')note.textContent='Only '+lbl+' changes. Other repeats stay the same.';else if(editScope==='future')note.textContent='Updates from '+lbl+' forward. Earlier days keep what they had.';else note.textContent='Updates every past and future repeat — including days before today.';}
+function updateEditScopeNote(){
+  var note=el('editScopeNote');if(!note)return;
+  if(!el('teid').value){note.textContent='New recurring task — this becomes the template for every repeat. You can customize individual days after saving.';return;}
+  var d=editOccDate?dateFromKey(editOccDate):null,lbl=d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'this day';
+  if(editScope==='day')note.textContent='Only '+lbl+' changes. Other repeats stay the same.';
+  else if(editScope==='future')note.textContent='Updates from '+lbl+' forward. Earlier days keep what they had.';
+  else note.textContent='Updates every past and future repeat — including days before today.';
+}
 function syncRecurLock(){var lock=!!(el('teid')&&el('teid').value&&isRec&&editScope==='day');el('rtog').style.pointerEvents=lock?'none':'';el('recwrap').style.opacity=lock?'.55':'';}
-function fillTaskModalFromTask(t){el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';sEta=t.eta_minutes||null;sAct=t.actual_minutes||null;isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';syncRecurLock();}
+function fillTaskModalFromTask(t,skipScope){el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';sEta=t.eta_minutes||null;sAct=t.actual_minutes||null;isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';if(!skipScope)syncScopeVisibility();else syncRecurLock();}
 function markTimeBtn(id,mins){if(!mins)return;qsa('#'+id+' .tbtn').forEach(function(b){b.classList.toggle('on',parseInt(b.dataset.mins,10)===mins);});}
 function taskScheduleLabel(t){if(t._isOccurrence&&t._occurrenceDate){var d=dateFromKey(t._occurrenceDate);return d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):t._occurrenceDate;}var ld=parseDT(t.logged_at);return ld?ld.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'—';}
 function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.length){var last=h[0],fn=FL[last.field_changed]||last.field_changed;return'Last edit: '+fn+' · '+fmtDT(last.changed_at||last.created_at);}if(t.edited_at)return'Last updated · '+fmtDT(t.edited_at);return'';}
@@ -1152,14 +1184,19 @@ function chkETA(){var tt=sTTs[0],mid=sMids[0];if(!tt||!mid)return;var sim=tasks.
 
 function bTimeG(id,vn){el(id).innerHTML=TIMES.map(function(t){return'<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';}).join('');qsa('.tbtn',el(id)).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,parseInt(this.dataset.mins,10),this);});});}
 function selT(id,v,mins,btn){qsa('#'+id+' .tbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(v==='eta')sEta=mins;else sAct=mins;}
-function togRec(){if(editScope==='day'&&el('teid').value)return;isRec=!isRec;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';if(!isRec)recFreq=null;}
-function setRec(f,btn){if(editScope==='day'&&el('teid').value)return;recFreq=f;qsa('.rbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');}
+function togRec(){
+  if(editScope==='day'&&el('teid').value)return;
+  isRec=!isRec;el('rtog').classList.toggle('on',isRec);el('recwrap').style.display=isRec?'block':'none';
+  if(!isRec)recFreq=null;
+  syncScopeVisibility(el('teid').value?editScope:'all');
+}
+function setRec(f,btn){if(editScope==='day'&&el('teid').value)return;recFreq=f;qsa('.rbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');syncScopeVisibility();}
 
 // TASK MODAL
 function openT(){
   closeMobileNav();
   if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
-  editOccDate=null;editScope='all';showEditScope(false);
+  editOccDate=null;editScope='all';
   el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='done';el('tstart').value='';
   sMids=cu?[cu.id]:[];
   var me=cu?members.find(function(x){return x.id===cu.id;}):null;
@@ -1173,40 +1210,42 @@ function openT(){
   bMembers();bRoles();bTTs();bRCs();bTimeG('etag','eta');bTimeG('actg','act');
   var al=el('TM').querySelector('.assign-help');if(!al){var lbl=el('TM').querySelector('.bsel .bsel-lbl');if(lbl&&!lbl.querySelector('.help-wrap'))lbl.insertAdjacentHTML('beforeend',' '+hBtn('assign'));}
   var tl=el('TM').querySelectorAll('.bsel .bsel-lbl')[2];if(tl&&!tl.querySelector('.help-wrap'))tl.insertAdjacentHTML('beforeend',' '+hBtn('tasktype'));
+  syncScopeVisibility('all');
   el('TM').classList.add('open');
 }
 function openTFor(mid){openT();sMids=[mid];var m=members.find(function(x){return x.id===mid;});if(m)sRoles=parseMemberRoles(m);bMembers();bRoles();bTTs();bRCs();}
 function openEditSelf(){openEM(cu.id);}
-function closeTM(){editOccDate=null;editScope='all';showEditScope(false);el('TM').classList.remove('open');closeDrill();}
+function closeTM(){editOccDate=null;editScope='all';el('TM').classList.remove('open');closeDrill();}
 
 function openET(tid){
   var t=tasks.find(function(x){return x.id===tid;});if(!t)return;if(!canEditTask(t)){toast('You can only edit your own tasks','error');return;}
-  var todayKey=dsToKey(new Date().toDateString());
-  editOccDate=t.is_recurring?todayKey:null;
-  if(t.is_recurring)showEditScope(true,todayKey,'all');else showEditScope(false);
+  editOccDate=t.is_recurring?dsToKey(new Date().toDateString()):null;
+  editScope='all';
   el('tmtitle').textContent='Edit task';el('tsave').textContent='Update task';el('teid').value=tid;
   sMids=[t.member_id];sRoles=t.role_area?[t.role_area]:[];sTTs=parseTT(t.task_type);
   sRCs=t.result_category?t.result_category.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
-  fillTaskModalFromTask(t);
+  fillTaskModalFromTask(t,true);
   ['brad','bttad','brcad'].forEach(function(id){el(id).classList.remove('show');});
   bMembers();bRoles();bTTs();bRCs();bTimeG('etag','eta');bTimeG('actg','act');
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
   if(recFreq)qsa('.rbtn').forEach(function(b){if(b.textContent===recFreq)b.classList.add('on');});
+  syncScopeVisibility(t.is_recurring?'all':'all');
   el('TM').classList.add('open');
 }
 
 function openETOcc(tid,dateKey){
   var t=tasks.find(function(x){return x.id===tid;});if(!t||!t.is_recurring)return;if(!canEditTask(t)){toast('You can only edit your own tasks','error');return;}
-  editOccDate=dateKey;showEditScope(true,dateKey,'day');
+  editOccDate=dateKey;editScope='day';
   var merged=mergeOccurrence(t,dateKey);
   el('tmtitle').textContent='Edit recurring task';el('tsave').textContent='Save changes';el('teid').value=tid;
   sMids=[t.member_id];sRoles=t.role_area?[t.role_area]:[];sTTs=parseTT(t.task_type);
   sRCs=t.result_category?t.result_category.split(',').map(function(s){return s.trim();}).filter(Boolean):[];
-  fillTaskModalFromTask(merged);
+  fillTaskModalFromTask(merged,true);
   ['brad','bttad','brcad'].forEach(function(id){el(id).classList.remove('show');});
   bMembers();bRoles();bTTs();bRCs();bTimeG('etag','eta');bTimeG('actg','act');
   markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
   if(recFreq)qsa('.rbtn').forEach(function(b){if(b.textContent===recFreq)b.classList.add('on');});
+  syncScopeVisibility('day');
   el('TM').classList.add('open');
 }
 
