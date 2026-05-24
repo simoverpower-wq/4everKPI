@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524i">
+<link rel="stylesheet" href="style.css?v=20260524k">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -215,7 +215,7 @@
     </div>
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
     <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="nostart">Not started yet</option><option value="prog">In progress</option><option value="done">Done</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
-    <div class="fg"><label>ETA</label><div class="tgrid tgrid-scroll" id="etag"></div><div class="etasug" id="etas"></div></div>
+    <div class="fg"><label>ETA <span class="bsel-hint">(10 min steps · scroll for more)</span></label><div class="tgrid tgrid-scroll tgrid-eta" id="etag"></div><div class="etasug" id="etas"></div></div>
     <div class="fg"><label>Actual time <span class="bsel-hint">(optional — only fill out after completing the task)</span></label><div class="tgrid tgrid-scroll" id="actg"></div></div>
     <div class="togrow"><span class="toglbl">Recurring task</span><div class="tog" id="rtog" onclick="togRec()"></div></div>
     <div id="recwrap" style="display:none;margin-bottom:10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Repeat every</div><div class="recops"><button class="rbtn" onclick="setRec('Daily',this)">Daily</button><button class="rbtn" onclick="setRec('3 days',this)">3 days</button><button class="rbtn" onclick="setRec('5 days',this)">5 days</button><button class="rbtn" onclick="setRec('1 week',this)">1 week</button><button class="rbtn" onclick="setRec('2 weeks',this)">2 weeks</button><button class="rbtn" onclick="setRec('1 month',this)">1 month</button></div></div>
@@ -308,6 +308,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524j"></script>
+<script src="app.js?v=20260524k"></script>
 </body>
 </html>

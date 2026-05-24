@@ -1,4 +1,4 @@
-const APP_VER='20260524.10';
+const APP_VER='20260524.11';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -29,7 +29,8 @@ const HELP={
   kpi_logged:'Every task anyone on the team has ever logged, all added together. Think of it like counting every lap run at practice — more laps means more effort tracked.',
   kpi_completed:'Tasks marked as "Done." This is your finished homework pile. The percentage below shows what share of all logged tasks are actually complete.',
   kpi_late:'Tasks that were missed or finished late — like homework turned in after the deadline. Keep this number low; red means it needs attention.',
-  kpi_results:'Tasks where something actually happened — a DM sent, a lead found, a call booked. These are real outcomes, not just busywork.',
+  kpi_tasktime:'Average time tasks actually take once someone logs actual minutes. This tells you how long work really eats up — the core of planning ETAs.',
+  kpi_etaacc:'How actual time compares to ETA across timed tasks. Under estimate (green) means finishing faster than planned; over means tasks run long.',
   kpi_team:'Everyone with an account on 4everKPI — admins and team members included. This stays in sync whenever someone is added or removed.',
   insights:'Live insights are like a coach shouting tips from the sideline. They pop up automatically when something needs attention or when someone is crushing it.',
   team:'Your full team roster on the dashboard — every account, always up to date. Click anyone to see their profile. Search to find someone by name.',
@@ -196,11 +197,16 @@ function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,an
 function overrideFieldsFromPatch(patch){return{name:patch.name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
 function scrubOverrideForSave(o){var c=Object.assign({},o);if(c.status!=='done')delete c._revertStatus;return c;}
 function preserveRecurMeta(ovs){var out={};if(ovs._stopAfter)out._stopAfter=ovs._stopAfter;return out;}
+function applyFieldsToKey(ovs,key,fields,existing){
+  if(existing&&existing.skipped)return;
+  if(ovs._stopAfter&&key>=ovs._stopAfter)return;
+  ovs[key]=scrubOverrideForSave(Object.assign({},existing||{},fields));
+}
 function buildSeriesOverrides(orig,anchor,scope,patch){
   var old=parseOverrides(orig),fields=overrideFieldsFromPatch(patch),meta=preserveRecurMeta(old);
   if(scope==='day'){
     var dayO=Object.assign({},old,meta);
-    dayO[anchor]=scrubOverrideForSave(Object.assign({},old[anchor]||{},fields));
+    applyFieldsToKey(dayO,anchor,fields,old[anchor]);
     return dayO;
   }
   if(scope==='future'){
@@ -208,10 +214,7 @@ function buildSeriesOverrides(orig,anchor,scope,patch){
     if(meta._stopAfter)futO._stopAfter=meta._stopAfter;
     listOccurrenceKeys(orig).forEach(function(key){
       if(key<anchor)return;
-      if(futO._stopAfter&&key>=futO._stopAfter)return;
-      if(futO[key]&&futO[key].skipped)return;
-      if(patch.status==='done')futO[key]=scrubOverrideForSave(Object.assign({},futO[key]||{},fields));
-      else delete futO[key];
+      applyFieldsToKey(futO,key,fields,futO[key]);
     });
     return futO;
   }
@@ -220,14 +223,29 @@ function buildSeriesOverrides(orig,anchor,scope,patch){
     if(k.charAt(0)==='_')return;
     if(old[k]&&old[k].skipped)allO[k]={skipped:true};
   });
-  if(patch.status==='done'){
-    listOccurrenceKeys(orig).forEach(function(key){
-      if(allO._stopAfter&&key>=allO._stopAfter)return;
-      if(allO[key]&&allO[key].skipped)return;
-      allO[key]=scrubOverrideForSave(Object.assign({},fields));
-    });
-  }
+  listOccurrenceKeys(orig).forEach(function(key){
+    applyFieldsToKey(allO,key,fields,allO[key]);
+  });
   return allO;
+}
+function roleAreaStyle(role){
+  var h=0,s=(role||'General');
+  for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))%360;
+  return'background:hsla('+h+',52%,42%,.2);color:hsla('+h+',65%,78%,1);border:1px solid hsla('+h+',52%,42%,.38)';
+}
+function taskDisplayHead(t){
+  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'Task');
+  var role=(t.role_area||'').trim();
+  var rolePill=role?'<span class="task-role-pill" style="'+roleAreaStyle(role)+'">'+esc(role)+'</span>':'';
+  return'<div class="task-id-row">'+rolePill+'<span class="task-type-pill" title="'+esc(typeLbl)+'">'+esc(typeLbl)+'</span></div>';
+}
+function taskTimingLine(t){
+  var bits=[];
+  if(t.scheduled_start_time)bits.push('<span class="task-time-chip">Start <strong>'+fmtStartTime(t.scheduled_start_time)+'</strong></span>');
+  if(t.eta_minutes)bits.push('<span class="task-time-chip">ETA <strong>'+fm(t.eta_minutes)+'</strong></span>');
+  if(t.actual_minutes)bits.push('<span class="task-time-chip act">Actual <strong>'+fm(t.actual_minutes)+'</strong></span>');
+  if(t.is_recurring)bits.push('<span class="task-recur-chip">🔄 '+esc(t.recur_frequency||'Recurring')+'</span>');
+  return bits.length?'<div class="task-timing-row">'+bits.join('')+'</div>':'';
 }
 function syncScopeVisibility(defaultScope){
   var sec=el('editScopeSec');if(!sec)return;
@@ -267,9 +285,9 @@ function markTimeBtn(id,mins){if(!mins)return;qsa('#'+id+' .tbtn').forEach(funct
 function taskScheduleLabel(t){if(t._isOccurrence&&t._occurrenceDate){var d=dateFromKey(t._occurrenceDate);return d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):t._occurrenceDate;}var ld=parseDT(t.logged_at);return ld?ld.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'—';}
 function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.length){var last=h[0],fn=FL[last.field_changed]||last.field_changed;return'Last edit: '+fn+' · '+fmtDT(last.changed_at||last.created_at);}if(t.edited_at)return'Last updated · '+fmtDT(t.edited_at);return'';}
 function renderMyTaskCard(t){
-  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'Task');
-  var meta=[t.role_area||'',t.scheduled_start_time?'Start '+fmtStartTime(t.scheduled_start_time):'',t.eta_minutes?'ETA '+fm(t.eta_minutes):'',t.is_recurring?'🔄 '+t.recur_frequency:''].filter(Boolean).join(' · ');
-  var desc=(t.name||'').trim();if(types.length&&desc===types[0])desc='';
+  var desc=(t.name||'').trim();
+  var types=parseTT(t.task_type);
+  if(types.length&&desc===types[0])desc='';
   var acts='';
   if(canEditTask(t)||canDelTask(t)){
     acts='<div class="mytask-actions"><div class="mytask-actions-row">';
@@ -278,7 +296,7 @@ function renderMyTaskCard(t){
     acts+='</div>'+stag(t.status)+'</div>';
   }else acts='<div class="mytask-actions">'+stag(t.status)+'</div>';
   var editLine=lastEditSummary(t);
-  return'<div class="mytask-card'+(t.status==='done'?' mytask-done':'')+'">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="mytask-date">'+taskScheduleLabel(t)+'</div><div class="mytask-name">'+typeLbl+'</div><div class="mytask-meta">'+meta+'</div>'+(desc?'<div class="mytask-desc" title="'+esc(desc)+'">'+esc(desc)+'</div>':'')+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
+  return'<div class="mytask-card'+(t.status==='done'?' mytask-done':'')+'">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="cal-task-top">'+taskDisplayHead(t)+'</div>'+taskTimingLine(t)+(desc?'<div class="mytask-desc" title="'+esc(desc)+'">'+esc(desc)+'</div>':'')+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
 }
 
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{};
@@ -505,8 +523,15 @@ function removeRC(val,roles){
 function getCatInfo(role){var ov=catMeta[role]||{},b=BRA[role]||{};return{icon:ov.icon||b.icon||'📌',desc:ov.desc||b.desc||'',name:ov.name||role};}
 function getRCol(r){return RCOLS[r]||'#888';}
 
-function buildTimePresets(maxMin){var a=[];for(var m=15;m<=maxMin;m+=15)a.push({l:fm(m),m:m});return a;}
-const TIMES=buildTimePresets(720);
+function buildTimePresets(maxMin,step){var a=[],s=step||15;for(var m=s;m<=maxMin;m+=s)a.push({l:fm(m),m:m});return a;}
+function buildEtaPresets(){
+  var a=[];
+  for(var m=10;m<=120;m+=10)a.push({l:m+'m',m:m});
+  [150,180,240,300,360,480,600,720].forEach(function(m){a.push({l:m===720?'12h+':fm(m),m:m});});
+  return a;
+}
+const TIMES=buildTimePresets(720,15);
+const ETA_TIMES=buildEtaPresets();
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
@@ -802,10 +827,13 @@ function rKPIs(){
   var box=el('krow');
   if(!box){console.error('[4KPI] rKPIs: #krow element not found');return;}
   var tot=tasks.length,don=tasks.filter(function(t){return t.status==='done';}).length,lat=tasks.filter(function(t){return t.status==='late';}).length;
-  var res=tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';}).length;
   var rt=tot?Math.round(don/tot*100):0;
+  var timed=tasks.filter(function(t){return t.actual_minutes;});
+  var avgT=timed.length?Math.round(timed.reduce(function(s,t){return s+t.actual_minutes;},0)/timed.length):0;
+  var both=tasks.filter(function(t){return t.actual_minutes&&t.eta_minutes;});
+  var avgDelta=both.length?Math.round(both.reduce(function(s,t){return s+(t.actual_minutes-t.eta_minutes);},0)/both.length):0;
   var teamSz=memberAccountTotal||members.length;
-  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% rate',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'attention',d:'late',h:'kpi_late'},{l:'Results',v:res,c:res>0?'g':'',s:'confirmed',d:'rk',h:'kpi_results'},{l:'Team size',v:teamSz,c:'',s:'accounts',d:'',h:'kpi_team'}];
+  var cards=[{l:'Tasks logged',v:tot,c:'',s:'all time',d:'all',h:'kpi_logged'},{l:'Completed',v:don,c:'g',s:rt+'% done',d:'done',h:'kpi_completed'},{l:'Late / missed',v:lat,c:lat>2?'r':lat>0?'a':'g',s:'needs attention',d:'late',h:'kpi_late'},{l:'Avg task time',v:timed.length?fm(avgT):'—',c:timed.length?'g':'',s:timed.length?timed.length+' timed logs':'log actual time',d:'timed',h:'kpi_tasktime'},{l:'vs ETA',v:both.length?((avgDelta>0?'+':'')+fm(Math.abs(avgDelta))):'—',c:both.length?(avgDelta<=0?'g':'a'):'',s:both.length?(avgDelta<=0?'under estimate':'over estimate'):'need ETA + actual',d:'etaacc',h:'kpi_etaacc'},{l:'Team size',v:teamSz,c:'',s:'accounts',d:'',h:'kpi_team'}];
   box.innerHTML=cards.map(function(k){return'<div class="kcard"'+(k.d?' data-kd="'+k.d+'"':'')+' style="cursor:'+(k.d?'pointer':'default')+'"><div class="kcard-top"><div class="klbl">'+k.l+'</div><span class="help-slot" data-help="'+k.h+'"></span></div><div class="kval '+k.c+'">'+k.v+'</div><div class="ksub">'+k.s+(k.d?' · tap':'')+'</div></div>';}).join('');
   qsa('.kcard[data-kd]').forEach(function(card){card.onclick=function(){dKPI(this.dataset.kd);};});
 }
@@ -917,10 +945,8 @@ function taskCheckHTML(t){
 }
 
 function renderCalTaskRow(t,extra){
-  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'—');
   var chk=taskCheckHTML(t);
-  var meta=(t.role_area||'')+(t.eta_minutes?' · ETA '+fm(t.eta_minutes):'')+(t.scheduled_start_time?' · Start '+fmtStartTime(t.scheduled_start_time):'')+(t.is_recurring?' · 🔄 '+t.recur_frequency:'')+(t.edited_at?' · <span class="ebadge">edited</span>':'');
-  return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top"><span class="cal-task-name">'+typeLbl+'</span>'+stag(t.status)+'</div><div class="cal-task-meta">'+meta+'</div>'+taskDescLine(t)+(t.edited_at?taskCardHist(t.id):'')+'</div></div>';
+  return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top">'+taskDisplayHead(t)+stag(t.status)+'</div>'+taskTimingLine(t)+taskDescLine(t)+(t.edited_at?taskCardHist(t.id):'')+'</div></div>';
 }
 
 function getMyTaskItems(forDate){
@@ -1190,7 +1216,7 @@ function dc(type){
 
 function dKPI(type){
   el('DD').classList.add('open');
-  var map={all:{t:'All tasks',l:tasks},done:{t:'Completed',l:tasks.filter(function(t){return t.status==='done';})},late:{t:'Late / missed',l:tasks.filter(function(t){return t.status==='late';})},rk:{t:'Results produced',l:tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';})}};
+  var map={all:{t:'All tasks',l:tasks},done:{t:'Completed',l:tasks.filter(function(t){return t.status==='done';})},late:{t:'Late / missed',l:tasks.filter(function(t){return t.status==='late';})},timed:{t:'Tasks with actual time',l:tasks.filter(function(t){return t.actual_minutes;})},etaacc:{t:'ETA vs actual',l:tasks.filter(function(t){return t.actual_minutes&&t.eta_minutes;})},rk:{t:'Results produced',l:tasks.filter(function(t){return t.result_category&&t.result_category!=='No result'&&t.result_category!=='Needs review';})}};
   var cfg=map[type]||{t:'Tasks',l:tasks};
   el('ddt2').textContent=cfg.t;el('dstats').innerHTML='';el('dcontent').innerHTML=tbl(cfg.l);
   bindDrillActions();
@@ -1329,7 +1355,7 @@ function addBub(type){
 
 function chkETA(){var tt=sTTs[0],mid=sMids[0];if(!tt||!mid)return;var sim=tasks.filter(function(t){return parseTT(t.task_type).includes(tt)&&t.actual_minutes&&t.member_id===mid;});var e=el('etas');if(sim.length>=2){var avg=Math.round(sim.reduce(function(s,t){return s+t.actual_minutes;},0)/sim.length);e.textContent='💡 Typical: '+fm(avg)+' (from '+sim.length+' past logs)';e.classList.add('show');}else e.classList.remove('show');}
 
-function bTimeG(id,vn){el(id).innerHTML=TIMES.map(function(t){return'<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';}).join('');qsa('.tbtn',el(id)).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,parseInt(this.dataset.mins,10),this);});});}
+function bTimeG(id,vn,presets){var list=presets||(vn==='eta'?ETA_TIMES:TIMES);el(id).innerHTML=list.map(function(t){return'<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';}).join('');qsa('.tbtn',el(id)).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,parseInt(this.dataset.mins,10),this);});});}
 function selT(id,v,mins,btn){qsa('#'+id+' .tbtn').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(v==='eta')sEta=mins;else sAct=mins;}
 function togRec(){
   if(editScope==='day'&&el('teid').value)return;
