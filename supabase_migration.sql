@@ -252,6 +252,11 @@ GRANT EXECUTE ON FUNCTION purge_from_trash(uuid) TO anon, authenticated;
 ALTER TABLE task_history ADD COLUMN IF NOT EXISTS changed_at TIMESTAMPTZ DEFAULT now();
 UPDATE task_history SET changed_at = now() WHERE changed_at IS NULL;
 
+-- Task scheduling: default start time + per-day overrides for recurring tasks
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS scheduled_start_time TEXT;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recur_overrides JSONB DEFAULT '{}'::jsonb;
+UPDATE tasks SET recur_overrides = '{}'::jsonb WHERE recur_overrides IS NULL;
+
 -- Wipe all agency data (keeps members — admin button in app)
 CREATE OR REPLACE FUNCTION wipe_agency_data()
 RETURNS jsonb
