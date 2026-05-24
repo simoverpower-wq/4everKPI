@@ -1,4 +1,4 @@
-const APP_VER='20260524.8';
+const APP_VER='20260524.9';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -183,7 +183,13 @@ function pickOv(ov,key,base){return Object.prototype.hasOwnProperty.call(ov,key)
 function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'nostart'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
 function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(function(t){if(!t.is_recurring||!t.recur_frequency||!t.logged_at)return false;if(new Date(t.logged_at).toDateString()===ds)return false;return recursOnDate(t,ds);}).map(function(t){return mergeOccurrence(t,key);});}
 function tasksForDay(ds){var key=dsToKey(ds);var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;}).map(function(t){return t.is_recurring?mergeOccurrence(t,key):t;});return logged.concat(getRecurringVirtualTasks(ds));}
-function resolveTaskOccDate(t,occDate){if(occDate)return occDate;if(t&&t._occurrenceDate)return t._occurrenceDate;if(lineupDate)return dsToKey(lineupDate.toDateString());return dsToKey(new Date().toDateString());}
+function resolveTaskOccDate(t,occDate){
+  if(occDate)return occDate;
+  if(t&&t._occurrenceDate)return t._occurrenceDate;
+  if(myTasksDate&&el('page-tasks')&&el('page-tasks').classList.contains('active'))return dsToKey(myTasksDate.toDateString());
+  if(lineupDate)return dsToKey(lineupDate.toDateString());
+  return dsToKey(new Date().toDateString());
+}
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
@@ -469,7 +475,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -871,7 +877,7 @@ function taskCheckHTML(t){
     var dk=resolveTaskOccDate(t,t._occurrenceDate||null);
     if(dk)occ=' data-occ="'+dk+'"';
   }
-  return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box'+(done?' done':'')+'"></span></label>';
+  return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box"></span></label>';
 }
 
 function renderCalTaskRow(t,extra){
@@ -881,50 +887,34 @@ function renderCalTaskRow(t,extra){
   return'<div class="cal-task'+(t.status==='done'?' done':'')+'"'+(extra||'')+'>'+chk+'<div class="cal-task-body"><div class="cal-task-top"><span class="cal-task-name">'+typeLbl+'</span>'+stag(t.status)+'</div><div class="cal-task-meta">'+meta+'</div>'+taskDescLine(t)+(t.edited_at?taskCardHist(t.id):'')+'</div></div>';
 }
 
-function getMyTaskItems(){
+function getMyTaskItems(forDate){
   if(!cu)return[];
-  var todayDs=new Date().toDateString(),todayKey=dsToKey(todayDs),seen={},items=[];
-  function add(t){var k=t.id+(t._occurrenceDate||'');if(seen[k])return;seen[k]=true;items.push(t);}
-  tasksForDay(todayDs).forEach(function(t){if(t.member_id===cu.id)add(t);});
-  tasks.filter(function(t){
-    return t.member_id===cu.id&&!t.is_recurring&&(t.status==='prog'||t.status==='pending'||t.status==='nostart')&&new Date(t.logged_at).toDateString()!==todayDs;
-  }).forEach(add);
-  var d=new Date();d.setHours(0,0,0,0);
-  for(var i=1;i<=60;i++){
-    var nd=new Date(d);nd.setDate(nd.getDate()+i);
-    getRecurringVirtualTasks(nd.toDateString()).forEach(function(t){
-      if(t.member_id!==cu.id)return;
-      if(t.status==='done'||t.status==='late')return;
-      add(t);
-    });
-  }
+  var d=forDate||myTasksDate||new Date(),ds=d.toDateString();
+  var items=tasksForDay(ds).filter(function(t){return t.member_id===cu.id;});
   items.sort(function(a,b){
-    var da=a._occurrenceDate||dsToKey(a.logged_at?new Date(a.logged_at).toDateString():todayDs),db=b._occurrenceDate||dsToKey(b.logged_at?new Date(b.logged_at).toDateString():todayDs);
-    var aToday=da===todayKey,bToday=db===todayKey;
-    if(aToday&&!bToday)return-1;if(!aToday&&bToday)return 1;
-    if(da!==db)return da.localeCompare(db);
     var aDone=a.status==='done'?1:0,bDone=b.status==='done'?1:0;
     if(aDone!==bDone)return aDone-bDone;
     return(a.scheduled_start_time||'99:99').localeCompare(b.scheduled_start_time||'99:99');
   });
   return items;
 }
-
+function myTasksDateLabel(){var d=myTasksDate||new Date();return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});}
 function rMyTasks(){
   var list=el('myTasksList'),panel=el('myTasksPanel');if(!list||!panel)return;
   if(!cu){panel.style.display='none';return;}
-  var items=getMyTaskItems(),todayKey=dsToKey(new Date().toDateString());
-  var todayDone=items.filter(function(t){var dk=t._occurrenceDate||dsToKey(new Date(t.logged_at).toDateString());return dk===todayKey&&t.status==='done';}).length;
-  var titleEl=panel.querySelector('.mytasks-title'),subEl=panel.querySelector('.mytasks-sub');
-  if(titleEl)titleEl.textContent='My tasks';
-  if(subEl)subEl.textContent=todayDone?'Today’s work stays here after you check it off — '+todayDone+' done so far':'Open work plus today’s tasks — check off when done, they stay visible';
+  var items=getMyTaskItems(),doneN=items.filter(function(t){return t.status==='done';}).length,openN=items.length-doneN;
+  var lbl=el('myTasksDateLbl'),subEl=el('myTasksSub');
+  if(lbl)lbl.textContent=myTasksDateLabel();
+  if(subEl)subEl.textContent=items.length?(doneN?doneN+' done · ':'')+(openN?openN+' still open · ':'')+'Check off when finished — completed tasks stay visible':'Nothing scheduled for you this day';
   panel.style.display='block';
-  if(!items.length){list.innerHTML='<div class="mytasks-empty">No tasks yet — log one above or pick a day in the lineup below.</div>';return;}
+  if(!items.length){list.innerHTML='<div class="mytasks-empty">No tasks for this day — use ‹ › to browse other days or log a new task.</div>';return;}
   list.innerHTML=items.map(function(t){return renderMyTaskCard(t);}).join('');
   bindCompleteChecks(list);
   qsa('[data-et]',list).forEach(function(btn){bindEditTaskBtn(btn);});
   qsa('[data-dt]',list).forEach(function(btn){bindDeleteTaskBtn(btn);});
 }
+function chMyTasksDay(n){myTasksDate=myTasksDate||new Date();myTasksDate=new Date(myTasksDate);myTasksDate.setDate(myTasksDate.getDate()+n);rMyTasks();}
+function goMyTasksToday(){myTasksDate=new Date();rMyTasks();}
 
 function buildLineupHTML(dT,sq){
   var q=(sq||'').toLowerCase(),bM={};
@@ -968,9 +958,9 @@ function goLineupToday(){lineupDate=new Date();rLineup();}
 
 function openDD(ds){
   lineupDate=new Date(ds);
+  myTasksDate=new Date(ds);
   var btn=document.querySelector('[data-nav="tasks"]');
   gp('tasks',btn||null);
-  var sec=el('lineupList');if(sec)sec.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function bindLineupActions(ctx){
@@ -992,6 +982,7 @@ function bindCompleteChecks(ctx){
 }
 
 async function toggleTaskComplete(tid,occDate,checked,chkEl){
+  if(chkEl)chkEl.checked=checked;
   if(checked)await completeTask(tid,occDate,chkEl);
   else await uncompleteTask(tid,occDate,chkEl);
 }
@@ -1023,7 +1014,8 @@ async function uncompleteTask(tid,occDate,chkEl){
   if(t.is_recurring){
     var anchor=resolveTaskOccDate(t,occDate);
     var ovs=parseOverrides(t),patch=Object.assign({},ovs[anchor]||{});
-    var revert=patch._revertStatus||t.status||'nostart';
+    var revert=patch._revertStatus;
+    if(!revert||revert==='done')revert='nostart';
     patch.status=revert;
     delete patch._revertStatus;
     ovs[anchor]=patch;

@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524h">
+<link rel="stylesheet" href="style.css?v=20260524i">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -129,8 +129,15 @@
       <div class="csum" id="csum"></div>
     </div>
     <div class="page" id="page-tasks">
-      <div class="ph"><div><div class="pt">Team tasks</div><div class="ps">Your open work up top — everyone’s lineup for the day below</div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
-      <div class="mytasks-panel mytasks-panel-prominent" id="myTasksPanel"><div class="mytasks-head"><div class="mytasks-title">My tasks</div><div class="mytasks-sub">Check off when done — completed tasks stay visible so you can review your day</div></div><div class="mytasks-list" id="myTasksList"></div></div>
+      <div class="ph"><div><div class="pt">Team tasks</div><div class="ps">Your day up top — everyone’s lineup below</div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
+      <div class="mytasks-panel mytasks-panel-prominent" id="myTasksPanel">
+        <div class="mytasks-head">
+          <div class="mytasks-title">My tasks for the day</div>
+          <div class="mytasks-date-nav"><button type="button" class="btn sm" onclick="chMyTasksDay(-1)">‹ Prev</button><button type="button" class="btn sm" onclick="goMyTasksToday()">Today</button><button type="button" class="btn sm" onclick="chMyTasksDay(1)">Next ›</button><span class="mytasks-date-lbl" id="myTasksDateLbl">—</span></div>
+          <div class="mytasks-sub" id="myTasksSub">Check off when finished — completed tasks stay visible</div>
+        </div>
+        <div class="mytasks-list" id="myTasksList"></div>
+      </div>
       <div class="lineup-section">
         <div class="lineup-toolbar">
           <div class="lineup-toolbar-left">
@@ -301,6 +308,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524h"></script>
+<script src="app.js?v=20260524i"></script>
 </body>
 </html>
