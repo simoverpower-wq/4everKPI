@@ -1,4 +1,4 @@
-const APP_VER='20260524.17';
+const APP_VER='20260525.01';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -818,7 +818,7 @@ function renderH(tid){return taskCardHist(tid)||'<div style="color:var(--text3);
 function genIns(){
   var box=el('ilist');if(!box)return;
   var ins=[],active=getActiveMembers(),tracked=getTrackedTasks(),tod=new Date().toDateString(),todT=tracked.filter(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===tod;});
-  active.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'Log tasks for <strong>'+m.name+'</strong> — nothing tracked yet today.'});});
+  active.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'Log tasks for <strong>'+m.name+'</strong> — nothing tracked yet today.',mid:m.id});});
   active.forEach(function(m){var mine=mt(m.id).filter(function(t){return t.actual_minutes&&t.eta_minutes;});if(mine.length<2)return;var ae=mine.reduce(function(s,t){return s+t.eta_minutes;},0)/mine.length,aa=mine.reduce(function(s,t){return s+t.actual_minutes;},0)/mine.length,d=Math.round(aa-ae);if(d>20)ins.push({t:'warn',i:'🕐',txt:'<strong>'+m.name+'</strong> averages <strong>+'+fm(d)+'</strong> over ETA.'});if(d<-15)ins.push({t:'good',i:'⚡',txt:'<strong>'+m.name+'</strong> is <strong>'+fm(Math.abs(d))+' under ETA</strong>.'});});
   active.forEach(function(m){var s=mst(m.id);if(s.late>=3)ins.push({t:'bad',i:'🚨',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late tasks</strong>.'});else if(s.late>=1)ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late task'+(s.late>1?'s':'')+'</strong>.'});});
   var inactiveCt=members.length-active.length;
@@ -836,7 +836,10 @@ function genIns(){
     var rt=r.result_type||'Result';
     ins.unshift({t:'good',i:'🎯',txt:'<strong>'+(rm?rm.name:'Someone')+'</strong> posted <strong>'+(r.title||'a result')+'</strong> · '+rt+' · '+fmtDT(r.created_at).split(', ').pop()});
   });
-  box.innerHTML=ins.length?ins.map(function(x){return'<div class="ii '+x.t+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div>'+x.txt+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks for the team to generate insights.</div>';
+  box.innerHTML=ins.length?ins.map(function(x){
+    return'<div class="ii '+x.t+(x.mid?' ii-action':'')+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div class="ii-body">'+x.txt+(x.mid?'<button type="button" class="ins-log-btn" data-log="'+x.mid+'">Log for them →</button>':'')+'</div></div>';
+  }).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks for the team to generate insights.</div>';
+  qsa('.ins-log-btn',box).forEach(function(btn){btn.onclick=function(e){e.stopPropagation();openTFor(btn.dataset.log);};});
 }
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}

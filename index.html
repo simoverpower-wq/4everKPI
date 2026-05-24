@@ -3,13 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>4everKPI</title>
+<script>
+(function(){
+  var V='20260525.01';
+  try{
+    var k='4k_html_ver',p=localStorage.getItem(k);
+    localStorage.setItem(k,V);
+    if(p&&p!==V&&!sessionStorage.getItem('4k_reloaded_'+V)){
+      sessionStorage.setItem('4k_reloaded_'+V,'1');
+      location.reload();
+    }
+  }catch(e){}
+})();
+</script>
 <link rel="icon" type="image/png" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260524q">
+<link rel="stylesheet" href="style.css?v=20260525.01">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -314,6 +328,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260524q"></script>
+<script src="app.js?v=20260525.01"></script>
 </body>
 </html>
