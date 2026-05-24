@@ -296,6 +296,8 @@ body.is-admin .wipe-btn{display:flex !important}
 .task-desc-emphasis-body .task-desc-check.done{color:var(--accent);text-decoration:line-through;opacity:.85}
 .task-desc-emphasis-body .task-desc-spacer{height:6px}
 .inactive-badge{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:rgba(136,153,221,.12);color:var(--steel,#8899dd);padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.overseer-badge{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:rgba(127,255,110,.14);color:var(--accent);padding:2px 7px;border-radius:999px;margin-left:6px;vertical-align:middle}
+.overseer-note{font-size:11px;color:var(--text2);background:rgba(127,255,110,.06);border:1px solid rgba(127,255,110,.16);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.45}
 .inactive-note{font-size:11px;color:var(--text3);background:var(--bg3);border:1px dashed var(--border2);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.45}
 .role-card-inactive{opacity:.88;border-style:dashed!important}
 .mcard.inactive{opacity:.78;border-style:dashed}

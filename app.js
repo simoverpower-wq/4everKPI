@@ -1,4 +1,4 @@
-const APP_VER='20260525.01';
+const APP_VER='20260525.02';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -171,6 +171,33 @@ function isInactiveMember(m){return!!(m&&(m.is_inactive||inactiveMembers[m.id]))
 function syncInactiveMembersFromSettings(){members.forEach(function(m){if(inactiveMembers[m.id])m.is_inactive=true;});}
 function isInactiveColumnError(err){if(!err)return false;var msg=(err.message||'')+(err.details||'')+(err.hint||'');return err.code==='PGRST204'||/is_inactive|column.*does not exist|Could not find the/i.test(msg);}
 function memberPayloadWithoutInactive(payload){var p=Object.assign({},payload);delete p.is_inactive;return p;}
+function getOverseerId(){
+  if(overseerId&&members.some(function(m){return m.id===overseerId;}))return overseerId;
+  var admin=members.find(function(m){return m.is_admin;});
+  return admin?admin.id:null;
+}
+function isOverseerMember(m){return!!(m&&m.id===getOverseerId());}
+function cuIsOverseer(){return!!(cu&&cu.id===getOverseerId());}
+function ensureOverseerDefault(){
+  if(overseerId&&members.some(function(m){return m.id===overseerId;}))return;
+  var admin=members.find(function(m){return m.is_admin;});
+  if(admin){overseerId=admin.id;lss('4k_oid',overseerId);saveAll();}
+}
+function memberFirstName(m){return(m&&m.name)?m.name.split(' ')[0]:'them';}
+function memberLogBtnHtml(m){
+  if(!cu||!m||isInactiveMember(m))return'';
+  if(cuIsOverseer()){
+    if(isOverseerMember(m))return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log my task</button>';
+    return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log for '+memberFirstName(m)+'</button>';
+  }
+  if(cu.id===m.id)return'<button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log task</button>';
+  return'';
+}
+function syncOverseerUI(){
+  var btn=el('transferOwnerBtn');
+  if(btn)btn.hidden=!cuIsOverseer();
+  if(cu){var ur=el('urole');if(ur)ur.textContent=cuIsOverseer()?'Overseer':(cu.isAdmin?'Admin':'Team member');}
+}
 function getActiveMembers(){return members.filter(function(m){return!isInactiveMember(m);});}
 function getTrackedTasks(){var ids=getActiveMembers().map(function(m){return m.id;});return tasks.filter(function(t){return ids.indexOf(t.member_id)>=0;});}
 function insertDescFormat(kind){
@@ -338,7 +365,7 @@ function renderMyTaskCard(t){
   return'<div class="mytask-card'+(t.status==='done'?' mytask-done':'')+'">'+taskCheckHTML(t)+'<div class="mytask-main"><div class="cal-task-top">'+taskDisplayHead(t)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+(editLine?'<div class="mytask-edit">'+editLine+'</div>':'')+'</div>'+acts+'</div>';
 }
 
-var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{},inactiveMembers=ls('4k_ina')||{};
+var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{},inactiveMembers=ls('4k_ina')||{},overseerId=ls('4k_oid')||null;
 
 var NAV_TAB_DEFS=[
   {id:'dashboard',label:'Dashboard',group:'Overview'},{id:'calendar',label:'Calendar',group:'Overview'},{id:'performance',label:'Performance',group:'Overview'},{id:'compare',label:'Compare',group:'Overview'},
@@ -348,12 +375,12 @@ var NAV_TAB_DEFS=[
 ];
 var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,tasks:true,library:true,results:true,trash:true,add_member:false,roles:true};
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);saveSettings();}
 
 async function saveSettings(){
   if(!sb)return;
   try{
-    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers};
+    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:nowISO()}]);
   }catch(e){console.log('saveSettings err',e);}
 }
@@ -368,6 +395,7 @@ async function loadSettings(){
       RCOLS=v.rcols||{};customRA=v.cra||{};delBase=v.del||{tasks:{},rc:[],rcByRole:{}};if(!delBase.rcByRole)delBase.rcByRole={};customRC=v.crc||[];customRCByRole=v.crcr||{};catMeta=v.cm||{};catOrder=v.co||null;loginOrder=v.lo||null;rolesOrder=v.ro||null;
       if(v.mna&&typeof v.mna==='object'){memberNavAccess=v.mna;lss('4k_mna',memberNavAccess);}
       if(v.ina&&typeof v.ina==='object'){inactiveMembers=v.ina;lss('4k_ina',inactiveMembers);}
+      if(v.oid){overseerId=v.oid;lss('4k_oid',overseerId);}
     }
   }catch(e){console.error('[4KPI] loadSettings failed',e);}
 }
@@ -727,7 +755,7 @@ function enterApp(){
   var av=el('uav');
   av.style.background=c.bg;av.style.color=c.text;av.textContent=ini(cu.name);
   el('uname').textContent=cu.name;
-  el('urole').textContent=cu.isAdmin?'Admin':'Team member';
+  syncOverseerUI();
   applyNavAccess();
   var dStr=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});el('today').textContent=dStr;var ins=el('insDate');if(ins)ins.textContent=dStr;
   el('quote').textContent=QT[new Date().getDay()%QT.length];
@@ -752,6 +780,7 @@ async function fetchAndRender(showLoadErr){
       members=mr.data||[];
       memberAccountTotal=typeof mr.count==='number'?mr.count:members.length;
       syncInactiveMembersFromSettings();
+      ensureOverseerDefault();
     }
 
     var tr=await sb.from('tasks').select('*').order('logged_at',{ascending:false});
@@ -778,6 +807,7 @@ async function fetchAndRender(showLoadErr){
 
     render();
     applyNavAccess();
+    syncOverseerUI();
     logKPI('fetchAndRender done');
 
     if(!rtSubscribed){subscribeRealtime();rtSubscribed=true;}
@@ -818,7 +848,14 @@ function renderH(tid){return taskCardHist(tid)||'<div style="color:var(--text3);
 function genIns(){
   var box=el('ilist');if(!box)return;
   var ins=[],active=getActiveMembers(),tracked=getTrackedTasks(),tod=new Date().toDateString(),todT=tracked.filter(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===tod;});
-  active.forEach(function(m){if(!todT.some(function(t){return t.member_id===m.id;}))ins.push({t:'warn',i:'⚠️',txt:'Log tasks for <strong>'+m.name+'</strong> — nothing tracked yet today.',mid:m.id});});
+  active.forEach(function(m){
+    if(todT.some(function(t){return t.member_id===m.id;}))return;
+    if(isOverseerMember(m)){
+      if(cuIsOverseer())ins.push({t:'warn',i:'⚠️',txt:'Log <strong>your own tasks</strong> — nothing tracked yet today.',mid:m.id,self:true});
+      return;
+    }
+    if(cuIsOverseer())ins.push({t:'warn',i:'⚠️',txt:'Log tasks for <strong>'+m.name+'</strong> — nothing tracked yet today.',mid:m.id});
+  });
   active.forEach(function(m){var mine=mt(m.id).filter(function(t){return t.actual_minutes&&t.eta_minutes;});if(mine.length<2)return;var ae=mine.reduce(function(s,t){return s+t.eta_minutes;},0)/mine.length,aa=mine.reduce(function(s,t){return s+t.actual_minutes;},0)/mine.length,d=Math.round(aa-ae);if(d>20)ins.push({t:'warn',i:'🕐',txt:'<strong>'+m.name+'</strong> averages <strong>+'+fm(d)+'</strong> over ETA.'});if(d<-15)ins.push({t:'good',i:'⚡',txt:'<strong>'+m.name+'</strong> is <strong>'+fm(Math.abs(d))+' under ETA</strong>.'});});
   active.forEach(function(m){var s=mst(m.id);if(s.late>=3)ins.push({t:'bad',i:'🚨',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late tasks</strong>.'});else if(s.late>=1)ins.push({t:'warn',i:'⚠️',txt:'<strong>'+m.name+'</strong> has <strong>'+s.late+' late task'+(s.late>1?'s':'')+'</strong>.'});});
   var inactiveCt=members.length-active.length;
@@ -837,7 +874,7 @@ function genIns(){
     ins.unshift({t:'good',i:'🎯',txt:'<strong>'+(rm?rm.name:'Someone')+'</strong> posted <strong>'+(r.title||'a result')+'</strong> · '+rt+' · '+fmtDT(r.created_at).split(', ').pop()});
   });
   box.innerHTML=ins.length?ins.map(function(x){
-    return'<div class="ii '+x.t+(x.mid?' ii-action':'')+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div class="ii-body">'+x.txt+(x.mid?'<button type="button" class="ins-log-btn" data-log="'+x.mid+'">Log for them →</button>':'')+'</div></div>';
+    return'<div class="ii '+x.t+(x.mid?' ii-action':'')+'"><div style="font-size:13px;flex-shrink:0;margin-top:1px">'+x.i+'</div><div class="ii-body">'+x.txt+(x.mid?'<button type="button" class="ins-log-btn" data-log="'+x.mid+'">'+(x.self?'Log my task →':'Log for them →')+'</button>':'')+'</div></div>';
   }).join(''):'<div style="color:var(--text3);font-size:12px;padding:4px 0">Log tasks for the team to generate insights.</div>';
   qsa('.ins-log-btn',box).forEach(function(btn){btn.onclick=function(e){e.stopPropagation();openTFor(btn.dataset.log);};});
 }
@@ -915,12 +952,14 @@ function rMembers(){
     if(mine.length){mine.forEach(function(t){tHTML+=renderTaskLine(t);if(canEditTask(t)||canDelTask(t))tHTML+='<div style="margin-top:4px">'+taskActions(t)+'</div>';});}
     else{tHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;text-align:center">No tasks tracked yet</div>';}
     var editBtn=cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'';
+    var logBtn=memberLogBtnHtml(m);
     html+='<div class="mcard '+v.cls+(isC(m)?' chatter':'')+'" draggable="true" data-mid="'+m.id+'">';
     html+='<div class="mhd"><div style="display:flex;align-items:center;gap:8px"><div class="av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div>';
-    html+='<div><div class="mn">'+m.name+(m.is_admin?'<span style="font-size:9px;color:var(--amber);margin-left:5px">ADMIN</span>':'')+(isInactiveMember(m)?'<span class="inactive-badge">Inactive</span>':'')+(isC(m)?'<span style="font-size:9px;color:var(--purple);margin-left:5px">CHATTER</span>':'')+'</div><div class="mr">'+m.role+'</div></div></div><span class="vd '+v.cls+'">'+v.label+'</span></div>';
+    html+='<div><div class="mn">'+m.name+(isOverseerMember(m)?'<span class="overseer-badge">OVERSEER</span>':'')+(m.is_admin?'<span style="font-size:9px;color:var(--amber);margin-left:5px">ADMIN</span>':'')+(isInactiveMember(m)?'<span class="inactive-badge">Inactive</span>':'')+(isC(m)?'<span style="font-size:9px;color:var(--purple);margin-left:5px">CHATTER</span>':'')+'</div><div class="mr">'+m.role+'</div></div></div><span class="vd '+v.cls+'">'+v.label+'</span></div>';
     html+='<div class="mstats"><div class="ms"><div class="msl">Tasks</div><div class="msv">'+s.total+'</div></div><div class="ms"><div class="msl">Done</div><div class="msv '+rc+'">'+s.rate+'%</div></div><div class="ms"><div class="msl">Late</div><div class="msv '+lc+'">'+s.late+'</div></div><div class="ms"><div class="msl">vs ETA</div><div class="msv '+dc+'">'+dv+'</div></div></div>';
     html+='<div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Recent</div>'+tHTML;
-    html+='<div style="display:flex;gap:5px;margin-top:8px"><button class="btn sm" style="flex:1;justify-content:center" data-log="'+m.id+'">+ Log for '+m.name.split(' ')[0]+'</button>'+editBtn+'</div></div>';
+    if(logBtn||editBtn)html+='<div style="display:flex;gap:5px;margin-top:8px">'+logBtn+editBtn+'</div>';
+    html+='</div>';
   });
   container.innerHTML=html;
   qsa('.mcard[data-mid]',container).forEach(function(card){
@@ -1034,7 +1073,7 @@ function buildLineupHTML(dT,sq){
     var m=members.find(function(x){return x.id===mid;}),c=getMC(m),mT=bM[mid],isMe=cu&&mid===cu.id;
     var don=mT.filter(function(t){return t.status==='done';}).length,lat=mT.filter(function(t){return t.status==='late';}).length,open=mT.length-don;
     var html='<div class="lineup-member'+(isMe?' lineup-me':'')+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
-    html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(isMe?' <span class="lineup-you-badge">You</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(m&&isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
+    html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(isMe?' <span class="lineup-you-badge">You</span>':'')+(m&&isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(m&&isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
     html+='<div class="lineup-member-tasks">';
     mT.forEach(function(t){
       var acts=taskActions(t);
@@ -1315,7 +1354,7 @@ function rRoles(){
   if(q)show=show.filter(function(m){return m.name.toLowerCase().includes(q)||(m.role||'').toLowerCase().includes(q);});
   el('rlist').innerHTML=show.map(function(m){
     var c=getMC(m),tags=(m.role_tags||'').split(',').filter(Boolean),desc=m.description||'No description yet.';
-    return'<div class="role-card'+(isInactiveMember(m)?' role-card-inactive':'')+'" draggable="true" data-rid="'+m.id+'" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rlg);padding:15px;margin-bottom:9px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:9px"><div class="av" style="background:'+c.bg+';color:'+c.text+';width:30px;height:30px;font-size:10px;border-radius:7px">'+ini(m.name)+'</div><div><div style="font-size:13px;font-weight:600">'+m.name+(isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div style="font-size:11px;color:var(--text2)">'+m.role+'</div></div></div>'+(cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:7px">'+desc+'</div>'+(isInactiveMember(m)?'<div class="inactive-note">Not included in agency pulse or “nothing tracked today” nudges until you start logging their work.</div>':'')+(tags.length?'<div style="display:flex;flex-wrap:wrap;gap:5px">'+tags.map(function(t){return'<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)">'+t.trim()+'</span>';}).join('')+'</div>':'')+'</div>';
+    return'<div class="role-card'+(isInactiveMember(m)?' role-card-inactive':'')+'" draggable="true" data-rid="'+m.id+'" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--rlg);padding:15px;margin-bottom:9px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="display:flex;align-items:center;gap:9px"><div class="av" style="background:'+c.bg+';color:'+c.text+';width:30px;height:30px;font-size:10px;border-radius:7px">'+ini(m.name)+'</div><div><div style="font-size:13px;font-weight:600">'+m.name+(isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div style="font-size:11px;color:var(--text2)">'+m.role+'</div></div></div>'+(cu&&cu.isAdmin?'<button class="btn sm" data-edit="'+m.id+'">Edit</button>':'')+'</div><div style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:7px">'+desc+'</div>'+(isInactiveMember(m)?'<div class="inactive-note">Not included in agency pulse or “nothing tracked today” nudges until you start logging their work.</div>':'')+(isOverseerMember(m)?'<div class="overseer-note">Logs tasks for the team and keeps the agency scorecard. Everyone else gets tasks logged for them.</div>':'')+(tags.length?'<div style="display:flex;flex-wrap:wrap;gap:5px">'+tags.map(function(t){return'<span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--bg3);color:var(--text2)">'+t.trim()+'</span>';}).join('')+'</div>':'')+'</div>';
   }).join('');
   qsa('[data-edit]',el('rlist')).forEach(function(btn){var mid=btn.dataset.edit;btn.onclick=function(){openEM(mid);};});
   qsa('.role-card',el('rlist')).forEach(function(card){
@@ -1453,6 +1492,30 @@ function openT(){
 }
 function openTFor(mid){openT();sMids=[mid];var m=members.find(function(x){return x.id===mid;});if(m)sRoles=parseMemberRoles(m);bMembers();bRoles();bTTs();bRCs();}
 function openEditSelf(){openEM(cu.id);}
+
+function openTransferM(){
+  if(!cuIsOverseer()){toast('Only the current overseer can transfer ownership','error');return;}
+  var sel=el('transferPick'),opts=members.filter(function(m){return m.id!==cu.id&&!isInactiveMember(m);});
+  if(!opts.length){toast('No one else to transfer to yet','error');return;}
+  sel.innerHTML=opts.map(function(m){return'<option value="'+m.id+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');
+  el('TransferM').classList.add('open');
+}
+function closeTransferM(){el('TransferM').classList.remove('open');}
+function confirmTransferOwnership(){
+  if(!cuIsOverseer())return;
+  var pick=el('transferPick').value;
+  if(!pick||pick===overseerId){toast('Pick someone else','error');return;}
+  var nm=(members.find(function(m){return m.id===pick;})||{}).name||'New overseer';
+  overseerId=pick;
+  lss('4k_oid',overseerId);
+  saveAll();
+  closeTransferM();
+  toast('Overseer role transferred to '+nm+' ✓');
+  syncOverseerUI();
+  rMembers();
+  genIns();
+  if(el('page-roles').classList.contains('active'))rRoles();
+}
 function closeTM(){editOccDate=null;editScope='all';el('TM').classList.remove('open');closeDrill();}
 
 function openET(tid){
@@ -2141,8 +2204,8 @@ async function wipeDataFallback(){
   await sb.from('settings').delete().eq('key','agency_prefs');
 }
 function resetLocalPrefs(){
-  RCOLS={};customRA={};delBase={tasks:{},rc:[],rcByRole:{}};customRC=[];customRCByRole={};catMeta={};catOrder=null;loginOrder=null;rolesOrder=null;memberNavAccess={};
-  ['4k_rc','4k_cra','4k_del','4k_crc','4k_crcr','4k_cm','4k_co','4k_lo','4k_ro','4k_mna','4k_trash'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+  RCOLS={};customRA={};delBase={tasks:{},rc:[],rcByRole:{}};customRC=[];customRCByRole={};catMeta={};catOrder=null;loginOrder=null;rolesOrder=null;memberNavAccess={};inactiveMembers={};overseerId=null;
+  ['4k_rc','4k_cra','4k_del','4k_crc','4k_crcr','4k_cm','4k_co','4k_lo','4k_ro','4k_mna','4k_ina','4k_oid','4k_trash'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 }
 
 function subscribeRealtime(){
@@ -2153,7 +2216,7 @@ function subscribeRealtime(){
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM','FBM','RM','WPM','DM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else node.classList.remove('open');}});});
+['TM','MM','ECM','FBM','RM','WPM','DM','TransferM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
