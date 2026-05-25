@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.08';
+  var V='20260525.09';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.08">
+<link rel="stylesheet" href="style.css?v=20260525.09">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -145,7 +145,7 @@
       <div class="csum" id="csum"></div>
     </div>
     <div class="page" id="page-tasks">
-      <div class="ph"><div><div class="pt">Team tasks</div><div class="ps">Your day up top — everyone’s lineup below</div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
+      <div class="ph"><div><div class="pt">Team tasks</div><div class="ps">Your day up top — everyone else’s lineup below</div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
       <div class="mytasks-panel mytasks-panel-prominent" id="myTasksPanel">
         <div class="mytasks-head">
           <div class="mytasks-title">My tasks for the day</div>
@@ -157,7 +157,7 @@
       <div class="lineup-section">
         <div class="lineup-toolbar">
           <div class="lineup-toolbar-left">
-            <div class="lineup-label">Everyone’s lineup</div>
+            <div class="lineup-label">Everyone else’s lineup</div>
             <div class="lineup-date-nav"><button type="button" class="btn sm" onclick="chLineupDay(-1)">‹</button><button type="button" class="btn sm" onclick="goLineupToday()">Today</button><button type="button" class="btn sm" onclick="chLineupDay(1)">›</button><span class="lineup-date-lbl" id="lineupDateLbl">—</span></div>
           </div>
           <input class="lineup-srch" id="lineupSrch" placeholder="🔍 Search tasks or people..." oninput="filterLineup()">
@@ -354,6 +354,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.08"></script>
+<script src="app.js?v=20260525.09"></script>
 </body>
 </html>

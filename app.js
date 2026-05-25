@@ -1,4 +1,4 @@
-const APP_VER='20260525.08';
+const APP_VER='20260525.09';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -126,8 +126,14 @@ function getMC(m){if(!m)return COLORS.teal;var col=m.color||'teal';if(col.charAt
 function renderSwatches(gridId,hiddenId,cur){var g=el(gridId),h=el(hiddenId);if(!g)return;g.innerHTML=PAL.map(function(c){return'<div class="csw'+(cur===c.h?' picked':'')+'" style="background:'+c.h+'" data-hex="'+c.h+'" title="'+c.n+'"></div>';}).join('');qsa('.csw',g).forEach(function(sw){sw.onclick=function(){h.value=this.dataset.hex;qsa('.csw',g).forEach(function(x){x.classList.remove('picked');});this.classList.add('picked');};});}
 function sortByOrder(list,orderKey){var order=orderKey==='login'?loginOrder:rolesOrder;if(!order||!order.length)return list.slice();return list.slice().sort(function(a,b){var ia=order.indexOf(a.id),ib=order.indexOf(b.id);if(ia<0)ia=999;if(ib<0)ib=999;return ia-ib;});}
 function getAssignable(){if(cu&&cu.isAdmin)return members;return members.filter(function(m){return!m.is_admin;});}
-function canEditTask(t){if(!cu||!t)return false;return cu.isAdmin||t.member_id===cu.id;}
-function canDelTask(t){if(!cu||!t)return false;return cu.isAdmin||t.member_id===cu.id;}
+function canEditTask(t){if(!cu||!t)return false;return cu.isAdmin||isSelfMember(t.member_id);}
+function canDelTask(t){if(!cu||!t)return false;return cu.isAdmin||isSelfMember(t.member_id);}
+function isSelfMember(mid){return !!(cu&&mid!=null&&String(mid)===String(cu.id));}
+function lineupTasksForOthers(dayTasks){
+  if(!dayTasks||!dayTasks.length)return[];
+  if(!cu)return dayTasks.slice();
+  return dayTasks.filter(function(t){return !isSelfMember(t.member_id);});
+}
 function taskShortLabel(t){
   var types=parseTT(t.task_type),lbl=types.length?types.join(' · '):(t.name||'task');
   lbl=(lbl||'task').trim();
@@ -1173,14 +1179,13 @@ function taskMatchesQuery(t,q){
 }
 function buildLineupHTML(dT,sq,dateKey){
   var q=(sq||'').toLowerCase().trim(),bM={};
-  dT.forEach(function(t){if(!bM[t.member_id])bM[t.member_id]=[];bM[t.member_id].push(t);});
-  var mids=Object.keys(bM);
-  if(cu)mids=mids.filter(function(mid){return mid!==cu.id;});
+  lineupTasksForOthers(dT).forEach(function(t){if(!bM[t.member_id])bM[t.member_id]=[];bM[t.member_id].push(t);});
+  var mids=Object.keys(bM).filter(function(mid){return !isSelfMember(mid);});
   if(q){
-    var namedMembers=members.filter(function(m){return bM[m.id]&&memberMatchesQuery(m,q);});
+    var namedMembers=members.filter(function(m){return bM[m.id]&&memberMatchesQuery(m,q)&&!isSelfMember(m.id);});
     if(namedMembers.length){
-      var nameIds=namedMembers.map(function(m){return m.id;});
-      mids=mids.filter(function(mid){return nameIds.indexOf(mid)>=0;});
+      var nameIds=namedMembers.map(function(m){return String(m.id);});
+      mids=mids.filter(function(mid){return nameIds.indexOf(String(mid))>=0;});
     }else{
       mids=mids.filter(function(mid){
         var mT=bM[mid]||[];
@@ -1191,11 +1196,11 @@ function buildLineupHTML(dT,sq,dateKey){
     }
   }
   if(!mids.length)return'<div class="lineup-empty">'+(q?'No tasks match your search.':'No one else has tasks scheduled for this day.')+'</div>';
-  return mids.map(function(mid){
-    var m=members.find(function(x){return x.id===mid;}),c=getMC(m),mT=applyTaskDayOrder(bM[mid],mid,dateKey),isMe=cu&&mid===cu.id;
+  return mids.filter(function(mid){return !isSelfMember(mid);}).map(function(mid){
+    var m=members.find(function(x){return String(x.id)===String(mid);}),c=getMC(m),mT=applyTaskDayOrder(bM[mid],mid,dateKey);
     var don=mT.filter(function(t){return t.status==='done';}).length,lat=mT.filter(function(t){return t.status==='late';}).length,open=mT.length-don;
-    var html='<div class="lineup-member'+(isMe?' lineup-me':'')+'" data-member-id="'+mid+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
-    html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(isMe?' <span class="lineup-you-badge">You</span>':'')+(m&&isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(m&&isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
+    var html='<div class="lineup-member" data-member-id="'+mid+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
+    html+='<div class="lineup-member-head"><div class="av lineup-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m?m.name:'?')+'</div><div class="lineup-member-id"><div class="lineup-member-name">'+(m?m.name:'Unknown')+(m&&isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(m&&m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(m&&isInactiveMember(m)?' <span class="inactive-badge">Inactive</span>':'')+'</div><div class="lineup-member-role">'+(m?m.role:'')+'</div></div><div class="lineup-member-stats">'+mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open>0?' · '+open+' open':'')+(lat>0?' · '+lat+' late':'')+'</div></div>';
     html+='<div class="lineup-member-tasks">';
     mT.forEach(function(t){html+=renderCalTaskRow(t,'',true);});
     html+='</div></div>';return html;
@@ -1213,7 +1218,10 @@ function rLineup(){
   curDayT=tasksForDay(ds);
   if(lbl)lbl.textContent=lineupDateLabel();
   var sq=el('lineupSrch')?el('lineupSrch').value:'';
-  list.innerHTML=curDayT.length?buildLineupHTML(curDayT,sq,dateKey):'<div class="lineup-empty">No tasks scheduled for this day.</div>';
+  var others=lineupTasksForOthers(curDayT);
+  if(!curDayT.length)list.innerHTML='<div class="lineup-empty">No tasks scheduled for this day.</div>';
+  else if(!others.length&&!sq)list.innerHTML='<div class="lineup-empty">No one else has tasks scheduled for this day.</div>';
+  else list.innerHTML=buildLineupHTML(curDayT,sq,dateKey);
   bindLineupActions(list);
   qsa('.lineup-member',list).forEach(function(block){
     var tasksEl=block.querySelector('.lineup-member-tasks');
