@@ -1,4 +1,4 @@
-const APP_VER='20260525.13';
+const APP_VER='20260525.14';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -147,6 +147,7 @@ function taskActionButtons(t,opts){
   var delLbl=labeled?'Del · '+lbl:'Del';
   var h='';
   if(canEditTask(t))h+='<button type="button" class="btn sm" data-et="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+' title="Edit '+esc(lbl)+'">'+editLbl+'</button>';
+  if(canEditTask(t))h+='<button type="button" class="btn sm task-dup-btn" data-dup="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+' title="Duplicate for this member">Duplicate</button>';
   if(canDelTask(t))h+='<button type="button" class="btn sm danger" data-dt="'+t.id+'"'+(t._isOccurrence?' data-occ="'+t._occurrenceDate+'"':'')+' title="Delete '+esc(lbl)+'">'+delLbl+'</button>';
   return h;
 }
@@ -156,6 +157,52 @@ function taskActions(t,opts){
 }
 function bindDeleteTaskBtn(btn,stopProp){btn.onclick=function(e){if(stopProp)e.stopPropagation();openDeleteTask(btn.dataset.dt,btn.dataset.occ||null);};}
 function bindEditTaskBtn(btn,stopProp){btn.onclick=function(e){if(stopProp)e.stopPropagation();if(btn.dataset.occ)openETOcc(btn.dataset.et,btn.dataset.occ);else openET(btn.dataset.et);};}
+function bindDuplicateTaskBtn(btn,stopProp){btn.onclick=function(e){if(stopProp)e.stopPropagation();duplicateTask(btn.dataset.dup,btn.dataset.occ||null,btn);};}
+function taskDuplicateLogDate(){
+  if(el('page-tasks')&&el('page-tasks').classList.contains('active')){
+    if(lineupDate)return new Date(lineupDate);
+    if(myTasksDate)return new Date(myTasksDate);
+  }
+  return new Date();
+}
+async function duplicateTask(tid,occDate,btnEl){
+  if(!sb){toast('Not connected','error');return;}
+  if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
+  var orig=tasks.find(function(x){return x.id===tid;});
+  if(!orig||!canEditTask(orig)){toast('You can\'t duplicate this task','error');return;}
+  if(btnEl)btnEl.disabled=true;
+  try{
+    var anchor=occDate||resolveEditOccDate(orig,null);
+    var src=orig.is_recurring?mergeOccurrence(orig,anchor):orig;
+    var logDate=taskDuplicateLogDate();
+    logDate.setHours(12,0,0,0);
+    var row={
+      member_id:orig.member_id,
+      name:src.name,
+      notes:src.notes||'',
+      role_area:src.role_area||null,
+      task_type:src.task_type||null,
+      result_category:src.result_category||null,
+      status:'nostart',
+      eta_minutes:src.eta_minutes||null,
+      actual_minutes:null,
+      scheduled_start_time:src.scheduled_start_time||null,
+      is_recurring:!!orig.is_recurring,
+      recur_frequency:orig.is_recurring?(orig.recur_frequency||null):null,
+      logged_at:logDate.toISOString()
+    };
+    if(orig.is_recurring)row.recur_overrides={};
+    var r=await sb.from('tasks').insert([row]).select();
+    if(r.error){console.error('[4KPI] duplicateTask',r.error);toast('Could not duplicate task','error');return;}
+    var m=members.find(function(x){return x.id===orig.member_id;});
+    toast('Task duplicated for '+(m?m.name:'member')+' ✓');
+    await load();
+    refreshDashboardMetrics();
+    if(el('page-tasks').classList.contains('active'))rTasksPage();
+  }finally{
+    if(btnEl)btnEl.disabled=false;
+  }
+}
 function taskTypesStr(){return sTTs.length?sTTs.join(', '):'';}
 function parseTT(s){if(!s)return[];return s.split(',').map(function(x){return x.trim();}).filter(Boolean);}
 function filterByPeriod(list,period){if(period==='all')return list;var now=new Date(),cut=new Date();if(period==='today'){return list.filter(function(t){return new Date(t.logged_at).toDateString()===now.toDateString();});}if(period==='7d'){cut.setDate(cut.getDate()-7);}else if(period==='30d'){cut.setDate(cut.getDate()-30);}return list.filter(function(t){return new Date(t.logged_at)>=cut;});}
@@ -1147,6 +1194,7 @@ function rMembers(){
   qsa('[data-log]',container).forEach(function(btn){var mid=btn.dataset.log;btn.onclick=function(e){e.stopPropagation();openTFor(mid);};});
   qsa('[data-edit]',container).forEach(function(btn){var mid=btn.dataset.edit;btn.onclick=function(e){e.stopPropagation();openEM(mid);};});
   qsa('[data-et]',container).forEach(function(btn){bindEditTaskBtn(btn,true);});
+  qsa('[data-dup]',container).forEach(function(btn){bindDuplicateTaskBtn(btn,true);});
   qsa('[data-dt]',container).forEach(function(btn){bindDeleteTaskBtn(btn,true);});
 }
 
@@ -1230,6 +1278,7 @@ function rMyTasks(){
   list.innerHTML=items.map(function(t){return renderMyTaskCard(t);}).join('');
   bindCompleteChecks(list);
   qsa('[data-et]',list).forEach(function(btn){bindEditTaskBtn(btn);});
+  qsa('[data-dup]',list).forEach(function(btn){bindDuplicateTaskBtn(btn);});
   qsa('[data-dt]',list).forEach(function(btn){bindDeleteTaskBtn(btn);});
   bindTaskDrag(list,cu.id,dsToKey(myTasksDate||new Date()));
 }
@@ -1311,6 +1360,7 @@ function openDD(ds){
 function bindLineupActions(ctx){
   var root=ctx||el('lineupList')||document;
   qsa('[data-et]',root).forEach(function(btn){bindEditTaskBtn(btn);});
+  qsa('[data-dup]',root).forEach(function(btn){bindDuplicateTaskBtn(btn);});
   qsa('[data-dt]',root).forEach(function(btn){bindDeleteTaskBtn(btn);});
   bindCompleteChecks(root);
 }
@@ -1558,7 +1608,7 @@ function dKPI(type){
   bindDrillActions();
 }
 
-function bindDrillActions(){qsa('[data-et]').forEach(function(btn){bindEditTaskBtn(btn);});qsa('[data-dt]').forEach(function(btn){bindDeleteTaskBtn(btn);});}
+function bindDrillActions(){qsa('[data-et]').forEach(function(btn){bindEditTaskBtn(btn);});qsa('[data-dup]').forEach(function(btn){bindDuplicateTaskBtn(btn);});qsa('[data-dt]').forEach(function(btn){bindDeleteTaskBtn(btn);});}
 function closeDrill(){el('DD').classList.remove('open');}
 
 function viewP(mid,keepFilter){
