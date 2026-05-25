@@ -130,7 +130,16 @@ body.is-admin .wipe-btn{display:flex !important}
 .dash-krow .kcard:hover{border-color:rgba(127,255,110,.2);background:rgba(127,255,110,.02)}
 .kcard-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}
 .kcard .klbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:0}
-.pbar.dash-pulse{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.pbar.dash-pulse{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 22px;margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px}
+.pleft{display:flex;align-items:flex-start;gap:14px;flex:1;min-width:0}
+.pulse-main{min-width:0;flex:1}
+.pulse-date-nav{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+.pulse-date-lbl{font-size:11px;color:var(--text2);margin-left:2px}
+.pulse-breakdown{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pulse-pill{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);white-space:nowrap}
+.pulse-pill-main{border-color:rgba(127,255,110,.35);color:var(--accent);background:rgba(127,255,110,.06)}
+.pulse-pill-muted{opacity:.75}
+.dash-pulse .psub{font-size:12px;color:var(--text2);margin-top:0;line-height:1.45}
 .pbar-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .dash-split .dpanel{border-radius:16px;border:1px solid var(--border);background:var(--bg2)}
 .dash-split .dphead{padding:14px 16px}

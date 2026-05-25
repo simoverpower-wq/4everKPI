@@ -1,4 +1,4 @@
-const APP_VER='20260525.09';
+const APP_VER='20260525.10';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -22,8 +22,8 @@ const COLORS={purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},teal:{bg:'rgba(
 
 const HELP={
   dashboard:'Your overseer home base — everything you\'ve logged for the team shows up here so you can see at a glance how the agency is pacing today.',
-  pulse:'The agency pulse is your scoreboard for the whole team. The green ring fills up as more tracked tasks get marked done — how much of today\'s lineup is finished.',
-  pulse_pct:'This percentage is how many tracked tasks are finished. If you logged 10 tasks for the team and 8 are done, that\'s 80%. Higher means more of the lineup is complete.',
+  pulse:'The agency pulse is today\'s daily scoreboard — it resets each day. Check off tasks, log actual time, and stay on ETA to fill the ring.',
+  pulse_pct:'Today\'s pulse blends checkoffs (~55%), logging actual time (~25%), and ETA accuracy (~20%). Checking tasks off moves it the most.',
   streak:'Counts consecutive days you\'ve logged at least one task for the team. Keep it alive by tracking work every day.',
   kpis:'Quick score counters for the agency — tap any card (except Team tracking) to see the tasks behind the number.',
   kpi_logged:'Every task you\'ve logged for the team, all together. Your running tally of what\'s being tracked.',
@@ -240,6 +240,41 @@ function syncOverseerUI(){
 }
 function getActiveMembers(){return members.filter(function(m){return!isInactiveMember(m);});}
 function getTrackedTasks(){var ids=getActiveMembers().map(function(m){return m.id;});return tasks.filter(function(t){return ids.indexOf(t.member_id)>=0;});}
+function getDayTasksForPulse(forDate){
+  var d=forDate||pulseDate||new Date(),ds=d.toDateString(),activeIds={};
+  getActiveMembers().forEach(function(m){activeIds[String(m.id)]=1;});
+  return tasksForDay(ds).filter(function(t){return activeIds[String(t.member_id)];});
+}
+function computeDailyPulse(dayTasks){
+  var tot=(dayTasks||[]).length;
+  if(!tot)return{pct:0,done:0,tot:0,completion:0,timeScore:0,etaScore:0,timedDone:0,both:0,avgDelta:null};
+  var done=dayTasks.filter(function(t){return t.status==='done';}).length;
+  var completion=(done/tot)*100;
+  var doneTasks=dayTasks.filter(function(t){return t.status==='done';});
+  var timedDone=doneTasks.filter(function(t){return t.actual_minutes>0;}).length;
+  var timeScore=doneTasks.length?(timedDone/doneTasks.length)*100:0;
+  var both=dayTasks.filter(function(t){return t.actual_minutes&&t.eta_minutes;});
+  var etaScore=50,avgDelta=null;
+  if(both.length){
+    var acc=both.map(function(t){
+      var ratio=t.actual_minutes/t.eta_minutes;
+      if(ratio<=1)return 100;
+      return Math.max(0,100-(ratio-1)*100);
+    });
+    etaScore=acc.reduce(function(s,v){return s+v;},0)/acc.length;
+    avgDelta=Math.round(both.reduce(function(s,t){return s+(t.actual_minutes-t.eta_minutes);},0)/both.length);
+  }
+  var pct=Math.round(completion*0.55+timeScore*0.25+etaScore*0.20);
+  return{pct:Math.min(100,Math.max(0,pct)),done:done,tot:tot,completion:Math.round(completion),timeScore:Math.round(timeScore),etaScore:Math.round(etaScore),timedDone:timedDone,both:both.length,avgDelta:avgDelta};
+}
+function isPulseToday(forDate){var t=new Date(),d=forDate||pulseDate||new Date();return t.toDateString()===d.toDateString();}
+function pulseDateLabel(){var d=pulseDate||new Date();return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});}
+function refreshDashboardMetrics(){
+  rPulse();rKPIs();genIns();
+  if(el('page-tasks')&&el('page-tasks').classList.contains('active'))rTasksPage();
+}
+function chPulseDay(n){pulseDate=pulseDate||new Date();pulseDate=new Date(pulseDate);pulseDate.setDate(pulseDate.getDate()+n);refreshDashboardMetrics();}
+function goPulseToday(){pulseDate=new Date();refreshDashboardMetrics();}
 function insertDescFormat(kind){
   var ta=el('tname');if(!ta)return;
   var ins={bullet:'• ',check:'[ ] ',checkdone:'[x] ',num:'1. '}[kind]||'';
@@ -719,7 +754,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),pulseDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -973,7 +1008,8 @@ function genIns(){
   var ttR={};tasks.forEach(function(t){if(t.task_type&&t.result_category&&t.result_category!=='No result')ttR[t.task_type]=(ttR[t.task_type]||0)+1;});
   var best=Object.entries(ttR).sort(function(a,b){return b[1]-a[1];})[0];if(best)ins.push({t:'good',i:'🏆',txt:'"<strong>'+best[0]+'</strong>" is top task — <strong>'+best[1]+' results</strong>.'});
   var tot=tracked.length,don=tracked.filter(function(t){return t.status==='done';}).length,rt=tot?Math.round(don/tot*100):0;
-  if(tot>0){if(rt>=80)ins.push({t:'good',i:'✅',txt:'Tracked team completion is <strong>'+rt+'%</strong>.'});else if(rt>=50)ins.push({t:'warn',i:'📊',txt:'Tracked team completion is <strong>'+rt+'%</strong> — room to improve.'});else ins.push({t:'bad',i:'🔴',txt:'Only <strong>'+rt+'%</strong> completion among tracked members.'});}
+  var todDay=getDayTasksForPulse(new Date()),todTot=todDay.length,todDon=todDay.filter(function(t){return t.status==='done';}).length,todRt=todTot?Math.round(todDon/todTot*100):0;
+  if(tot>0){if(todTot>0){if(todRt>=80)ins.push({t:'good',i:'✅',txt:'Today\'s lineup is <strong>'+todDon+'/'+todTot+' done</strong> ('+todRt+'% checked off).'});else if(todRt>=50)ins.push({t:'warn',i:'📊',txt:'Today: <strong>'+todDon+'/'+todTot+' tasks done</strong> — checkoffs move the daily pulse.'});else ins.push({t:'bad',i:'🔴',txt:'Today: only <strong>'+todDon+'/'+todTot+' done</strong> — check tasks off to raise the pulse.'});}else if(rt>=80)ins.push({t:'good',i:'✅',txt:'Tracked team completion is <strong>'+rt+'%</strong> (all time).'});else if(rt>=50)ins.push({t:'warn',i:'📊',txt:'Tracked team completion is <strong>'+rt+'%</strong> — room to improve.'});else ins.push({t:'bad',i:'🔴',txt:'Only <strong>'+rt+'%</strong> completion among tracked members.'});}
   var tp=active.map(function(m){return{m:m,s:mst(m.id)};}).filter(function(x){return x.s.total>0;}).sort(function(a,b){return b.s.rate-a.s.rate;})[0];
   if(tp&&tp.s.rate>0)ins.push({t:'good',i:'⭐',txt:'<strong>'+tp.m.name+'</strong> is top performer at <strong>'+tp.s.rate+'%</strong>.'});
   var todRes=resultPosts.filter(function(r){return new Date(r.created_at).toDateString()===tod;});
@@ -1030,17 +1066,33 @@ function rKPIs(){
 }
 
 function rPulse(){
-  var tracked=getTrackedTasks(),tot=tracked.length,don=tracked.filter(function(t){return t.status==='done';}).length,pct=tot?Math.round(don/tot*100):0;
+  var dayTasks=getDayTasksForPulse(pulseDate),p=computeDailyPulse(dayTasks),pct=p.pct;
   var cv=el('orb');
   if(cv){
     var ctx=cv.getContext('2d'),sz=48;
     ctx.clearRect(0,0,sz,sz);
     ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,0,Math.PI*2);ctx.fillStyle='#1a1a1a';ctx.fill();
-    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle='#7fff6e';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
+    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle=pct>=80?'#7fff6e':pct>=50?'#ffb830':'#ff5c5c';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
   }
   var op=el('opct');if(op)op.textContent=pct+'%';
-  var ps=el('psub');if(ps)ps.textContent=pct>=80?'Tracked team firing 🔥':pct>=50?'Making moves':'Log the team\'s tasks to fill the pulse';
-  var str=0;for(var d=0;d<30;d++){var day=new Date();day.setDate(day.getDate()-d);if(tracked.some(function(t){var dt=parseDT(t.logged_at);return dt&&dt.toDateString()===day.toDateString();}))str++;else if(d>0)break;}
+  var lbl=el('pulseDateLbl');if(lbl)lbl.textContent=pulseDateLabel();
+  var ps=el('psub');
+  if(ps){
+    if(!p.tot)ps.textContent=isPulseToday()?'No tasks scheduled today — log the lineup to start the pulse':'No tasks scheduled this day';
+    else if(isPulseToday())ps.textContent=p.done+'/'+p.tot+' checked off today · pulse resets daily';
+    else ps.textContent=p.done+'/'+p.tot+' done on this day · browse other days with ‹ ›';
+  }
+  var bd=el('pulseBreakdown');
+  if(bd){
+    if(!p.tot){bd.innerHTML='';bd.style.display='none';}
+    else{
+      bd.style.display='flex';
+      var etaTxt=p.both?(p.avgDelta===null?'—':(p.avgDelta>0?'+'+fm(p.avgDelta)+' over ETA':p.avgDelta<0?fm(Math.abs(p.avgDelta))+' under ETA':'On ETA')):'Log actual + ETA';
+      bd.innerHTML='<span class="pulse-pill pulse-pill-main" title="Checkoffs are ~55% of the daily pulse">✓ '+p.done+'/'+p.tot+' done</span><span class="pulse-pill" title="Logging actual time on done tasks (~25%)">⏱ '+p.timedDone+' timed</span><span class="pulse-pill" title="ETA accuracy on timed tasks (~20%)">'+etaTxt+'</span><span class="pulse-pill pulse-pill-muted" title="Completion '+p.completion+'% · Time '+p.timeScore+'% · ETA '+p.etaScore+'%">Score mix</span>';
+    }
+  }
+  var tracked=getTrackedTasks(),str=0;
+  for(var d=0;d<30;d++){var day=new Date();day.setDate(day.getDate()-d);if(getDayTasksForPulse(day).length>0)str++;else if(d>0)break;}
   var st=el('streak');if(st)st.innerHTML='🔥 '+str+' day streak<span class="help-end">'+hBtn('streak')+'</span>';
 }
 
@@ -1316,15 +1368,17 @@ async function completeTask(tid,occDate,chkEl){
     ovs[anchor]=Object.assign({},ovs[anchor]||{},{status:'done',_revertStatus:prevStatus});
     var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
-    toast('This day marked done ✓');await load();return;
+    t.recur_overrides=ovs;
+    toast('This day marked done ✓');refreshDashboardMetrics();await load();return;
   }
   if(t.status==='done')return;
   var old=t.status;
   await sb.from('task_history').insert([{task_id:tid,changed_by:cu.id,field_changed:'status',old_value:old,new_value:'done',changed_at:nowISO()}]);
   var r2=await sb.from('tasks').update({status:'done',edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
   if(r2.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
+  t.status='done';t.edited_at=nowISO();t.edited_by=cu.id;
   toast('Task marked done ✓');
-  await load();
+  refreshDashboardMetrics();await load();
 }
 
 async function uncompleteTask(tid,occDate,chkEl){
@@ -1340,7 +1394,8 @@ async function uncompleteTask(tid,occDate,chkEl){
     ovs[anchor]=patch;
     var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
-    toast('This day unchecked ✓');await load();return;
+    t.recur_overrides=ovs;
+    toast('This day unchecked ✓');refreshDashboardMetrics();await load();return;
   }
   if(t.status!=='done')return;
   var revert2='nostart';
@@ -1349,8 +1404,9 @@ async function uncompleteTask(tid,occDate,chkEl){
   await sb.from('task_history').insert([{task_id:tid,changed_by:cu.id,field_changed:'status',old_value:'done',new_value:revert2,changed_at:nowISO()}]);
   var r2=await sb.from('tasks').update({status:revert2,edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
   if(r2.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
+  t.status=revert2;t.edited_at=nowISO();t.edited_by=cu.id;
   toast('Task unchecked ✓');
-  await load();
+  refreshDashboardMetrics();await load();
 }
 
 function goT(){calDate=new Date();renderCal();}

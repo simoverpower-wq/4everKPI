@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.09';
+  var V='20260525.10';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.09">
+<link rel="stylesheet" href="style.css?v=20260525.10">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -128,7 +128,12 @@
       <div class="pbar dash-pulse">
         <div class="pleft">
           <div class="orb-wrap"><canvas id="orb" width="48" height="48"></canvas><div class="orb-pct" id="opct">0%</div></div>
-          <div><div class="ptitle" id="pulseTitle">Agency pulse</div><div class="psub" id="psub">—</div></div>
+          <div class="pulse-main">
+            <div class="ptitle" id="pulseTitle">Agency pulse</div>
+            <div class="pulse-date-nav"><button type="button" class="btn sm" onclick="chPulseDay(-1)">‹</button><button type="button" class="btn sm" onclick="goPulseToday()">Today</button><button type="button" class="btn sm" onclick="chPulseDay(1)">›</button><span class="pulse-date-lbl" id="pulseDateLbl">—</span></div>
+            <div class="psub" id="psub">Resets daily — checkoffs move the ring most</div>
+            <div class="pulse-breakdown" id="pulseBreakdown"></div>
+          </div>
         </div>
         <div class="pbar-right"><div class="streak" id="streak">🔥 0 day streak</div><div class="qtext" id="quote"></div></div>
       </div>
@@ -354,6 +359,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.09"></script>
+<script src="app.js?v=20260525.10"></script>
 </body>
 </html>
