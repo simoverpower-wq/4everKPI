@@ -1,4 +1,4 @@
-const APP_VER='20260525.18';
+const APP_VER='20260525.19';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -560,30 +560,56 @@ function normMins(v){if(v==null||v==='')return null;var n=parseInt(v,10);return 
 function minsMatch(a,b){return normMins(a)===normMins(b);}
 function markTimeBtn(id,mins){var n=normMins(mins);qsa('#'+id+' .tbtn[data-mins]').forEach(function(b){b.classList.toggle('on',n!=null&&normMins(b.dataset.mins)===n);});}
 function timeGridBox(vn){return el(vn==='eta'?'etag':'actg');}
-function readExactTimeRow(box){
-  if(!box)return null;
-  var hi=box.querySelector('.time-exact-h'),mi=box.querySelector('.time-exact-m');
-  if(!hi||!mi)return null;
-  var hRaw=String(hi.value).trim(),mRaw=String(mi.value).trim();
-  if(!hRaw&&!mRaw)return null;
-  var h=hRaw===''?0:normMins(hRaw),mn=mRaw===''?0:normMins(mRaw);
-  if(h==null||mn==null||h<0||mn<0||mn>59||h>12)return null;
-  return h*60+mn;
+function exactTextInput(box){return box?box.querySelector('.time-exact-text'):null;}
+function parseTimePhrase(raw){
+  if(raw==null)return null;
+  var s=String(raw).trim().toLowerCase().replace(/,/g,' ');
+  if(!s)return null;
+  if(s==='0'||s==='none'||s==='clear')return 0;
+  if(/^\d+$/.test(s))return parseInt(s,10);
+  var colon=s.match(/^(\d+)\s*:\s*(\d+)$/);
+  if(colon){
+    var ch=parseInt(colon[1],10),cm=parseInt(colon[2],10);
+    if(cm>59||ch>12)return null;
+    return ch*60+cm;
+  }
+  var total=0,found=false,re=/(\d+)\s*(hours?|hrs?|h|minutes?|mins?|m)\b/gi,match;
+  while((match=re.exec(s))!==null){
+    var n=parseInt(match[1],10),u=match[2].charAt(0);
+    if(u==='h')total+=n*60;else total+=n;
+    found=true;
+  }
+  return found?total:null;
+}
+function formatTimePhrase(mins){
+  var n=normMins(mins);
+  if(n==null)return'';
+  if(n>=720)return'12 hours+';
+  var h=Math.floor(n/60),m=n%60;
+  if(h&&!m)return h+(h===1?' hour':' hours');
+  if(!h&&m)return m+(m===1?' min':' mins');
+  return h+(h===1?' hour':' hours')+' '+m+(m===1?' min':' mins');
 }
 function syncExactTimeInput(vn,mins){
-  var box=timeGridBox(vn);if(!box)return;
-  var hi=box.querySelector('.time-exact-h'),mi=box.querySelector('.time-exact-m');
-  if(!hi||!mi)return;
+  var box=timeGridBox(vn),inp=exactTextInput(box);
+  if(!inp)return;
   var n=normMins(mins);
-  if(n==null){hi.value='';mi.value='';box.classList.remove('exact-on');return;}
-  hi.value=String(Math.floor(n/60));
-  mi.value=String(n%60);
-  box.classList.add('exact-on');
+  inp.value=n==null?'':formatTimePhrase(n);
+  box.classList.toggle('exact-on',n!=null);
 }
 function applyExactTime(vn){
-  var box=timeGridBox(vn);if(!box)return;
-  var total=readExactTimeRow(box),id=vn==='eta'?'etag':'actg';
-  if(total==null)return;
+  var box=timeGridBox(vn),inp=exactTextInput(box);
+  if(!box||!inp)return;
+  var raw=String(inp.value).trim(),id=vn==='eta'?'etag':'actg';
+  if(!raw){
+    if(vn==='eta')sEta=null;else sAct=null;
+    markTimeBtn(id,null);
+    syncExactTimeInput(vn,null);
+    if(vn==='act')syncActClearBtn();
+    return;
+  }
+  var total=parseTimePhrase(raw);
+  if(total==null){toast('Try "17 mins", "1 hour 17 mins", or "45"','error');return;}
   if(total===0){
     if(vn==='eta')sEta=null;else sAct=null;
     markTimeBtn(id,null);
@@ -1804,7 +1830,9 @@ function bTimeG(id,vn,presets){
   if(vn==='act'){
     html+='<div class="tgrid-section tgrid-act-none"><div class="tgrid-section-btns tgrid-section-btns-wide"><button type="button" class="tbtn tbtn-none" data-act-clear="1">None — no actual time</button></div></div>';
   }
-  html+='<div class="tgrid-section tgrid-exact-time"><div class="tgrid-section-lbl">Exact time</div><div class="time-exact-row"><input type="number" class="time-exact-inp time-exact-h" min="0" max="12" step="1" placeholder="0" inputmode="numeric" aria-label="Hours"><span class="time-exact-unit">hr</span><input type="number" class="time-exact-inp time-exact-m" min="0" max="59" step="1" placeholder="0" inputmode="numeric" aria-label="Minutes"><span class="time-exact-unit">min</span></div></div>';
+  var exactLbl=vn==='eta'?'Exact ETA':'Exact actual time';
+  var exactPh=vn==='eta'?'e.g. 17 mins, 1 hour 17 mins, 3 mins':'e.g. 15 mins, 1 hour 5 mins, 2 mins';
+  html+='<div class="tgrid-section tgrid-exact-time"><div class="tgrid-section-lbl">'+exactLbl+'</div><input type="text" class="time-exact-text" placeholder="'+exactPh+'" autocomplete="off" spellcheck="false"></div>';
   timeGridSections(list).forEach(function(g){
     html+='<div class="tgrid-section"><div class="tgrid-section-lbl">'+g.t+'</div><div class="tgrid-section-btns'+(g.t.indexOf('1–2')>=0?' tgrid-section-btns-wide':'')+'">';
     g.items.forEach(function(t){html+='<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';});
@@ -1813,10 +1841,11 @@ function bTimeG(id,vn,presets){
   box.innerHTML=html;
   qsa('[data-act-clear]',box).forEach(function(btn){bindBubble(btn,clearActTime);});
   qsa('.tbtn[data-mins]',box).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,normMins(this.dataset.mins),this);});});
-  qsa('.time-exact-inp',box).forEach(function(inp){
-    inp.addEventListener('change',function(){applyExactTime(vn);});
-    inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();applyExactTime(vn);}});
-  });
+  var tinp=exactTextInput(box);
+  if(tinp){
+    tinp.addEventListener('blur',function(){applyExactTime(vn);});
+    tinp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();applyExactTime(vn);}});
+  }
 }
 function selT(id,v,mins){
   mins=normMins(mins);
