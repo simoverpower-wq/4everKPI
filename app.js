@@ -1,4 +1,4 @@
-const APP_VER='20260525.10';
+const APP_VER='20260525.11';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -363,7 +363,16 @@ function recursOnDate(t,ds){
   return true;
 }
 function pickOv(ov,key,base){return Object.prototype.hasOwnProperty.call(ov,key)?ov[key]:base;}
-function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'nostart'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
+function occurrenceStatus(t,dateKey,ov){
+  if(ov&&Object.prototype.hasOwnProperty.call(ov,'status'))return ov.status;
+  var base=t.status||'nostart';
+  if(base==='done'||base==='late')return 'nostart';
+  var loggedKey='';
+  if(t.logged_at){var ld=new Date(t.logged_at);if(!isNaN(ld))loggedKey=dsToKey(ld.toDateString());}
+  if(loggedKey&&loggedKey===dateKey)return base;
+  return 'nostart';
+}
+function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:occurrenceStatus(t,dateKey,ov),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
 function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(function(t){if(!t.is_recurring||!t.recur_frequency||!t.logged_at)return false;if(new Date(t.logged_at).toDateString()===ds)return false;return recursOnDate(t,ds);}).map(function(t){return mergeOccurrence(t,key);});}
 function tasksForDay(ds){var key=dsToKey(ds);var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;}).map(function(t){return t.is_recurring?mergeOccurrence(t,key):t;});return logged.concat(getRecurringVirtualTasks(ds));}
 function resolveTaskOccDate(t,occDate){
@@ -377,6 +386,11 @@ function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);i
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
 function overrideFieldsFromPatch(patch){return{name:patch.name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
+function scrubRecurringTemplateStatus(t,payload){
+  if(!t||!t.is_recurring||!payload)return payload;
+  if(payload.status==='done'||payload.status==='late')payload.status='nostart';
+  return payload;
+}
 function scrubOverrideForSave(o){var c=Object.assign({},o);if(c.status!=='done')delete c._revertStatus;return c;}
 function preserveRecurMeta(ovs){var out={};if(ovs._stopAfter)out._stopAfter=ovs._stopAfter;return out;}
 function applyFieldsToKey(ovs,key,fields,existing){
@@ -1177,15 +1191,19 @@ function renderCal(){
 
 function rCalSum(y,mo){var dim=new Date(y,mo+1,0).getDate(),tot=0,don=0,lat=0;for(var d=1;d<=dim;d++){var ds=new Date(y,mo,d).toDateString(),dT=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;});tot+=dT.length;don+=dT.filter(function(t){return t.status==='done';}).length;lat+=dT.filter(function(t){return t.status==='late';}).length;}var rt=tot?Math.round(don/tot*100):0;el('csum').innerHTML='<div class="csum-title">Month summary<span class="help-end">'+hBtn('cal_summary')+'</span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px"><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Tasks</div><div class="msv">'+tot+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Completed</div><div class="msv g">'+don+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Late</div><div class="msv '+(lat>0?'r':'')+'">'+lat+'</div></div><div class="ms" style="border-radius:8px;padding:10px 12px"><div class="msl">Rate</div><div class="msv '+(rt>=80?'g':rt>=50?'a':'r')+'">'+rt+'%</div></div></div>';}
 
+function taskCheckOccKey(t){
+  if(t._occurrenceDate)return t._occurrenceDate;
+  if(!t.is_recurring&&!t._isOccurrence)return null;
+  if(lineupDate)return dsToKey(lineupDate.toDateString());
+  if(myTasksDate)return dsToKey(myTasksDate.toDateString());
+  return dsToKey(new Date().toDateString());
+}
 function taskCheckHTML(t){
   if(!canEditTask(t))return'';
   var done=t.status==='done';
   if(!done&&t.status!=='prog'&&t.status!=='pending'&&t.status!=='late'&&t.status!=='nostart')return'';
-  var occ='';
-  if(t.is_recurring||t._isOccurrence){
-    var dk=resolveTaskOccDate(t,t._occurrenceDate||null);
-    if(dk)occ=' data-occ="'+dk+'"';
-  }
+  var occ='',dk=taskCheckOccKey(t);
+  if(dk)occ=' data-occ="'+dk+'"';
   return'<label class="tchk-wrap" onclick="event.stopPropagation()"><input type="checkbox" class="tchk" data-complete="'+t.id+'"'+occ+(done?' checked':'')+'><span class="tchk-box"></span></label>';
 }
 
@@ -1363,10 +1381,12 @@ async function completeTask(tid,occDate,chkEl){
   if(!t||!canEditTask(t)){toast('You can only complete your own tasks','error');if(chkEl)chkEl.checked=false;return;}
   if(t.is_recurring){
     var anchor=resolveTaskOccDate(t,occDate);
-    var ovs=parseOverrides(t),merged=mergeOccurrence(t,anchor),prevStatus=merged.status;
-    if(prevStatus==='done')prevStatus=t.status||'nostart';
-    ovs[anchor]=Object.assign({},ovs[anchor]||{},{status:'done',_revertStatus:prevStatus});
-    var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
+    var ovs=parseOverrides(t),prev=occurrenceStatus(t,anchor,ovs[anchor]||{});
+    if(prev==='done'){if(chkEl)chkEl.checked=true;return;}
+    ovs[anchor]=scrubOverrideForSave(Object.assign({},ovs[anchor]||{},{status:'done',_revertStatus:prev}));
+    var payload={recur_overrides:ovs};
+    if(t.status==='done'||t.status==='late'){payload.status='nostart';t.status='nostart';}
+    var r=await sb.from('tasks').update(payload).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=false;return;}
     t.recur_overrides=ovs;
     toast('This day marked done ✓');refreshDashboardMetrics();await load();return;
@@ -1386,13 +1406,18 @@ async function uncompleteTask(tid,occDate,chkEl){
   if(!t||!canEditTask(t)){toast('You can only update your own tasks','error');if(chkEl)chkEl.checked=true;return;}
   if(t.is_recurring){
     var anchor=resolveTaskOccDate(t,occDate);
-    var ovs=parseOverrides(t),patch=Object.assign({},ovs[anchor]||{});
-    var revert=patch._revertStatus;
-    if(!revert||revert==='done')revert='nostart';
-    patch.status=revert;
-    delete patch._revertStatus;
-    ovs[anchor]=patch;
-    var r=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',tid);
+    var ovs=parseOverrides(t),existing=ovs[anchor]||{};
+    var revert=existing._revertStatus;
+    if(!revert||revert==='done')revert=occurrenceStatus(t,anchor,{});
+    if(revert==='done')revert='nostart';
+    var next=Object.assign({},existing);
+    if(revert==='nostart'){delete next.status;delete next._revertStatus;}
+    else{next.status=revert;delete next._revertStatus;}
+    if(Object.keys(next).length)ovs[anchor]=scrubOverrideForSave(next);
+    else delete ovs[anchor];
+    var payload={recur_overrides:ovs};
+    if(t.status==='done'||t.status==='late'){payload.status='nostart';t.status='nostart';}
+    var r=await sb.from('tasks').update(payload).eq('id',tid);
     if(r.error){toast('Could not update task','error');if(chkEl)chkEl.checked=true;return;}
     t.recur_overrides=ovs;
     toast('This day unchecked ✓');refreshDashboardMetrics();await load();return;
