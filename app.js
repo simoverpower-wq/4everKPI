@@ -1,4 +1,4 @@
-const APP_VER='20260525.15';
+const APP_VER='20260525.16';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -550,14 +550,21 @@ function syncRecurLock(){
 }
 function fillTaskModalFromTask(t,skipScope){
   el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';
-  sEta=t.eta_minutes||null;sAct=t.actual_minutes||null;
+  sEta=normMins(t.eta_minutes);sAct=normMins(t.actual_minutes);
   isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;
   syncRecurUI();
   qsa('.rbtn').forEach(function(b){b.classList.toggle('on',recFreq&&b.textContent===recFreq);});
   if(!skipScope)syncScopeVisibility();else syncRecurLock();
 }
-function markTimeBtn(id,mins){qsa('#'+id+' .tbtn').forEach(function(b){b.classList.toggle('on',!!mins&&parseInt(b.dataset.mins,10)===mins);});}
-function syncActClearBtn(){var b=el('clearActBtn');if(b)b.classList.toggle('show',!!sAct);}
+function normMins(v){if(v==null||v==='')return null;var n=parseInt(v,10);return isNaN(n)?null:n;}
+function minsMatch(a,b){return normMins(a)===normMins(b);}
+function markTimeBtn(id,mins){var n=normMins(mins);qsa('#'+id+' .tbtn[data-mins]').forEach(function(b){b.classList.toggle('on',n!=null&&normMins(b.dataset.mins)===n);});}
+function syncActClearBtn(){
+  var none=qsa('#actg .tbtn-none')[0];
+  if(none)none.classList.toggle('on',!sAct);
+  var b=el('clearActBtn');
+  if(b)b.disabled=!sAct;
+}
 function clearActTime(){sAct=null;markTimeBtn('actg',null);syncActClearBtn();}
 function taskScheduleLabel(t){if(t._isOccurrence&&t._occurrenceDate){var d=dateFromKey(t._occurrenceDate);return d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):t._occurrenceDate;}var ld=parseDT(t.logged_at);return ld?ld.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'—';}
 function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.length){var last=h[0],fn=FL[last.field_changed]||last.field_changed;return'Last edit: '+fn+' · '+fmtDT(last.changed_at||last.created_at);}if(t.edited_at)return'Last updated · '+fmtDT(t.edited_at);return'';}
@@ -1755,24 +1762,29 @@ function bTimeG(id,vn,presets){
   if(!box)return;
   box.classList.add('tgrid-sectioned');
   var html='';
+  if(vn==='act'){
+    html+='<div class="tgrid-section tgrid-act-none"><div class="tgrid-section-btns tgrid-section-btns-wide"><button type="button" class="tbtn tbtn-none" data-act-clear="1">None — no actual time</button></div></div>';
+  }
   timeGridSections(list).forEach(function(g){
     html+='<div class="tgrid-section"><div class="tgrid-section-lbl">'+g.t+'</div><div class="tgrid-section-btns'+(g.t.indexOf('1–2')>=0?' tgrid-section-btns-wide':'')+'">';
     g.items.forEach(function(t){html+='<button type="button" class="tbtn" data-mins="'+t.m+'" data-vn="'+vn+'" data-gid="'+id+'">'+t.l+'</button>';});
     html+='</div></div>';
   });
   box.innerHTML=html;
-  qsa('.tbtn',box).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,parseInt(this.dataset.mins,10),this);});});
+  qsa('[data-act-clear]',box).forEach(function(btn){bindBubble(btn,clearActTime);});
+  qsa('.tbtn[data-mins]',box).forEach(function(btn){bindBubble(btn,function(){selT(this.dataset.gid,this.dataset.vn,normMins(this.dataset.mins),this);});});
 }
-function selT(id,v,mins,btn){
+function selT(id,v,mins){
+  mins=normMins(mins);
   var cur=v==='eta'?sEta:sAct;
-  if(cur===mins){
+  if(minsMatch(cur,mins)){
     if(v==='eta')sEta=null;else sAct=null;
     markTimeBtn(id,null);
     if(v==='act')syncActClearBtn();
     return;
   }
-  markTimeBtn(id,mins);
   if(v==='eta')sEta=mins;else sAct=mins;
+  markTimeBtn(id,mins);
   if(v==='act')syncActClearBtn();
 }
 function togRec(e){
@@ -2565,5 +2577,6 @@ function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.t
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
+window.clearActTime=clearActTime;
 initLogin();
 initSidebar();

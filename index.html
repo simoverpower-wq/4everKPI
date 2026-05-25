@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.15';
+  var V='20260525.16';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.15">
+<link rel="stylesheet" href="style.css?v=20260525.16">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -242,7 +242,13 @@
     <div class="bsel"><div class="bsel-lbl">Result category <span class="bsel-hint">(optional — tap multiple)</span></div><div class="bwrap" id="brc"></div><div class="badd" id="brcad"><input id="brci" placeholder="Add result..." onkeydown="if(event.key==='Enter')addBub('rc')"><button class="btn sm" onclick="addBub('rc')">Add</button><button class="btn sm" onclick="document.getElementById('brcad').classList.remove('show')">✕</button></div></div>
     <div class="frow"><div class="fg"><label>Status</label><select id="tstat"><option value="nostart">Not started yet</option><option value="prog">In progress</option><option value="done">Done</option><option value="pending">Pending</option><option value="late">Late / missed</option></select></div><div class="fg"><label>Start time <span class="bsel-hint">(optional)</span></label><input type="time" id="tstart" class="time-input"></div></div>
     <div class="fg"><label>ETA <span class="bsel-hint">(10 min steps)</span></label><div class="tgrid tgrid-scroll tgrid-eta tgrid-sectioned" id="etag"></div><div class="etasug" id="etas"></div></div>
-    <div class="fg"><label class="time-lbl-row">Actual time <span class="bsel-hint">(10 min steps · optional · tap again to clear)</span><button type="button" class="time-clear-btn" id="clearActBtn" onclick="clearActTime()">Clear</button></label><div class="tgrid tgrid-scroll tgrid-sectioned" id="actg"></div></div>
+    <div class="fg">
+      <div class="time-lbl-row">
+        <label>Actual time <span class="bsel-hint">(optional — pick None or tap selected time again)</span></label>
+        <button type="button" class="time-clear-btn" id="clearActBtn" onclick="clearActTime()">Clear</button>
+      </div>
+      <div class="tgrid tgrid-scroll tgrid-sectioned" id="actg"></div>
+    </div>
     <section class="recurrence-block" id="recurrenceBlock">
       <div class="togrow" role="button" tabindex="0" onclick="togRec(event)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togRec(event);}">
         <span class="toglbl">Recurring task</span>
@@ -359,6 +365,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.15"></script>
+<script src="app.js?v=20260525.16"></script>
 </body>
 </html>
