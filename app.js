@@ -1,4 +1,4 @@
-const APP_VER='20260525.07';
+const APP_VER='20260525.08';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1175,17 +1175,22 @@ function buildLineupHTML(dT,sq,dateKey){
   var q=(sq||'').toLowerCase().trim(),bM={};
   dT.forEach(function(t){if(!bM[t.member_id])bM[t.member_id]=[];bM[t.member_id].push(t);});
   var mids=Object.keys(bM);
-  if(cu){mids.sort(function(a,b){if(a===cu.id)return-1;if(b===cu.id)return 1;return 0;});}
+  if(cu)mids=mids.filter(function(mid){return mid!==cu.id;});
   if(q){
-    mids=mids.filter(function(mid){
-      var m=members.find(function(x){return x.id===mid;}),mT=bM[mid]||[];
-      if(memberMatchesQuery(m,q))return mT.length>0;
-      var hits=mT.filter(function(t){return taskMatchesQuery(t,q);});
-      if(hits.length){bM[mid]=hits;return true;}
-      return false;
-    });
+    var namedMembers=members.filter(function(m){return bM[m.id]&&memberMatchesQuery(m,q);});
+    if(namedMembers.length){
+      var nameIds=namedMembers.map(function(m){return m.id;});
+      mids=mids.filter(function(mid){return nameIds.indexOf(mid)>=0;});
+    }else{
+      mids=mids.filter(function(mid){
+        var mT=bM[mid]||[];
+        var hits=mT.filter(function(t){return taskMatchesQuery(t,q);});
+        if(hits.length){bM[mid]=hits;return true;}
+        return false;
+      });
+    }
   }
-  if(!mids.length)return'<div class="lineup-empty">No tasks match your search.</div>';
+  if(!mids.length)return'<div class="lineup-empty">'+(q?'No tasks match your search.':'No one else has tasks scheduled for this day.')+'</div>';
   return mids.map(function(mid){
     var m=members.find(function(x){return x.id===mid;}),c=getMC(m),mT=applyTaskDayOrder(bM[mid],mid,dateKey),isMe=cu&&mid===cu.id;
     var don=mT.filter(function(t){return t.status==='done';}).length,lat=mT.filter(function(t){return t.status==='late';}).length,open=mT.length-don;
