@@ -1,4 +1,4 @@
-const APP_VER='20260525.12';
+const APP_VER='20260525.13';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -457,14 +457,17 @@ function resolveEditOccDate(t,occDateKey){
   return dsToKey(new Date().toDateString());
 }
 function setEditScope(scope,btn){
-  editScope=scope;qsa('.escope').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');
+  editScope=scope;
+  qsa('.escope').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
   var eid=el('teid').value,orig=eid?tasks.find(function(t){return t.id===eid;}):null;
-  if(orig&&orig.is_recurring){
+  if(orig&&orig.is_recurring&&scope==='day'){
     var anchor=editOccDate||resolveEditOccDate(orig,null);
-    if(scope==='all')fillTaskModalFromTask(orig,true);else fillTaskModalFromTask(mergeOccurrence(orig,anchor),true);
+    fillTaskModalFromTask(mergeOccurrence(orig,anchor),true);
     markTimeBtn('etag',sEta);markTimeBtn('actg',sAct);
-    syncScopeVisibility(scope);
-  }else updateEditScopeNote();
+  }
+  updateEditScopeNote();
+  syncScopeVisibility(scope);
   syncRecurLock();
 }
 function updateEditScopeNote(){
@@ -1844,7 +1847,7 @@ async function saveT(){
     var orig=tasks.find(function(t){return t.id===eid;});
     if(!orig){toast('Task not found','error');return;}
     if(orig.is_recurring){
-      var anchor=editOccDate||dsToKey(new Date().toDateString()),scope=editScope||'day';
+      var anchor=editOccDate||resolveEditOccDate(orig,null),scope=editScope||'day';
       var ovs=buildSeriesOverrides(orig,anchor,scope,patch);
       if(scope==='day'){
         var rd=await sb.from('tasks').update({recur_overrides:ovs}).eq('id',eid);
