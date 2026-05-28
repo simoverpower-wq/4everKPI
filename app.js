@@ -1,4 +1,4 @@
-const APP_VER='20260525.25';
+const APP_VER='20260525.26';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1491,7 +1491,7 @@ function dayviewTaskTitleHTML(t){
 function autoResizeTitleInput(ta){
   if(!ta)return;
   ta.style.height='auto';
-  var max=68;
+  var max=96;
   ta.style.height=Math.min(ta.scrollHeight,max)+'px';
 }
 function taskDescBtnHTML(t){
@@ -2898,6 +2898,12 @@ function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.t
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
+if(typeof window!=='undefined'&&window.__4K_EXPECTED_VER&&window.__4K_EXPECTED_VER!==APP_VER){
+  try{
+    var mk='4k_js_mismatch_'+window.__4K_EXPECTED_VER;
+    if(!sessionStorage.getItem(mk)){sessionStorage.setItem(mk,'1');location.reload();}
+  }catch(e){}
+}
 window.clearActTime=clearActTime;
 window.closeDaySnapM=closeDaySnapM;
 initLogin();
