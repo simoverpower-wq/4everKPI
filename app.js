@@ -1,4 +1,4 @@
-const APP_VER='20260525.19';
+const APP_VER='20260525.20';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -39,6 +39,7 @@ const HELP={
   cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
   cal_summary:'A quick recap of the whole month — total tasks, how many finished, how many late, and the overall completion rate.',
   tasks:'Your task command center — your open work at the top, then everyone\'s lineup for the day in separate blocks. Check tasks off, uncheck them, edit, or delete from here.',
+  dayview:'Daily profiles — one vertical column per person showing that day\'s tasks. Browse dates and check tasks off here; it stays in sync with Team tasks.',
   performance:'Charts that turn your task data into pictures — like report cards with graphs. Click any chart to see the full list of tasks behind it.',
   chart_completion:'Shows each person\'s completion rate as a bar. Taller green bars = more tasks finished. It\'s like comparing test scores across the class.',
   chart_time:'Compares how long tasks actually took (blue) vs how long people estimated (purple). If blue is taller, they took longer than expected — like thinking a drive is 10 minutes but it takes 20.',
@@ -319,6 +320,7 @@ function pulseDateLabel(){var d=pulseDate||new Date();return d.toLocaleDateStrin
 function refreshDashboardMetrics(){
   rPulse();rKPIs();genIns();
   if(el('page-tasks')&&el('page-tasks').classList.contains('active'))rTasksPage();
+  if(el('page-dayview')&&el('page-dayview').classList.contains('active'))rDayView();
 }
 function chPulseDay(n){pulseDate=pulseDate||new Date();pulseDate=new Date(pulseDate);pulseDate.setDate(pulseDate.getDate()+n);refreshDashboardMetrics();}
 function goPulseToday(){pulseDate=new Date();refreshDashboardMetrics();}
@@ -646,10 +648,10 @@ var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks
 var NAV_TAB_DEFS=[
   {id:'dashboard',label:'Dashboard',group:'Overview'},{id:'calendar',label:'Calendar',group:'Overview'},{id:'performance',label:'Performance',group:'Overview'},{id:'compare',label:'Compare',group:'Overview'},
   {id:'oversight',label:'Oversight',group:'Overview',adminDefault:false},{id:'intelligence',label:'Intelligence',group:'Overview',adminDefault:false},
-  {id:'log_task',label:'Log task',group:'Work'},{id:'tasks',label:'Team tasks',group:'Work'},{id:'library',label:'Task library',group:'Work'},{id:'results',label:'Results',group:'Work'},{id:'trash',label:'Trash',group:'Work'},
+  {id:'log_task',label:'Log task',group:'Work'},{id:'tasks',label:'Team tasks',group:'Work'},{id:'dayview',label:'Daily profiles',group:'Work'},{id:'library',label:'Task library',group:'Work'},{id:'results',label:'Results',group:'Work'},{id:'trash',label:'Trash',group:'Work'},
   {id:'add_member',label:'Add member',group:'Team',adminDefault:false},{id:'roles',label:'Role guides',group:'Team'}
 ];
-var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,tasks:true,library:true,results:true,trash:true,add_member:false,roles:true};
+var DEFAULT_MEMBER_NAV={dashboard:true,calendar:true,performance:true,compare:true,oversight:false,intelligence:false,log_task:true,tasks:true,dayview:true,library:true,results:true,trash:true,add_member:false,roles:true};
 
 function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);saveSettings();}
 
@@ -887,7 +889,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),pulseDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),dayViewDate=new Date(),pulseDate=new Date(),dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -1159,7 +1161,7 @@ function genIns(){
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
 
-function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-calendar':['calendar'],'page-tasks':['tasks'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
+function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-calendar':['calendar'],'page-tasks':['tasks'],'page-dayview':['dayview'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
 function injectDashHelp(){
   var pt=el('pulseTitle');if(pt&&!pt.querySelector('.help-end'))pt.innerHTML='Agency pulse<span class="help-end">'+hBtn('pulse')+'</span>';
   var st=el('streak');if(st&&!st.querySelector('.help-end')){var n=st.textContent;st.innerHTML=n+'<span class="help-end">'+hBtn('streak')+'</span>';}
@@ -1171,6 +1173,7 @@ function render(){
     var ap=function(n){return el('page-'+n).classList.contains('active');};
     if(ap('calendar'))renderCal();
     if(ap('tasks'))rTasksPage();
+    if(ap('dayview'))rDayView();
     if(ap('performance'))rCharts();
     if(ap('oversight'))rOversight();
     if(ap('intelligence'))rIntel();
@@ -1314,10 +1317,49 @@ function rCalSum(y,mo){var dim=new Date(y,mo+1,0).getDate(),tot=0,don=0,lat=0;fo
 function taskCheckOccKey(t){
   if(t._occurrenceDate)return t._occurrenceDate;
   if(!t.is_recurring&&!t._isOccurrence)return null;
+  if(dayViewDate&&el('page-dayview')&&el('page-dayview').classList.contains('active'))return dsToKey(dayViewDate.toDateString());
   if(lineupDate)return dsToKey(lineupDate.toDateString());
   if(myTasksDate)return dsToKey(myTasksDate.toDateString());
   return dsToKey(new Date().toDateString());
 }
+function renderDayViewTask(t){
+  var chk=taskCheckHTML(t);
+  return'<div class="dayview-task'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'">'+chk+'<div class="dayview-task-body"><div class="dayview-task-top">'+taskDisplayHead(t)+stag(t.status)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+'</div></div>';
+}
+function buildDayViewHTML(dT,dateKey){
+  var bM={};
+  dT.forEach(function(t){if(!bM[t.member_id])bM[t.member_id]=[];bM[t.member_id].push(t);});
+  var pool=sortByOrder(getActiveMembers(),'roles');
+  if(!pool.length)return'<div class="dayview-empty">No active team members yet.</div>';
+  var cols=pool.map(function(m){
+    var mid=m.id,c=getMC(m),mT=applyTaskDayOrder(bM[mid]||[],mid,dateKey);
+    var don=mT.filter(function(t){return t.status==='done';}).length,open=mT.length-don;
+    var me=isSelfMember(mid)?' dayview-col-me':'';
+    var html='<div class="dayview-col'+me+'" data-member-id="'+mid+'" style="--member-accent:'+(c.bg||'var(--border)')+'">';
+    html+='<div class="dayview-col-head"><div class="av dayview-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="dayview-col-id"><div class="dayview-col-name">'+m.name+(isOverseerMember(m)?' <span class="overseer-badge">Overseer</span>':'')+(m.is_admin?' <span class="lineup-admin-badge">Admin</span>':'')+(isSelfMember(mid)?' <span class="lineup-you-badge">You</span>':'')+'</div><div class="dayview-col-role">'+esc(m.role||'')+'</div></div></div>';
+    html+='<div class="dayview-col-stats">'+(mT.length?mT.length+' task'+(mT.length!==1?'s':'')+' · '+don+' done'+(open?' · '+open+' open':''):'No tasks this day')+'</div>';
+    html+='<div class="dayview-col-body">';
+    if(mT.length)mT.forEach(function(t){html+=renderDayViewTask(t);});
+    else html+='<div class="dayview-col-empty">Nothing scheduled</div>';
+    html+='</div></div>';
+    return html;
+  }).join('');
+  return cols;
+}
+function dayViewDateLabel(){
+  var d=dayViewDate||new Date();
+  return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+}
+function rDayView(){
+  var board=el('dayViewBoard'),lbl=el('dayViewDateLbl');if(!board)return;
+  var d=dayViewDate||new Date(),ds=d.toDateString(),dateKey=dsToKey(ds),dT=tasksForDay(ds);
+  if(lbl)lbl.textContent=dayViewDateLabel();
+  if(!getActiveMembers().length)board.innerHTML='<div class="dayview-empty">No active team members yet.</div>';
+  else board.innerHTML=buildDayViewHTML(dT,dateKey);
+  bindLineupActions(board);
+}
+function chDayView(n){dayViewDate=dayViewDate||new Date();dayViewDate=new Date(dayViewDate);dayViewDate.setDate(dayViewDate.getDate()+n);lineupDate=new Date(dayViewDate);myTasksDate=new Date(dayViewDate);rDayView();}
+function goDayViewToday(){dayViewDate=new Date();lineupDate=new Date(dayViewDate);myTasksDate=new Date(dayViewDate);rDayView();}
 function taskCheckHTML(t){
   if(!canEditTask(t))return'';
   var done=t.status==='done';
@@ -1427,6 +1469,7 @@ function goLineupToday(){lineupDate=new Date();rLineup();}
 function openDD(ds){
   lineupDate=new Date(ds);
   myTasksDate=new Date(ds);
+  dayViewDate=new Date(ds);
   var btn=document.querySelector('[data-nav="tasks"]');
   gp('tasks',btn||null);
 }
@@ -2210,6 +2253,7 @@ function gp(page,btn){
   if(btn&&btn.classList&&btn.classList.contains('ni'))btn.classList.add('active');
   if(page==='calendar')renderCal();
   if(page==='tasks')rTasksPage();
+  if(page==='dayview')rDayView();
   if(page==='performance')rCharts();
   if(page==='oversight')rOversight();
   if(page==='intelligence')rIntel();

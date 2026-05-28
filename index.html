@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.19';
+  var V='20260525.20';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.19">
+<link rel="stylesheet" href="style.css?v=20260525.20">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -96,6 +96,7 @@
         <div class="nlbl">Work</div>
         <button class="btn-log-task" data-nav="log_task" onclick="openT()" title="Log task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log task</span></button>
         <button class="ni" data-nav="tasks" onclick="gp('tasks',this)" title="Team tasks"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="ni-text">Team tasks</span></button>
+        <button class="ni" data-nav="dayview" onclick="gp('dayview',this)" title="Daily profiles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="18" rx="1.5"/></svg><span class="ni-text">Daily profiles</span></button>
         <button class="ni" data-nav="library" onclick="gp('library',this)" title="Task library"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="ni-text">Task library</span></button>
         <button class="ni" data-nav="results" onclick="gp('results',this)" title="Results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-text">Results</span></button>
       </div>
@@ -168,6 +169,23 @@
           <input class="lineup-srch" id="lineupSrch" placeholder="🔍 Search tasks or people..." oninput="filterLineup()">
         </div>
         <div class="lineup-list" id="lineupList"></div>
+      </div>
+    </div>
+    <div class="page" id="page-dayview">
+      <div class="ph dayview-ph">
+        <div>
+          <div class="pt">Daily profiles</div>
+          <div class="ps">Everyone’s tasks for the day — scroll sideways · checkoffs sync with Team tasks</div>
+        </div>
+        <div class="dayview-date-nav">
+          <button type="button" class="btn sm" onclick="chDayView(-1)">‹ Prev</button>
+          <button type="button" class="btn sm" onclick="goDayViewToday()">Today</button>
+          <button type="button" class="btn sm" onclick="chDayView(1)">Next ›</button>
+          <span class="dayview-date-lbl" id="dayViewDateLbl">—</span>
+        </div>
+      </div>
+      <div class="dayview-board-wrap">
+        <div class="dayview-board" id="dayViewBoard"></div>
       </div>
     </div>
     
@@ -365,6 +383,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.19"></script>
+<script src="app.js?v=20260525.20"></script>
 </body>
 </html>
