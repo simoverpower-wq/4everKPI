@@ -1,4 +1,4 @@
-const APP_VER='20260525.20';
+const APP_VER='20260525.21';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1322,9 +1322,23 @@ function taskCheckOccKey(t){
   if(myTasksDate)return dsToKey(myTasksDate.toDateString());
   return dsToKey(new Date().toDateString());
 }
+function dayviewTaskSummaryHTML(t){
+  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'Task');
+  var desc=taskDescContent(t),flat=desc?desc.replace(/\s+/g,' ').trim():'';
+  var descPreview=flat?esc(flat.length>90?flat.slice(0,90)+'…':flat):'';
+  var bits=[];
+  if(t.scheduled_start_time)bits.push('Start '+fmtStartTime(t.scheduled_start_time));
+  if(t.eta_minutes)bits.push('ETA '+fm(t.eta_minutes));
+  if(t.actual_minutes)bits.push('Actual '+fm(t.actual_minutes));
+  if(t.is_recurring)bits.push('🔄 '+esc(t.recur_frequency||'Recurring'));
+  var html='<div class="dayview-task-head"><span class="dayview-task-title">'+esc(typeLbl)+'</span>'+stag(t.status)+'</div>';
+  if(descPreview)html+='<div class="dayview-task-desc">'+descPreview+'</div>';
+  if(bits.length)html+='<div class="dayview-task-meta">'+bits.join(' · ')+'</div>';
+  return html;
+}
 function renderDayViewTask(t){
   var chk=taskCheckHTML(t);
-  return'<div class="dayview-task'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'">'+chk+'<div class="dayview-task-body"><div class="dayview-task-top">'+taskDisplayHead(t)+stag(t.status)+'</div>'+taskDescBlockHTML(t)+taskTimingLine(t)+'</div></div>';
+  return'<div class="dayview-task'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'">'+chk+'<div class="dayview-task-body">'+dayviewTaskSummaryHTML(t)+'</div></div>';
 }
 function buildDayViewHTML(dT,dateKey){
   var bM={};
