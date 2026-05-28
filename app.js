@@ -1,4 +1,4 @@
-const APP_VER='20260525.24';
+const APP_VER='20260525.25';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1486,7 +1486,13 @@ function dayviewTaskTitleHTML(t){
   var lbl=taskDisplayLabel(t),ph=esc(taskDisplayPlaceholder(t)),can=canEditTask(t);
   var occ=t._occurrenceDate?' data-occ="'+t._occurrenceDate+'"':'';
   if(!can)return'<span class="dayview-task-title" title="'+esc(lbl)+'">'+esc(lbl)+'</span>';
-  return'<input type="text" class="dayview-task-title-input" data-title-id="'+t.id+'"'+occ+' value="'+esc(lbl)+'" placeholder="'+ph+'" title="Click to rename this task">';
+  return'<textarea rows="2" class="dayview-task-title-input" data-title-id="'+t.id+'"'+occ+' placeholder="'+ph+'" title="Click to rename this task">'+esc(lbl)+'</textarea>';
+}
+function autoResizeTitleInput(ta){
+  if(!ta)return;
+  ta.style.height='auto';
+  var max=68;
+  ta.style.height=Math.min(ta.scrollHeight,max)+'px';
 }
 function taskDescBtnHTML(t){
   if(!taskDescContent(t)&&!(t.notes||'').trim())return'';
@@ -1537,10 +1543,12 @@ function bindTaskTitleEdits(root){
     inp.onmousedown=function(e){e.stopPropagation();};
     inp.onclick=function(e){e.stopPropagation();};
     inp.onkeydown=function(e){
-      if(e.key==='Enter'){e.preventDefault();this.blur();}
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.blur();}
       if(e.key==='Escape'){this.value=this.dataset.lastVal||this.value;this.blur();}
     };
-    inp.onfocus=function(){this.dataset.lastVal=this.value;this.select();};
+    inp.oninput=function(){autoResizeTitleInput(this);};
+    inp.onfocus=function(){this.dataset.lastVal=this.value;autoResizeTitleInput(this);this.select();};
+    autoResizeTitleInput(inp);
     inp.onblur=function(){
       var tid=this.dataset.titleId,val=this.value.trim(),last=(this.dataset.lastVal||'').trim();
       if(val===last)return;
@@ -1552,7 +1560,7 @@ async function saveTaskDisplayName(tid,occDate,rawName,inputEl){
   if(!sb){toast('Not connected','error');return;}
   var t=tasks.find(function(x){return x.id===tid;});
   if(!t||!canEditTask(t)){toast('You can only rename your own tasks','error');return;}
-  var name=rawName.trim(),store=name||null;
+  var name=String(rawName||'').replace(/\s*\n+\s*/g,' ').trim(),store=name||null;
   try{
     if(t.is_recurring){
       var anchor=resolveTaskOccDate(t,occDate),ovs=parseOverrides(t),cur=mergeOccurrence(t,anchor);
@@ -1582,7 +1590,7 @@ function renderDayViewTask(t){
   var lbl=taskDisplayLabel(t);
   if(lbl.length>56)lbl=lbl.slice(0,54)+'…';
   var acts=taskActionButtons(t,{compact:true});
-  return'<div class="dayview-task task-drag-item'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'" title="'+esc(taskDisplayLabel(t))+'">'+taskDragHandle()+chk+'<div class="dayview-task-body"><div class="dayview-task-head">'+dayviewTaskTitleHTML(t)+taskDescBtnHTML(t)+stag(t.status)+'</div>'+dayviewTaskMetaHTML(t)+(acts?'<div class="dayview-task-acts">'+acts+'</div>':'')+'</div></div>';
+  return'<div class="dayview-task task-drag-item'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'" title="'+esc(taskDisplayLabel(t))+'">'+taskDragHandle()+chk+'<div class="dayview-task-body"><div class="dayview-task-title-row">'+dayviewTaskTitleHTML(t)+'</div><div class="dayview-task-head">'+taskDescBtnHTML(t)+stag(t.status)+'</div>'+dayviewTaskMetaHTML(t)+(acts?'<div class="dayview-task-acts">'+acts+'</div>':'')+'</div></div>';
 }
 function buildDayViewHTML(dT,sq,dateKey){
   var q=(sq||'').toLowerCase().trim(),bM={};
