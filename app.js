@@ -1,4 +1,4 @@
-const APP_VER='20260525.26';
+const APP_VER='20260525.27';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1476,8 +1476,8 @@ function taskCheckOccKey(t){
 }
 function dayviewTaskMetaHTML(t){
   var bits=[];
-  if(t.scheduled_start_time)bits.push('<span class="dayview-chip">Start '+fmtStartTime(t.scheduled_start_time)+'</span>');
-  if(t.eta_minutes)bits.push('<span class="dayview-chip">ETA '+fm(t.eta_minutes)+'</span>');
+  if(t.scheduled_start_time)bits.push('<span class="dayview-chip start"><span class="dayview-chip-lbl">Start</span> '+fmtStartTime(t.scheduled_start_time)+'</span>');
+  if(t.eta_minutes)bits.push('<span class="dayview-chip eta"><span class="dayview-chip-lbl">ETA</span> '+fm(t.eta_minutes)+'</span>');
   if(t.actual_minutes)bits.push('<span class="dayview-chip">Act '+fm(t.actual_minutes)+'</span>');
   if(t.is_recurring)bits.push('<span class="dayview-chip recur">🔄 '+esc(t.recur_frequency||'Recurring')+'</span>');
   return bits.length?'<div class="dayview-task-meta">'+bits.join('')+'</div>':'';
