@@ -1,4 +1,4 @@
-const APP_VER='20260525.27';
+const APP_VER='20260525.28';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -437,7 +437,11 @@ function resolveTaskOccDate(t,occDate){
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
 function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,display_name:m.display_name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
-function overrideFieldsFromPatch(patch){return{name:patch.name,display_name:patch.display_name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
+function overrideFieldsFromPatch(patch){
+  var fields={name:patch.name,display_name:patch.display_name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes};
+  if(Object.prototype.hasOwnProperty.call(patch,'scheduled_start_time'))fields.scheduled_start_time=patch.scheduled_start_time;
+  return fields;
+}
 function scrubRecurringTemplateStatus(t,payload){
   if(!t||!t.is_recurring||!payload)return payload;
   if(payload.status==='done'||payload.status==='late')payload.status='nostart';
@@ -565,6 +569,7 @@ function syncRecurLock(){
 function fillTaskModalFromTask(t,skipScope){
   var td=el('tdisplay');if(td)td.value=(t.display_name||'').trim();
   el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';
+  syncStartClearBtn();
   sEta=normMins(t.eta_minutes);sAct=normMins(t.actual_minutes);
   isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;
   syncRecurUI();
@@ -646,6 +651,11 @@ function syncActClearBtn(){
   if(b)b.disabled=!sAct;
 }
 function clearActTime(){sAct=null;markTimeBtn('actg',null);syncExactTimeInput('act',null);syncActClearBtn();}
+function syncStartClearBtn(){
+  var b=el('clearStartBtn'),inp=el('tstart');
+  if(b&&inp)b.disabled=!inp.value;
+}
+function clearStartTime(){var inp=el('tstart');if(inp){inp.value='';syncStartClearBtn();}}
 function taskScheduleLabel(t){if(t._isOccurrence&&t._occurrenceDate){var d=dateFromKey(t._occurrenceDate);return d?d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):t._occurrenceDate;}var ld=parseDT(t.logged_at);return ld?ld.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}):'—';}
 function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.length){var last=h[0],fn=FL[last.field_changed]||last.field_changed;return'Last edit: '+fn+' · '+fmtDT(last.changed_at||last.created_at);}if(t.edited_at)return'Last updated · '+fmtDT(t.edited_at);return'';}
 
@@ -2149,7 +2159,7 @@ function openT(){
   closeMobileNav();
   if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
   editOccDate=null;editScope='all';
-  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';if(el('tdisplay'))el('tdisplay').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='nostart';el('tstart').value='';
+  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';if(el('tdisplay'))el('tdisplay').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='nostart';el('tstart').value='';syncStartClearBtn();
   sMids=cu?[cu.id]:[];
   var me=cu?members.find(function(x){return x.id===cu.id;}):null;
   sRoles=me?parseMemberRoles(me):[];
@@ -2232,7 +2242,8 @@ async function saveT(){
   var eid=el('teid').value;
   if(!sMids.length){toast('Select at least one member','error');return;}
   if(!sTTs.length){toast('Select at least one task type','error');return;}
-  var name=el('tname').value.trim(),status=el('tstat').value||'nostart',notes=el('tnotes').value.trim(),resultStr=sRCs.join(', '),startTime=el('tstart').value||null;
+  var name=el('tname').value.trim(),status=el('tstat').value||'nostart',notes=el('tnotes').value.trim(),resultStr=sRCs.join(', ');
+  var startRaw=el('tstart').value,startTime=startRaw?startRaw:null;
   var displayName=el('tdisplay')?el('tdisplay').value.trim():'';
   if(!name){toast('Task description is required — add who/what this covers','error');el('tname').focus();return;}
   if(isRec&&!recFreq){toast('Pick how often this task repeats','error');return;}
@@ -2905,6 +2916,8 @@ if(typeof window!=='undefined'&&window.__4K_EXPECTED_VER&&window.__4K_EXPECTED_V
   }catch(e){}
 }
 window.clearActTime=clearActTime;
+window.clearStartTime=clearStartTime;
+window.syncStartClearBtn=syncStartClearBtn;
 window.closeDaySnapM=closeDaySnapM;
 initLogin();
 initSidebar();
