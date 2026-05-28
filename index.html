@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.21';
+  var V='20260525.22';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.21">
+<link rel="stylesheet" href="style.css?v=20260525.22">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -175,7 +175,7 @@
       <div class="ph dayview-ph">
         <div>
           <div class="pt">Daily profiles</div>
-          <div class="ps">Everyone’s tasks for the day — scroll sideways · checkoffs sync with Team tasks</div>
+          <div class="ps">Everyone’s tasks in one view — wrapped side by side · clear, revert, or restore versions</div>
         </div>
         <div class="dayview-date-nav">
           <button type="button" class="btn sm" onclick="chDayView(-1)">‹ Prev</button>
@@ -372,6 +372,14 @@
     <div class="ma"><button class="btn" onclick="closeResultModal()">Cancel</button><button class="btn p" id="rsaveBtn" onclick="saveResult()">Post result</button></div>
   </div>
 </div>
+<div class="mov" id="DaySnapM">
+  <div class="modal day-snap-modal" style="max-width:480px">
+    <div class="modal-title" id="daySnapTitle">Day versions</div>
+    <p class="day-snap-desc" id="daySnapDesc"></p>
+    <div class="day-snap-list" id="daySnapList"></div>
+    <div class="ma"><button class="btn" onclick="closeDaySnapM()">Close</button></div>
+  </div>
+</div>
 <div class="mov" id="WPM">
   <div class="modal" style="max-width:440px">
     <div class="modal-title" style="color:var(--red)">Erase all agency data</div>
@@ -383,6 +391,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.21"></script>
+<script src="app.js?v=20260525.22"></script>
 </body>
 </html>
