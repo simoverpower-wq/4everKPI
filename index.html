@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260525.23';
+  var V='20260525.24';
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
     localStorage.setItem(k,V);
@@ -23,7 +23,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260525.23">
+<link rel="stylesheet" href="style.css?v=20260525.24">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -222,6 +222,7 @@
     <div class="bsel"><div class="bsel-lbl">Assign to <span class="bsel-hint">(tap multiple)</span></div><input class="mem-srch" id="massignsrch" placeholder="🔍 Search member..." oninput="bMembers()"><div class="bwrap" id="bm"></div></div>
     <div class="bsel"><div class="bsel-lbl">Role area</div><div class="bwrap" id="br"></div><div class="badd" id="brad"><input id="bri" placeholder="Add role..." onkeydown="if(event.key==='Enter')addBub('role')"><button class="btn sm" onclick="addBub('role')">Add</button><button class="btn sm" onclick="document.getElementById('brad').classList.remove('show')">✕</button></div></div>
     <div class="bsel"><div class="bsel-lbl">Task type <span class="bsel-hint">(tap multiple)</span></div><div class="bwrap" id="btt"></div><div class="badd" id="bttad"><input id="btti" placeholder="Add task type..." onkeydown="if(event.key==='Enter')addBub('tt')"><button class="btn sm" onclick="addBub('tt')">Add</button><button class="btn sm" onclick="document.getElementById('bttad').classList.remove('show')">✕</button></div></div>
+    <div class="fg fg-task-name"><label for="tdisplay">Task name <span class="bsel-hint">(optional — short label on Daily profiles; defaults to task type)</span></label><input id="tdisplay" placeholder="e.g. DM Logan re: Reddit rev accounts"></div>
     <div class="task-desc-block fg-desc" id="taskDescBlock">
       <div class="task-desc-head">
         <div class="task-desc-head-left">
@@ -354,6 +355,14 @@
     <div class="ma"><button class="btn" onclick="closeResultModal()">Cancel</button><button class="btn p" id="rsaveBtn" onclick="saveResult()">Post result</button></div>
   </div>
 </div>
+<div class="mov" id="TaskDescM">
+  <div class="modal task-desc-view-modal" style="max-width:520px">
+    <div class="modal-title" id="taskDescTitle">Task details</div>
+    <div class="task-desc-view-meta" id="taskDescMeta"></div>
+    <div class="task-desc-view-body" id="taskDescBody"></div>
+    <div class="ma"><button class="btn" onclick="closeTaskDescM()">Close</button></div>
+  </div>
+</div>
 <div class="mov" id="DaySnapM">
   <div class="modal day-snap-modal" style="max-width:480px">
     <div class="modal-title" id="daySnapTitle">Day versions</div>
@@ -373,6 +382,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260525.23"></script>
+<script src="app.js?v=20260525.24"></script>
 </body>
 </html>

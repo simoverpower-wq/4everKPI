@@ -263,6 +263,9 @@ ALTER TABLE tasks ADD COLUMN IF NOT EXISTS scheduled_start_time TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recur_overrides JSONB DEFAULT '{}'::jsonb;
 UPDATE tasks SET recur_overrides = '{}'::jsonb WHERE recur_overrides IS NULL;
 
+-- Short custom label for Daily profiles (defaults to task type when empty)
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS display_name TEXT;
+
 -- Wipe all agency data (keeps members — admin button in app)
 CREATE OR REPLACE FUNCTION wipe_agency_data()
 RETURNS jsonb

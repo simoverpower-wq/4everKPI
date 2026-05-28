@@ -1,4 +1,4 @@
-const APP_VER='20260525.23';
+const APP_VER='20260525.24';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -38,7 +38,7 @@ const HELP={
   calendar:'A month-view calendar of who did what and when. Click any day to open Daily profiles for that date. The colored dots show tasks on that date.',
   cal_filter:'Filter the calendar to only show tasks from one person — like zooming in on one player\'s stats instead of the whole team.',
   cal_summary:'A quick recap of the whole month — total tasks, how many finished, how many late, and the overall completion rate.',
-  tasks:'Daily profiles — everyone\'s tasks for the day in a wrapped grid. Check off, edit, clear a day, revert, or restore saved versions. ETA, start time, and repeat frequency show on each task.',
+  tasks:'Daily profiles — everyone\'s tasks for the day in a wrapped grid. Click a task name to rename it, tap 📋 for steps/description. Check off, edit, clear a day, revert, or restore saved versions.',
   performance:'Charts that turn your task data into pictures — like report cards with graphs. Click any chart to see the full list of tasks behind it.',
   chart_completion:'Shows each person\'s completion rate as a bar. Taller green bars = more tasks finished. It\'s like comparing test scores across the class.',
   chart_time:'Compares how long tasks actually took (blue) vs how long people estimated (purple). If blue is taller, they took longer than expected — like thinking a drive is 10 minutes but it takes 20.',
@@ -77,7 +77,7 @@ const HELP={
   rolenotes:'Shared notes for this role category. Write meeting notes, conversation summaries, reminders — anything the team needs to remember. Everyone can read and edit.',
   results:'Your wins board — log results you got (DM sent, lead found, call booked) and upload screenshots or files as proof. Like a trophy case for the team.'
 };
-const FL={status:'Status',role_area:'Role area',task_type:'Task type',result_category:'Result',eta_minutes:'ETA',actual_minutes:'Actual time',notes:'Notes',member_id:'Assigned to',name:'Description',scheduled_start_time:'Start time'};
+const FL={status:'Status',role_area:'Role area',task_type:'Task type',result_category:'Result',eta_minutes:'ETA',actual_minutes:'Actual time',notes:'Notes',member_id:'Assigned to',name:'Description',display_name:'Task name',scheduled_start_time:'Start time'};
 function hBtn(key){return'<span class="help-wrap"><button type="button" class="help-btn" onclick="toggleHelp(event,this)" aria-label="Help">?</button><span class="help-tip">'+(HELP[key]||'')+'</span></span>';}
 function hLbl(text,key){return text+'<span class="help-end">'+hBtn(key)+'</span>';}
 function toggleHelp(e,btn){
@@ -129,8 +129,26 @@ function getAssignable(){if(cu&&cu.isAdmin)return members;return members.filter(
 function canEditTask(t){if(!cu||!t)return false;return cu.isAdmin||isSelfMember(t.member_id);}
 function canDelTask(t){if(!cu||!t)return false;return cu.isAdmin||isSelfMember(t.member_id);}
 function isSelfMember(mid){return !!(cu&&mid!=null&&String(mid)===String(cu.id));}
+function taskTypeLabel(t){
+  var types=parseTT(t&&t.task_type);
+  return types.length?types.join(' · '):'';
+}
+function taskDisplayLabel(t){
+  if(!t)return'Task';
+  var dn=(t.display_name||'').trim();
+  if(dn)return dn;
+  var tl=taskTypeLabel(t);
+  if(tl)return tl;
+  var desc=(t.name||'').trim();
+  if(desc){
+    var first=desc.split('\n')[0].trim();
+    if(first)return first.length>72?first.slice(0,70)+'…':first;
+  }
+  return'Task';
+}
+function taskDisplayPlaceholder(t){return taskTypeLabel(t)||'Name this task…';}
 function taskShortLabel(t){
-  var types=parseTT(t.task_type),lbl=types.length?types.join(' · '):(t.name||'task');
+  var lbl=taskDisplayLabel(t);
   lbl=(lbl||'task').trim();
   return lbl.length>24?lbl.slice(0,22)+'…':lbl;
 }
@@ -174,6 +192,7 @@ async function duplicateTask(tid,occDate,btnEl){
     var row={
       member_id:orig.member_id,
       name:src.name,
+      display_name:src.display_name||null,
       notes:src.notes||'',
       role_area:src.role_area||null,
       task_type:src.task_type||null,
@@ -405,7 +424,7 @@ function recursOnDate(t,ds){
   return true;
 }
 function pickOv(ov,key,base){return Object.prototype.hasOwnProperty.call(ov,key)?ov[key]:base;}
-function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'nostart'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
+function mergeOccurrence(t,dateKey){var ov=parseOverrides(t)[dateKey]||{};return Object.assign({},t,{_occurrenceDate:dateKey,_isOccurrence:true,name:pickOv(ov,'name',t.name),display_name:pickOv(ov,'display_name',t.display_name),notes:pickOv(ov,'notes',t.notes),status:pickOv(ov,'status',t.status||'nostart'),eta_minutes:pickOv(ov,'eta_minutes',t.eta_minutes),actual_minutes:pickOv(ov,'actual_minutes',t.actual_minutes),scheduled_start_time:pickOv(ov,'scheduled_start_time',t.scheduled_start_time)});}
 function getRecurringVirtualTasks(ds){var key=dsToKey(ds);return tasks.filter(function(t){if(!t.is_recurring||!t.recur_frequency||!t.logged_at)return false;if(new Date(t.logged_at).toDateString()===ds)return false;return recursOnDate(t,ds);}).map(function(t){return mergeOccurrence(t,key);});}
 function tasksForDay(ds){var key=dsToKey(ds);var logged=tasks.filter(function(t){return new Date(t.logged_at).toDateString()===ds;}).map(function(t){return t.is_recurring?mergeOccurrence(t,key):t;});return logged.concat(getRecurringVirtualTasks(ds));}
 function resolveTaskOccDate(t,occDate){
@@ -416,9 +435,9 @@ function resolveTaskOccDate(t,occDate){
   return dsToKey(new Date().toDateString());
 }
 function listOccurrenceKeys(t,maxDays){var keys=[],start=new Date(t.logged_at);if(isNaN(start))return keys;start.setHours(0,0,0,0);var end=new Date(start);end.setDate(end.getDate()+(maxDays||400));for(var d=new Date(start);d<=end;d.setDate(d.getDate()+1)){var ds=d.toDateString();if(recursOnDate(t,ds))keys.push(dsToKey(ds));}return keys;}
-function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
+function freezePastOverrides(orig,anchorKey){var ovs=parseOverrides(orig);listOccurrenceKeys(orig).forEach(function(key){if(key>=anchorKey||key.charAt(0)==='_')return;if(Object.prototype.hasOwnProperty.call(ovs,key))return;var m=mergeOccurrence(orig,key);ovs[key]={name:m.name,display_name:m.display_name,notes:m.notes,status:m.status,eta_minutes:m.eta_minutes,actual_minutes:m.actual_minutes,scheduled_start_time:m.scheduled_start_time};});Object.keys(ovs).forEach(function(key){if(key.charAt(0)==='_')return;if(key>=anchorKey)delete ovs[key];});return ovs;}
 function stopRecurrenceAfter(orig,anchorKey){var ovs=freezePastOverrides(orig,anchorKey);ovs._stopAfter=anchorKey;return ovs;}
-function overrideFieldsFromPatch(patch){return{name:patch.name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
+function overrideFieldsFromPatch(patch){return{name:patch.name,display_name:patch.display_name,notes:patch.notes,status:patch.status,eta_minutes:patch.eta_minutes,actual_minutes:patch.actual_minutes,scheduled_start_time:patch.scheduled_start_time};}
 function scrubRecurringTemplateStatus(t,payload){
   if(!t||!t.is_recurring||!payload)return payload;
   if(payload.status==='done'||payload.status==='late')payload.status='nostart';
@@ -544,6 +563,7 @@ function syncRecurLock(){
   });
 }
 function fillTaskModalFromTask(t,skipScope){
+  var td=el('tdisplay');if(td)td.value=(t.display_name||'').trim();
   el('tname').value=t.name||'';el('tnotes').value=t.notes||'';el('tstat').value=t.status||'done';el('tstart').value=t.scheduled_start_time||'';
   sEta=normMins(t.eta_minutes);sAct=normMins(t.actual_minutes);
   isRec=!!t.is_recurring;recFreq=t.recur_frequency||null;
@@ -1308,7 +1328,7 @@ function memberDayTasks(memberId,dateKey){
 function canClearMemberDay(memberId){return!!(cu&&(cu.isAdmin||isSelfMember(memberId)));}
 function serializeDayTask(t,dateKey){
   return{
-    id:t.id,member_id:t.member_id,name:t.name,notes:t.notes,status:t.status,role_area:t.role_area,task_type:t.task_type,
+    id:t.id,member_id:t.member_id,name:t.name,display_name:t.display_name,notes:t.notes,status:t.status,role_area:t.role_area,task_type:t.task_type,
     result_category:t.result_category,eta_minutes:t.eta_minutes,actual_minutes:t.actual_minutes,scheduled_start_time:t.scheduled_start_time,
     is_recurring:!!t.is_recurring,recur_frequency:t.recur_frequency,recur_overrides:t.recur_overrides,logged_at:t.logged_at,
     occurrence_date:t._occurrenceDate||null,is_occurrence:!!t._isOccurrence
@@ -1366,7 +1386,7 @@ async function removeMemberDayTasks(memberId,dateKey){
 }
 function taskPayloadFromSnapshot(st,logDate){
   var p={
-    member_id:st.member_id,name:st.name,notes:st.notes,status:st.status||'nostart',role_area:st.role_area,
+    member_id:st.member_id,name:st.name,display_name:st.display_name,notes:st.notes,status:st.status||'nostart',role_area:st.role_area,
     task_type:st.task_type,result_category:st.result_category,eta_minutes:st.eta_minutes,actual_minutes:st.actual_minutes,
     scheduled_start_time:st.scheduled_start_time,is_recurring:!!st.is_recurring,recur_frequency:st.recur_frequency,
     recur_overrides:st.recur_overrides||{},logged_at:st.logged_at||logDate.toISOString()
@@ -1462,12 +1482,107 @@ function dayviewTaskMetaHTML(t){
   if(t.is_recurring)bits.push('<span class="dayview-chip recur">🔄 '+esc(t.recur_frequency||'Recurring')+'</span>');
   return bits.length?'<div class="dayview-task-meta">'+bits.join('')+'</div>':'';
 }
+function dayviewTaskTitleHTML(t){
+  var lbl=taskDisplayLabel(t),ph=esc(taskDisplayPlaceholder(t)),can=canEditTask(t);
+  var occ=t._occurrenceDate?' data-occ="'+t._occurrenceDate+'"':'';
+  if(!can)return'<span class="dayview-task-title" title="'+esc(lbl)+'">'+esc(lbl)+'</span>';
+  return'<input type="text" class="dayview-task-title-input" data-title-id="'+t.id+'"'+occ+' value="'+esc(lbl)+'" placeholder="'+ph+'" title="Click to rename this task">';
+}
+function taskDescBtnHTML(t){
+  if(!taskDescContent(t)&&!(t.notes||'').trim())return'';
+  return'<button type="button" class="btn sm dayview-desc-btn" data-desc-id="'+t.id+'"'+(t._occurrenceDate?' data-occ="'+t._occurrenceDate+'"':'')+' title="View steps & description">📋</button>';
+}
+function getTaskView(tid,occDate){
+  var t=tasks.find(function(x){return x.id===tid;});
+  if(!t)return null;
+  if(t.is_recurring)return mergeOccurrence(t,resolveTaskOccDate(t,occDate));
+  return t;
+}
+function openTaskDescM(tid,occDate){
+  var t=getTaskView(tid,occDate);if(!t)return;
+  var title=taskDisplayLabel(t),typeLbl=taskTypeLabel(t);
+  el('taskDescTitle').textContent=title;
+  var meta=el('taskDescMeta');
+  if(meta){
+    var bits=[];
+    if(typeLbl&&typeLbl!==title)bits.push('<span class="task-desc-view-type">'+esc(typeLbl)+'</span>');
+    if(t.role_area)bits.push('<span class="task-desc-view-role">'+esc(t.role_area)+'</span>');
+    meta.innerHTML=bits.length?bits.join(' '):'';
+    meta.style.display=bits.length?'':'none';
+  }
+  var body=el('taskDescBody'),desc=taskDescContent(t),notes=(t.notes||'').trim(),html='';
+  if(desc)html+='<div class="task-desc-emphasis"><div class="task-desc-emphasis-lbl">Steps & description</div><div class="task-desc-emphasis-body">'+formatTaskDescHTML(desc)+'</div></div>';
+  if(notes)html+='<div class="task-desc-view-notes"><div class="task-desc-emphasis-lbl">Blockers / follow-ups</div><div class="task-desc-emphasis-body">'+formatTaskDescHTML(notes)+'</div></div>';
+  if(!html)html='<div class="task-desc-view-empty">No description yet — use Edit to add steps and details.</div>';
+  body.innerHTML=html;
+  el('TaskDescM').classList.add('open');
+}
+function closeTaskDescM(){el('TaskDescM').classList.remove('open');}
+function bindTaskDescBtns(root){
+  if(!root)return;
+  qsa('[data-desc-id]',root).forEach(function(btn){
+    if(btn._descBound)return;
+    btn._descBound=true;
+    btn.onclick=function(e){
+      e.stopPropagation();
+      openTaskDescM(this.dataset.descId,this.dataset.occ||null);
+    };
+  });
+}
+function bindTaskTitleEdits(root){
+  if(!root)return;
+  qsa('.dayview-task-title-input',root).forEach(function(inp){
+    if(inp._titleBound)return;
+    inp._titleBound=true;
+    inp.onmousedown=function(e){e.stopPropagation();};
+    inp.onclick=function(e){e.stopPropagation();};
+    inp.onkeydown=function(e){
+      if(e.key==='Enter'){e.preventDefault();this.blur();}
+      if(e.key==='Escape'){this.value=this.dataset.lastVal||this.value;this.blur();}
+    };
+    inp.onfocus=function(){this.dataset.lastVal=this.value;this.select();};
+    inp.onblur=function(){
+      var tid=this.dataset.titleId,val=this.value.trim(),last=(this.dataset.lastVal||'').trim();
+      if(val===last)return;
+      saveTaskDisplayName(tid,this.dataset.occ||null,val,this);
+    };
+  });
+}
+async function saveTaskDisplayName(tid,occDate,rawName,inputEl){
+  if(!sb){toast('Not connected','error');return;}
+  var t=tasks.find(function(x){return x.id===tid;});
+  if(!t||!canEditTask(t)){toast('You can only rename your own tasks','error');return;}
+  var name=rawName.trim(),store=name||null;
+  try{
+    if(t.is_recurring){
+      var anchor=resolveTaskOccDate(t,occDate),ovs=parseOverrides(t),cur=mergeOccurrence(t,anchor);
+      var oldLbl=taskDisplayLabel(cur);
+      if(name===oldLbl)return;
+      var dayPatch=Object.assign({},ovs[anchor]||{});
+      if(store)dayPatch.display_name=store;else delete dayPatch.display_name;
+      var keys=Object.keys(dayPatch).filter(function(k){return k!=='skipped'&&!k.startsWith('_');});
+      if(!keys.length)delete ovs[anchor];else ovs[anchor]=scrubOverrideForSave(dayPatch);
+      var r=await sb.from('tasks').update({recur_overrides:ovs,edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
+      if(r.error)throw r.error;
+    }else{
+      var r2=await sb.from('tasks').update({display_name:store,edited_at:nowISO(),edited_by:cu.id}).eq('id',tid);
+      if(r2.error)throw r2.error;
+      if(store!==((t.display_name||'').trim()||null))await sb.from('task_history').insert([{task_id:tid,changed_by:cu.id,field_changed:'display_name',old_value:String(t.display_name||''),new_value:String(store||''),changed_at:nowISO()}]);
+    }
+    toast('Task renamed ✓');
+    await load();
+  }catch(e){
+    console.error('[4KPI] saveTaskDisplayName',e);
+    toast('Could not save name — run supabase_migration.sql for display_name column','error');
+    if(inputEl&&inputEl.dataset.lastVal!=null)inputEl.value=inputEl.dataset.lastVal;
+  }
+}
 function renderDayViewTask(t){
   var chk=taskCheckHTML(t);
-  var types=parseTT(t.task_type),typeLbl=types.length?types.join(' · '):(t.name||'Task');
-  if(typeLbl.length>48)typeLbl=typeLbl.slice(0,46)+'…';
+  var lbl=taskDisplayLabel(t);
+  if(lbl.length>56)lbl=lbl.slice(0,54)+'…';
   var acts=taskActionButtons(t,{compact:true});
-  return'<div class="dayview-task task-drag-item'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'" title="'+esc(typeLbl)+'">'+taskDragHandle()+chk+'<div class="dayview-task-body"><div class="dayview-task-head"><span class="dayview-task-title">'+esc(typeLbl)+'</span>'+stag(t.status)+'</div>'+dayviewTaskMetaHTML(t)+(acts?'<div class="dayview-task-acts">'+acts+'</div>':'')+'</div></div>';
+  return'<div class="dayview-task task-drag-item'+(t.status==='done'?' done':'')+'" data-task-key="'+taskSortKey(t)+'" data-member-id="'+t.member_id+'" title="'+esc(taskDisplayLabel(t))+'">'+taskDragHandle()+chk+'<div class="dayview-task-body"><div class="dayview-task-head">'+dayviewTaskTitleHTML(t)+taskDescBtnHTML(t)+stag(t.status)+'</div>'+dayviewTaskMetaHTML(t)+(acts?'<div class="dayview-task-acts">'+acts+'</div>':'')+'</div></div>';
 }
 function buildDayViewHTML(dT,sq,dateKey){
   var q=(sq||'').toLowerCase().trim(),bM={};
@@ -1511,6 +1626,8 @@ function rTasksPage(){
   else board.innerHTML=buildDayViewHTML(dT,sq,dateKey);
   bindLineupActions(board);
   bindDayViewActions(board);
+  bindTaskTitleEdits(board);
+  bindTaskDescBtns(board);
   qsa('.dayview-row',board).forEach(function(block){
     var grid=block.querySelector('.dayview-task-grid');
     if(grid)bindTaskDrag(grid,block.dataset.memberId,dateKey);
@@ -1540,7 +1657,7 @@ function memberMatchesQuery(m,q){
 }
 function taskMatchesQuery(t,q){
   if(!q)return true;
-  var hay=[t.name,t.task_type,t.notes,t.role_area,t.result_category].filter(Boolean).join(' ').toLowerCase();
+  var hay=[t.display_name,t.name,t.task_type,t.notes,t.role_area,t.result_category].filter(Boolean).join(' ').toLowerCase();
   return hay.includes(q);
 }
 
@@ -2024,7 +2141,7 @@ function openT(){
   closeMobileNav();
   if(cu&&getNavAccess(cu.id).log_task===false){toast('You don\'t have access to log tasks','error');return;}
   editOccDate=null;editScope='all';
-  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='nostart';el('tstart').value='';
+  el('tmtitle').textContent='Log task';el('tsave').textContent='Save task';el('teid').value='';if(el('tdisplay'))el('tdisplay').value='';el('tname').value='';el('tnotes').value='';el('tstat').value='nostart';el('tstart').value='';
   sMids=cu?[cu.id]:[];
   var me=cu?members.find(function(x){return x.id===cu.id;}):null;
   sRoles=me?parseMemberRoles(me):[];
@@ -2108,10 +2225,11 @@ async function saveT(){
   if(!sMids.length){toast('Select at least one member','error');return;}
   if(!sTTs.length){toast('Select at least one task type','error');return;}
   var name=el('tname').value.trim(),status=el('tstat').value||'nostart',notes=el('tnotes').value.trim(),resultStr=sRCs.join(', '),startTime=el('tstart').value||null;
+  var displayName=el('tdisplay')?el('tdisplay').value.trim():'';
   if(!name){toast('Task description is required — add who/what this covers','error');el('tname').focus();return;}
   if(isRec&&!recFreq){toast('Pick how often this task repeats','error');return;}
   var ttStr=taskTypesStr(),baseName=name||sTTs[0];
-  var patch={name:baseName,notes:notes,status:status,eta_minutes:sEta||null,actual_minutes:sAct||null,scheduled_start_time:startTime};
+  var patch={name:baseName,display_name:displayName||null,notes:notes,status:status,eta_minutes:sEta||null,actual_minutes:sAct||null,scheduled_start_time:startTime};
 
   if(eid){
     var orig=tasks.find(function(t){return t.id===eid;});
@@ -2125,22 +2243,22 @@ async function saveT(){
         toast('This day updated ✓');closeTM();await load();return;
       }
       if(scope==='future'){
-        var pf=Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs});
+        var pf=Object.assign({},patch,{name:baseName,display_name:displayName||null,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs});
         var rf=await sb.from('tasks').update(pf).eq('id',eid);
         if(rf.error){console.error('[4KPI] future scope save',rf.error);toast('Error updating future tasks — '+((rf.error&&rf.error.message)||'try again'),'error');return;}
         toast('This & future updated ✓');closeTM();await load();return;
       }
-      var ra=await sb.from('tasks').update(Object.assign({},patch,{name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs})).eq('id',eid);
+      var ra=await sb.from('tasks').update(Object.assign({},patch,{name:baseName,display_name:displayName||null,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime,member_id:sMids[0],edited_at:nowISO(),edited_by:cu.id,recur_overrides:ovs})).eq('id',eid);
       if(ra.error){toast('Error updating series','error');return;}
       toast('Entire series updated ✓');closeTM();await load();return;
     }
   }
 
-  var payload={name:baseName,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime};
+  var payload={name:baseName,display_name:displayName||null,status:status,role_area:sRoles[0]||null,task_type:ttStr,result_category:resultStr||null,notes:notes,eta_minutes:sEta||null,actual_minutes:sAct||null,is_recurring:isRec,recur_frequency:recFreq||null,scheduled_start_time:startTime};
   if(eid){
     payload.member_id=sMids[0];
     var orig2=tasks.find(function(t){return t.id===eid;});
-    if(orig2){var fields=['status','role_area','task_type','result_category','eta_minutes','actual_minutes','notes','member_id','name','scheduled_start_time'];for(var i=0;i<fields.length;i++){var f=fields[i];if(String(orig2[f]||'')!==String(payload[f]||''))await sb.from('task_history').insert([{task_id:eid,changed_by:cu.id,field_changed:f,old_value:String(orig2[f]||''),new_value:String(payload[f]||''),changed_at:nowISO()}]);}}
+    if(orig2){var fields=['status','role_area','task_type','result_category','eta_minutes','actual_minutes','notes','member_id','name','display_name','scheduled_start_time'];for(var i=0;i<fields.length;i++){var f=fields[i];if(String(orig2[f]||'')!==String(payload[f]||''))await sb.from('task_history').insert([{task_id:eid,changed_by:cu.id,field_changed:f,old_value:String(orig2[f]||''),new_value:String(payload[f]||''),changed_at:nowISO()}]);}}
     payload.edited_at=nowISO();payload.edited_by=cu.id;
     var r=await sb.from('tasks').update(payload).eq('id',eid);if(r.error){toast('Error updating','error');return;}toast('Task updated ✓');
   }else{
