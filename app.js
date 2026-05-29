@@ -1,4 +1,4 @@
-const APP_VER='20260525.29';
+const APP_VER='20260525.30';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -22,8 +22,8 @@ const COLORS={purple:{bg:'rgba(167,139,250,.15)',text:'#a78bfa'},teal:{bg:'rgba(
 
 const HELP={
   dashboard:'Your overseer home base — everything you\'ve logged for the team shows up here so you can see at a glance how the agency is pacing today.',
-  pulse:'The agency pulse is today\'s daily scoreboard — it resets each day. Check off tasks, log actual time, and stay on ETA to fill the ring.',
-  pulse_pct:'Today\'s pulse blends checkoffs (~55%), logging actual time (~25%), and ETA accuracy (~20%). Checking tasks off moves it the most.',
+  pulse:'The agency pulse is today\'s completion score — the percentage of assigned tasks checked off as done. It resets each day.',
+  pulse_pct:'The ring equals done ÷ scheduled tasks for that day. ETA and actual time show on tasks but do not affect the pulse.',
   streak:'Counts consecutive days you\'ve logged at least one task for the team. Keep it alive by tracking work every day.',
   kpis:'Quick score counters for the agency — tap any card (except Team tracking) to see the tasks behind the number.',
   kpi_logged:'Every task you\'ve logged for the team, all together. Your running tally of what\'s being tracked.',
@@ -347,25 +347,10 @@ function getDayTasksForPulse(forDate){
 }
 function computeDailyPulse(dayTasks){
   var tot=(dayTasks||[]).length;
-  if(!tot)return{pct:0,done:0,tot:0,completion:0,timeScore:0,etaScore:0,timedDone:0,both:0,avgDelta:null};
+  if(!tot)return{pct:0,done:0,tot:0,completion:0};
   var done=dayTasks.filter(function(t){return t.status==='done';}).length;
-  var completion=(done/tot)*100;
-  var doneTasks=dayTasks.filter(function(t){return t.status==='done';});
-  var timedDone=doneTasks.filter(function(t){return t.actual_minutes>0;}).length;
-  var timeScore=doneTasks.length?(timedDone/doneTasks.length)*100:0;
-  var both=dayTasks.filter(function(t){return t.actual_minutes&&t.eta_minutes;});
-  var etaScore=50,avgDelta=null;
-  if(both.length){
-    var acc=both.map(function(t){
-      var ratio=t.actual_minutes/t.eta_minutes;
-      if(ratio<=1)return 100;
-      return Math.max(0,100-(ratio-1)*100);
-    });
-    etaScore=acc.reduce(function(s,v){return s+v;},0)/acc.length;
-    avgDelta=Math.round(both.reduce(function(s,t){return s+(t.actual_minutes-t.eta_minutes);},0)/both.length);
-  }
-  var pct=Math.round(completion*0.55+timeScore*0.25+etaScore*0.20);
-  return{pct:Math.min(100,Math.max(0,pct)),done:done,tot:tot,completion:Math.round(completion),timeScore:Math.round(timeScore),etaScore:Math.round(etaScore),timedDone:timedDone,both:both.length,avgDelta:avgDelta};
+  var completion=Math.round((done/tot)*100);
+  return{pct:completion,done:done,tot:tot,completion:completion};
 }
 function isPulseToday(forDate){var t=new Date(),d=forDate||pulseDate||new Date();return t.toDateString()===d.toDateString();}
 function pulseDateLabel(){var d=pulseDate||new Date();return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});}
@@ -1270,16 +1255,16 @@ function rPulse(){
   var ps=el('psub');
   if(ps){
     if(!p.tot)ps.textContent=isPulseToday()?'No tasks scheduled today — log the lineup to start the pulse':'No tasks scheduled this day';
-    else if(isPulseToday())ps.textContent=p.done+'/'+p.tot+' checked off today · pulse resets daily';
-    else ps.textContent=p.done+'/'+p.tot+' done on this day · browse other days with ‹ ›';
+    else if(isPulseToday())ps.textContent=p.done+'/'+p.tot+' checked off · '+p.completion+'% completion';
+    else ps.textContent=p.done+'/'+p.tot+' done ('+p.completion+'%) · browse other days with ‹ ›';
   }
   var bd=el('pulseBreakdown');
   if(bd){
     if(!p.tot){bd.innerHTML='';bd.style.display='none';}
     else{
       bd.style.display='flex';
-      var etaTxt=p.both?(p.avgDelta===null?'—':(p.avgDelta>0?'+'+fm(p.avgDelta)+' over ETA':p.avgDelta<0?fm(Math.abs(p.avgDelta))+' under ETA':'On ETA')):'Log actual + ETA';
-      bd.innerHTML='<span class="pulse-pill pulse-pill-main" title="Checkoffs are ~55% of the daily pulse">✓ '+p.done+'/'+p.tot+' done</span><span class="pulse-pill" title="Logging actual time on done tasks (~25%)">⏱ '+p.timedDone+' timed</span><span class="pulse-pill" title="ETA accuracy on timed tasks (~20%)">'+etaTxt+'</span><span class="pulse-pill pulse-pill-muted" title="Completion '+p.completion+'% · Time '+p.timeScore+'% · ETA '+p.etaScore+'%">Score mix</span>';
+      var open=p.tot-p.done;
+      bd.innerHTML='<span class="pulse-pill pulse-pill-main" title="Tasks checked off today">✓ '+p.done+'/'+p.tot+' done</span>'+(open?'<span class="pulse-pill" title="Still open">'+open+' open</span>':'')+'<span class="pulse-pill pulse-pill-muted" title="Completion rate for this day">'+p.completion+'% pulse</span>';
     }
   }
   var tracked=getTrackedTasks(),str=0;
