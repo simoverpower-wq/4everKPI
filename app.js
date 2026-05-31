@@ -1,4 +1,4 @@
-const APP_VER='20260527.41';
+const APP_VER='20260527.42';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1009,7 +1009,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false;
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogProbing=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1828,8 +1828,10 @@ function genActId(){
 }
 function isActivityLogTableMissing(err){
   if(!err)return false;
+  var code=String(err.code||'');
+  if(code==='PGRST205'||code==='42P01')return true;
   var msg=(err.message||'')+(err.details||'')+(err.hint||'');
-  return/PGRST205|activity_log|does not exist|Could not find the table|Could not find.*activity|schema cache/i.test(msg);
+  return/relation \"activity_log\" does not exist|Could not find the table 'public\.activity_log'|Could not find the table \"public\"\.\"activity_log\"|schema cache.*activity_log|does not exist.*activity_log/i.test(msg);
 }
 function loadActivityLogFromLocal(){
   var key=localActivityKey();if(!key){activityLog=[];return;}
@@ -2218,6 +2220,15 @@ function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var na
 function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}var removed=activityTags[idx];activityTags.splice(idx,1);saveActivityTags();actCategories=actCategories.filter(function(c){return c!==removed;});renderActCatBubbles();renderTagManagerPanel();rDailyLog();}
 function rDailyLog(){
   if(!cu)return;
+  if(activityLogLocalOnly&&sb&&!activityLogProbing){
+    activityLogProbing=true;
+    loadActivityLog().finally(function(){activityLogProbing=false;}).then(function(){rDailyLogInner();});
+    return;
+  }
+  rDailyLogInner();
+}
+function rDailyLogInner(){
+  if(!cu)return;
   var list=el('dailyLogList'),lbl=el('dailyLogDateLbl'),pick=el('dailyLogDatePick');
   if(!list)return;
   if(!dailyLogDate)dailyLogDate=new Date();
@@ -2270,7 +2281,7 @@ async function saveActivity(){
   console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
   try{
     var row=null;
-    if(activityLogLocalOnly||!sb){
+    if(!sb){
       row=saveActivityLogLocalRow(payload,eid||null);
     }else{
       var r;
@@ -2287,6 +2298,8 @@ async function saveActivity(){
           return;
         }
       }else{
+        activityLogLocalOnly=false;
+        syncActivitySetupBanner();
         row=Array.isArray(r.data)?r.data[0]:r.data;
       }
     }
@@ -2307,16 +2320,21 @@ async function saveActivity(){
 async function deleteActivity(id){
   if(!cu||!id)return;
   if(!confirm('Delete this entry?'))return;
-  if(activityLogLocalOnly||!sb){
+  if(!sb){
     activityLog=activityLog.filter(function(x){return x.id!==id;});
     persistActivityLogLocal();
   }else{
     var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
     if(r.error){
       if(isActivityLogTableMissing(r.error)){
+        activityLogLocalOnly=true;
+        syncActivitySetupBanner();
         activityLog=activityLog.filter(function(x){return x.id!==id;});
         persistActivityLogLocal();
       }else{toast('Could not delete','error');return;}
+    }else{
+      activityLogLocalOnly=false;
+      syncActivitySetupBanner();
     }
   }
   if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
