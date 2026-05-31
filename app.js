@@ -1,4 +1,4 @@
-const APP_VER='20260527.38';
+const APP_VER='20260527.40';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -791,6 +791,7 @@ function getNavAccess(mid){
       if(Object.prototype.hasOwnProperty.call(custom,t.id))base[t.id]=!!custom[t.id];
     });
   }
+  base.dailylog=true;
   return base;
 }
 function syncUserRole(){
@@ -1008,7 +1009,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false;
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1820,16 +1821,91 @@ function normalizeLogDate(v){
 }
 function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
+function localActivityKey(){return cu?'4k_alog_'+cu.id:'';}
+function genActId(){
+  if(typeof crypto!=='undefined'&&crypto.randomUUID)return crypto.randomUUID();
+  return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});
+}
+function isActivityLogTableMissing(err){
+  if(!err)return false;
+  var msg=(err.message||'')+(err.details||'')+(err.hint||'');
+  return/PGRST205|activity_log|does not exist|Could not find the table|Could not find.*activity|schema cache/i.test(msg);
+}
+function loadActivityLogFromLocal(){
+  var key=localActivityKey();if(!key){activityLog=[];return;}
+  var data=ls(key);activityLog=Array.isArray(data)?data:[];
+}
+function persistActivityLogLocal(){var key=localActivityKey();if(key)lss(key,activityLog);}
+function syncActivitySetupBanner(){
+  var b=el('dailyLogSetupBanner');if(b)b.hidden=!activityLogLocalOnly;
+}
+var ACTIVITY_LOG_SETUP_SQL="CREATE TABLE IF NOT EXISTS activity_log (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,\n  description TEXT NOT NULL,\n  time_spent TEXT,\n  time_minutes INTEGER,\n  category TEXT,\n  log_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE INDEX IF NOT EXISTS activity_log_member_date ON activity_log (member_id, log_date DESC);\n\nALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS \"activity_log_select\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_insert\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_update\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_delete\" ON activity_log;\n\nCREATE POLICY \"activity_log_select\" ON activity_log FOR SELECT USING (true);\nCREATE POLICY \"activity_log_insert\" ON activity_log FOR INSERT WITH CHECK (true);\nCREATE POLICY \"activity_log_update\" ON activity_log FOR UPDATE USING (true);\nCREATE POLICY \"activity_log_delete\" ON activity_log FOR DELETE USING (true);\n\nGRANT ALL ON TABLE activity_log TO anon, authenticated;";
+async function copyActivityLogSetupSQL(){
+  try{
+    await navigator.clipboard.writeText(ACTIVITY_LOG_SETUP_SQL);
+    toast('SQL copied — paste in Supabase SQL Editor & Run');
+  }catch(e){
+    prompt('Copy this SQL into Supabase → SQL Editor → Run:',ACTIVITY_LOG_SETUP_SQL);
+  }
+}
+async function retryActivityLogSupabase(){
+  activityLogLocalOnly=false;
+  await loadActivityLog();
+  syncActivitySetupBanner();
+  if(!activityLogLocalOnly){toast('Connected to Supabase ✓');rDailyLog();}
+  else toast('Table still missing — copy SQL and run it in Supabase','error');
+}
+function saveActivityLogLocalRow(payload,eid){
+  var now=nowISO(),row;
+  if(eid){
+    var idx=activityLog.findIndex(function(x){return x.id===eid;});
+    var prev=idx>=0?activityLog[idx]:{};
+    row=Object.assign({},prev,payload,{id:eid,updated_at:now});
+    if(idx>=0)activityLog[idx]=row;
+  }else{
+    row=Object.assign({},payload,{id:genActId(),created_at:now,updated_at:now});
+    activityLog.unshift(row);
+  }
+  persistActivityLogLocal();
+  return row;
+}
 async function loadActivityLog(){
-  if(!sb||!cu){activityLog=[];return;}
+  if(!cu){activityLog=[];return;}
+  if(!sb){loadActivityLogFromLocal();activityLogLocalOnly=true;syncActivitySetupBanner();return;}
   try{
     var r=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('log_date',{ascending:false}).order('created_at',{ascending:false});
     if(r.error){
-      if(/activity_log|does not exist|Could not find|schema cache/i.test((r.error.message||''))){activityLog=[];return;}
-      sbErr('activity_log',r);activityLog=[];return;
+      if(isActivityLogTableMissing(r.error)){
+        console.warn('[4KPI] activity_log table missing — using local storage',r.error);
+        loadActivityLogFromLocal();
+        activityLogLocalOnly=true;
+        syncActivitySetupBanner();
+        return;
+      }
+      sbErr('activity_log',r);activityLog=[];activityLogLocalOnly=false;syncActivitySetupBanner();return;
     }
     activityLog=r.data||[];
-  }catch(e){console.error('[4KPI] loadActivityLog',e);activityLog=[];}
+    activityLogLocalOnly=false;
+    syncActivitySetupBanner();
+    var local=ls(localActivityKey());
+    if(local&&local.length){
+      try{
+        for(var i=0;i<local.length;i++){
+          var L=local[i],pl={member_id:cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
+          await sb.from('activity_log').insert([pl]);
+        }
+        lss(localActivityKey(),[]);
+        var r2=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('log_date',{ascending:false}).order('created_at',{ascending:false});
+        if(!r2.error)activityLog=r2.data||[];
+        toast('Local entries synced to Supabase ✓');
+      }catch(syncErr){console.warn('[4KPI] local activity sync failed',syncErr);}
+    }
+  }catch(e){
+    console.error('[4KPI] loadActivityLog',e);
+    loadActivityLogFromLocal();
+    activityLogLocalOnly=true;
+    syncActivitySetupBanner();
+  }
 }
 function dateInputStr(d){var x=new Date(d);if(isNaN(x))x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
 function parseDateInput(s){if(!s)return new Date();var p=String(s).split('-');if(p.length!==3)return new Date();return new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10));}
@@ -2124,6 +2200,7 @@ function rDailyLog(){
   if(el('actEid')&&!el('actEid').value&&el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
   renderWeeklyTotals();
   renderDailyLogPresets();
+  syncActivitySetupBanner();
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
   if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet — use the form above to log your first one.</div>';return;}
@@ -2161,30 +2238,36 @@ async function saveActivity(){
   var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
   var eid=el('actEid').value;
   var wasEdit=!!eid;
-  var payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,categories:cats.length?cats:null,log_date:logDate,updated_at:nowISO()};
+  var payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
   console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
   try{
-    var r;
-    if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id).select();
-    else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
-    if(r.error){
-      console.error('[4KPI] saveActivity failed',r.error,payload);
-      if(/categories|column.*does not exist|Could not find|PGRST204/i.test((r.error.message||'')+(r.error.details||''))){
-        var fallback=Object.assign({},payload);delete fallback.categories;
-        r=eid?await sb.from('activity_log').update(fallback).eq('id',eid).eq('member_id',cu.id).select():await sb.from('activity_log').insert([Object.assign({},fallback,{created_at:nowISO()})]).select();
-        if(r.error){
-          if(/activity_log|does not exist|Could not find/i.test(r.error.message||'')){toast('Daily Log table missing — run activity_log_setup.sql in Supabase','error');return;}
-          toast('Could not save — '+r.error.message,'error');return;
+    var row=null;
+    if(activityLogLocalOnly||!sb){
+      row=saveActivityLogLocalRow(payload,eid||null);
+    }else{
+      var r;
+      if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id).select();
+      else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
+      if(r.error){
+        console.error('[4KPI] saveActivity failed',r.error,payload);
+        if(isActivityLogTableMissing(r.error)){
+          activityLogLocalOnly=true;
+          syncActivitySetupBanner();
+          row=saveActivityLogLocalRow(payload,eid||null);
+        }else{
+          toast('Could not save — '+r.error.message,'error');
+          return;
         }
-      }else if(/activity_log|does not exist|Could not find/i.test(r.error.message||'')){toast('Daily Log table missing — run activity_log_setup.sql in Supabase','error');return;}
-      else{toast('Could not save — '+r.error.message,'error');return;}
+      }else{
+        row=Array.isArray(r.data)?r.data[0]:r.data;
+      }
     }
-    var row=Array.isArray(r.data)?r.data[0]:r.data;
     if(row){
       var idx=activityLog.findIndex(function(x){return x.id===row.id;});
       if(idx>=0)activityLog[idx]=row;else activityLog.unshift(row);
+      if(activityLogLocalOnly)persistActivityLogLocal();
     }else await loadActivityLog();
-    toast(wasEdit?'Updated ✓':'Logged ✓');
+    toast(wasEdit?'Updated ✓':(activityLogLocalOnly?'Logged locally ✓':'Logged ✓'));
     dailyLogDate=parseDateInput(logDate);
     rDailyLog();
     resetActivityComposer(true);
@@ -2194,12 +2277,24 @@ async function saveActivity(){
   }
 }
 async function deleteActivity(id){
-  if(!sb||!cu||!id)return;
+  if(!cu||!id)return;
   if(!confirm('Delete this entry?'))return;
-  var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
-  if(r.error){toast('Could not delete','error');return;}
+  if(activityLogLocalOnly||!sb){
+    activityLog=activityLog.filter(function(x){return x.id!==id;});
+    persistActivityLogLocal();
+  }else{
+    var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
+    if(r.error){
+      if(isActivityLogTableMissing(r.error)){
+        activityLog=activityLog.filter(function(x){return x.id!==id;});
+        persistActivityLogLocal();
+      }else{toast('Could not delete','error');return;}
+    }
+  }
   if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
-  toast('Deleted ✓');await loadActivityLog();rDailyLog();
+  toast('Deleted ✓');
+  if(!activityLogLocalOnly&&sb)await loadActivityLog();
+  rDailyLog();
 }
 async function deleteActivityFromComposer(){
   var id=el('actEid').value;if(!id)return;
@@ -3225,29 +3320,44 @@ function rCompare(){
 
 
 function gp(page,btn){
-  closeMobileNav();
-  var access=cu?getNavAccess(cu.id):{};
-  if(access[page]===false){toast('You don\'t have access to this section','error');return;}
-  if(simpleNavMode&&isArchivedNav(page))toggleSbArchive(true);
-  syncArchivedPageBanner(page);
-  qsa('.page').forEach(function(p){p.classList.remove('active');});
-  qsa('.ni').forEach(function(b){b.classList.remove('active');});
-  qsa('.btn-log-task').forEach(function(b){b.classList.remove('active');});
-  el('page-'+page).classList.add('active');
-  if(btn&&btn.classList&&(btn.classList.contains('ni')||btn.classList.contains('btn-log-task')))btn.classList.add('active');
-  if(page==='dailylog')rDailyLog();
-  if(page==='mytasks')rMyTasksPage();
-  if(page==='worklog')rWorklog();
-  if(page==='calendar')renderCal();
-  if(page==='tasks')rTasksPage();
-  if(page==='performance')rCharts();
-  if(page==='oversight')rOversight();
-  if(page==='intelligence')rIntel();
-  if(page==='library')rLib();
-  if(page==='results'){refreshResFilters();rResults();}
-  if(page==='trash')rTrash();
-  if(page==='roles')rRoles();
-  if(page==='compare')rCompare();
+  try{
+    closeMobileNav();
+    if(!cu){toast('Please log in first','error');return;}
+    var access=cu?getNavAccess(cu.id):{};
+    if(page!=='dailylog'&&access[page]===false){toast('You don\'t have access to this section','error');return;}
+    if(simpleNavMode&&isArchivedNav(page))toggleSbArchive(true);
+    syncArchivedPageBanner(page);
+    var pageEl=el('page-'+page);
+    if(!pageEl){console.error('[4KPI] gp: page not found',page);toast('Page not found — try refreshing','error');return;}
+    qsa('.page').forEach(function(p){p.classList.remove('active');});
+    qsa('.ni').forEach(function(b){b.classList.remove('active');});
+    qsa('.btn-log-task').forEach(function(b){b.classList.remove('active');});
+    pageEl.classList.add('active');
+    if(btn&&btn.classList&&(btn.classList.contains('ni')||btn.classList.contains('btn-log-task')))btn.classList.add('active');
+    if(page==='dailylog'){
+      rDailyLog();
+      setTimeout(function(){
+        var comp=el('dailyLogComposer');
+        if(comp)comp.scrollIntoView({behavior:'smooth',block:'start'});
+        else pageEl.scrollIntoView({behavior:'smooth',block:'start'});
+      },50);
+    }
+    if(page==='mytasks')rMyTasksPage();
+    if(page==='worklog')rWorklog();
+    if(page==='calendar')renderCal();
+    if(page==='tasks')rTasksPage();
+    if(page==='performance')rCharts();
+    if(page==='oversight')rOversight();
+    if(page==='intelligence')rIntel();
+    if(page==='library')rLib();
+    if(page==='results'){refreshResFilters();rResults();}
+    if(page==='trash')rTrash();
+    if(page==='roles')rRoles();
+    if(page==='compare')rCompare();
+  }catch(e){
+    console.error('[4KPI] gp failed',page,e);
+    toast('Navigation error — refresh the page','error');
+  }
 }
 
 // FEEDBACK
@@ -3688,6 +3798,19 @@ if(typeof window!=='undefined'&&window.__4K_EXPECTED_VER&&window.__4K_EXPECTED_V
     if(!sessionStorage.getItem(mk)){sessionStorage.setItem(mk,'1');location.reload();}
   }catch(e){}
 }
+window.gp=gp;
+window.openT=openT;
+window.logout=logout;
+window.openM=openM;
+window.toggleHelp=toggleHelp;
+window.toggleP=toggleP;
+window.openFeedback=openFeedback;
+window.closeFeedback=closeFeedback;
+window.saveFeedback=saveFeedback;
+window.setStar=setStar;
+window.toggleSbArchive=toggleSbArchive;
+window.closeMobileNav=closeMobileNav;
+window.toggleMobileNav=toggleMobileNav;
 window.clearActTime=clearActTime;
 window.clearStartTime=clearStartTime;
 window.syncStartClearBtn=syncStartClearBtn;
@@ -3710,6 +3833,8 @@ window.toggleTagManager=toggleTagManager;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;
+window.copyActivityLogSetupSQL=copyActivityLogSetupSQL;
+window.retryActivityLogSupabase=retryActivityLogSupabase;
 window.togglePreset=togglePreset;
 window.startFromPreset=startFromPreset;
 window.openPresetManager=openPresetManager;
