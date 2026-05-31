@@ -748,8 +748,16 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-entry-actions{display:flex;gap:4px;flex-shrink:0}
 .dailylog-empty{padding:24px 0;color:var(--text3);font-size:13px}
 .dailylog-presets-wrap{margin-bottom:14px;max-width:720px}
-.dailylog-presets-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.dailylog-presets-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .dailylog-presets-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.dailylog-presets-hint{font-size:11px;color:var(--text3);flex:1;min-width:100px}
+.dailylog-presets-head .btn{margin-left:auto}
+.dailylog-preset-btn.on{border-color:var(--accent);background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+.preset-mgr-empty{font-size:13px;color:var(--text3);padding:12px 0;text-align:center}
+.preset-mgr-lbl{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:4px}
+.preset-mgr-name-wrap{flex:1;min-width:0}
+.preset-mgr-name-wrap input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:13px}
+.preset-mgr-row-meta .preset-mgr-lbl{margin-bottom:0;margin-right:2px}
 .dailylog-presets-grid{display:flex;flex-wrap:wrap;gap:8px}
 .dailylog-preset-btn{padding:10px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s;font-family:inherit;text-align:left;line-height:1.35;max-width:100%}
 .dailylog-preset-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.06)}

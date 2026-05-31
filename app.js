@@ -1,4 +1,4 @@
-const APP_VER='20260527.37';
+const APP_VER='20260527.38';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1009,7 +1009,7 @@ var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=fal
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false;
-var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false;
+var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
   green:{label:'Green',accent:'#22c55e',accent2:'#16a34a',rgb:'34,197,94'},
@@ -1943,15 +1943,49 @@ function applyActivityTimeFromRow(row){
 function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
-  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
+  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><span class="dailylog-presets-hint">Tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
-    return'<button type="button" class="dailylog-preset-btn" onclick="startFromPreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
+    var on=selectedPresetIndices.indexOf(i)>=0;
+    return'<button type="button" class="dailylog-preset-btn'+(on?' on':'')+'" onclick="togglePreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
   }).join('')+'</div>';
 }
-function startFromPreset(idx){
-  var presets=ensureActivityPresets(),p=presets[idx];if(!p)return;
-  focusActivityComposer(p);
+function clearPresetSelection(){selectedPresetIndices=[];renderDailyLogPresets();}
+function applySelectedPresetsToComposer(){
+  initActivityComposer();
+  var presets=ensureActivityPresets();
+  var selected=selectedPresetIndices.map(function(i){return presets[i];}).filter(Boolean);
+  if(!selected.length){
+    if(el('actDesc'))el('actDesc').value='';
+    setActCategories([]);
+    setActTimeMins(null,false);
+    renderActCatBubbles();
+    return;
+  }
+  if(el('actDesc'))el('actDesc').value=selected.map(function(p){return(p.description||'').trim();}).filter(Boolean).join('\n');
+  var allCats=[];
+  selected.forEach(function(p){
+    entryCategories(p).forEach(function(cat){if(allCats.indexOf(cat)<0)allCats.push(cat);});
+  });
+  setActCategories(allCats);
+  var totalMins=0,hasTime=false;
+  selected.forEach(function(p){if(p.time_mins){totalMins+=p.time_mins;hasTime=true;}});
+  if(hasTime){
+    if(ACT_TIME_CHIP_MINS.indexOf(totalMins)>=0)setActTimeMins(totalMins,false);
+    else{setActTimeMins(null,true);var c=el('actTimeCustom');if(c)c.value=formatTimeShort(totalMins);}
+  }else setActTimeMins(null,false);
+  renderActCatBubbles();
 }
+function togglePreset(idx){
+  var presets=ensureActivityPresets();if(!presets[idx])return;
+  var pos=selectedPresetIndices.indexOf(idx);
+  if(pos>=0)selectedPresetIndices.splice(pos,1);
+  else selectedPresetIndices.push(idx);
+  applySelectedPresetsToComposer();
+  renderDailyLogPresets();
+  var comp=el('dailyLogComposer');if(comp)comp.scrollIntoView({behavior:'smooth',block:'nearest'});
+  setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},50);
+}
+function startFromPreset(idx){togglePreset(idx);}
 function syncComposerUI(){
   var editing=!!(el('actEid')&&el('actEid').value);
   var title=el('activityComposerTitle'),saveBtn=el('actSaveBtn'),delBtn=el('actDelBtn'),cancelBtn=el('actCancelBtn'),badge=el('activityComposerEditing'),comp=el('dailyLogComposer');
@@ -1967,19 +2001,11 @@ function resetActivityComposer(focusDesc){
   if(el('actDesc'))el('actDesc').value='';
   setActTimeMins(null,false);
   setActCategories([]);
+  clearPresetSelection();
   if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
   syncComposerUI();
   renderActCatBubbles();
   if(focusDesc){setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},40);}
-}
-function initActivityComposer(){
-  if(activityComposerInited)return;
-  activityComposerInited=true;
-  bindActTimeChips();
-  ensureActivityTags();
-  renderActCatBubbles();
-  if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
-  syncComposerUI();
 }
 function focusActivityComposer(preset){
   if(!cu)return;
@@ -1988,7 +2014,8 @@ function focusActivityComposer(preset){
   if(comp)comp.scrollIntoView({behavior:'smooth',block:'start'});
   resetActivityComposer(false);
   if(preset){
-    el('actDesc').value=preset.description||'';
+    clearPresetSelection();
+    if(el('actDesc'))el('actDesc').value=preset.description||'';
     var pcats=entryCategories(preset).length?entryCategories(preset):[preset.category].filter(Boolean);
     setActCategories(pcats);
     if(preset.time_mins)setActTimeMins(preset.time_mins,false);
@@ -2001,6 +2028,7 @@ function loadActivityForEdit(id){
   var row=activityLog.find(function(x){return x.id===id;});
   if(!row||String(row.member_id)!==String(cu.id)){toast('Entry not found','error');return;}
   initActivityComposer();
+  clearPresetSelection();
   el('actEid').value=row.id;
   el('actDesc').value=row.description||'';
   applyActivityTimeFromRow(row);
@@ -2012,6 +2040,15 @@ function loadActivityForEdit(id){
   if(comp)comp.scrollIntoView({behavior:'smooth',block:'nearest'});
   setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},60);
 }
+function initActivityComposer(){
+  if(activityComposerInited)return;
+  activityComposerInited=true;
+  bindActTimeChips();
+  ensureActivityTags();
+  renderActCatBubbles();
+  if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
+  syncComposerUI();
+}
 function cancelActivityEdit(){resetActivityComposer(true);}
 function openPresetManager(){
   renderPresetMgrList();
@@ -2021,34 +2058,40 @@ function closePresetManager(){el('PresetM').classList.remove('open');renderDaily
 function renderPresetMgrList(){
   var box=el('presetMgrList');if(!box)return;
   var presets=ensureActivityPresets(),tags=ensureActivityTags();
+  if(!presets.length){box.innerHTML='<div class="preset-mgr-empty">No presets yet — add one below.</div>';return;}
   box.innerHTML=presets.map(function(p,i){
     var tagOpts=tags.map(function(t){return'<option value="'+esc(t)+'"'+(p.category===t?' selected':'')+'>'+esc(t)+'</option>';}).join('');
     var timeOpts=ACT_TIME_CHIP_MINS.map(function(m){return'<option value="'+m+'"'+(p.time_mins===m?' selected':'')+'>'+esc(formatTimeShort(m))+'</option>';}).join('');
-    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><input type="text" value="'+esc(p.description)+'" placeholder="Activity description" onchange="updatePresetField('+i+',\'description\',this.value)"><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')">Delete</button></div><div class="preset-mgr-row-meta"><label style="font-size:11px;color:var(--text3)">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label style="font-size:11px;color:var(--text3)">Default time</label><select onchange="updatePresetField('+i+',\'time_mins\',parseInt(this.value,10)||null)"><option value="">—</option>'+timeOpts+'</select></div></div>';
+    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment messages" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select onchange="updatePresetField('+i+',\'time_mins\',parseInt(this.value,10)||null)"><option value="">—</option>'+timeOpts+'</select></div></div>';
   }).join('');
 }
 function updatePresetField(idx,field,val){
   var presets=ensureActivityPresets();if(!presets[idx])return;
-  if(field==='description')presets[idx].description=String(val||'').trim();
+  if(field==='description')presets[idx].description=String(val||'').trim()||'Untitled preset';
   else if(field==='category')presets[idx].category=val||null;
   else if(field==='time_mins')presets[idx].time_mins=val||null;
   saveActivityPresets();
+  if(field==='description')renderDailyLogPresets();
 }
 function deletePreset(idx){
   var presets=ensureActivityPresets();
-  if(presets.length<=1){toast('Keep at least one preset','error');return;}
-  if(!confirm('Delete this preset?'))return;
+  if(!presets[idx])return;
+  if(!confirm('Delete preset “'+(presets[idx].description||'Untitled')+'”?'))return;
   presets.splice(idx,1);
+  selectedPresetIndices=selectedPresetIndices.filter(function(i){return i!==idx;}).map(function(i){return i>idx?i-1:i;});
   saveActivityPresets();
   renderPresetMgrList();
   renderDailyLogPresets();
+  applySelectedPresetsToComposer();
+  toast('Preset deleted ✓');
 }
 function addPresetRow(){
   var presets=ensureActivityPresets(),tags=ensureActivityTags();
-  presets.push({id:presetUid(),description:'New activity',category:tags[0]||'Other',time_mins:60});
+  presets.push({id:presetUid(),description:'New preset',category:tags[0]||'Other',time_mins:60});
   saveActivityPresets();
   renderPresetMgrList();
   renderDailyLogPresets();
+  var box=el('presetMgrList');if(box){var inp=box.querySelector('.preset-mgr-row:last-child input');if(inp){inp.focus();inp.select();}}
 }
 function openThemeModal(){renderThemeSwatches();el('ThemeM').classList.add('open');}
 function closeThemeModal(){el('ThemeM').classList.remove('open');}
@@ -3667,6 +3710,7 @@ window.toggleTagManager=toggleTagManager;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;
+window.togglePreset=togglePreset;
 window.startFromPreset=startFromPreset;
 window.openPresetManager=openPresetManager;
 window.closePresetManager=closePresetManager;
