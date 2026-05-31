@@ -276,6 +276,7 @@ AS $$
 BEGIN
   DELETE FROM task_history;
   DELETE FROM tasks;
+  DELETE FROM activity_log;
   DELETE FROM result_posts;
   DELETE FROM feedback;
   DELETE FROM role_notes;
@@ -313,3 +314,59 @@ GRANT EXECUTE ON FUNCTION wipe_test_data_keep_results() TO anon, authenticated;
 
 -- Daily work log notes (what actually happened — separate from blockers/follow-ups in notes)
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS work_notes TEXT;
+
+-- ========== Daily activity log (backward-looking progress reports) ==========
+CREATE TABLE IF NOT EXISTS activity_log (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+  description TEXT NOT NULL,
+  time_spent TEXT,
+  time_minutes INTEGER,
+  category TEXT,
+  log_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS activity_log_member_date ON activity_log (member_id, log_date DESC);
+CREATE INDEX IF NOT EXISTS activity_log_created ON activity_log (created_at DESC);
+
+ALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "activity_log_select" ON activity_log;
+DROP POLICY IF EXISTS "activity_log_insert" ON activity_log;
+DROP POLICY IF EXISTS "activity_log_update" ON activity_log;
+DROP POLICY IF EXISTS "activity_log_delete" ON activity_log;
+
+CREATE POLICY "activity_log_select" ON activity_log FOR SELECT USING (true);
+CREATE POLICY "activity_log_insert" ON activity_log FOR INSERT WITH CHECK (true);
+CREATE POLICY "activity_log_update" ON activity_log FOR UPDATE USING (true);
+CREATE POLICY "activity_log_delete" ON activity_log FOR DELETE USING (true);
+
+GRANT ALL ON TABLE activity_log TO anon, authenticated;
+
+-- Realtime (skip if already added: ignore duplicate-table error)
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE activity_log;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Update wipe to include activity_log (run after table exists)
+CREATE OR REPLACE FUNCTION wipe_agency_data()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM task_history;
+  DELETE FROM tasks;
+  DELETE FROM activity_log;
+  DELETE FROM result_posts;
+  DELETE FROM feedback;
+  DELETE FROM role_notes;
+  DELETE FROM trash_bin;
+  DELETE FROM settings WHERE key = 'agency_prefs';
+  RETURN jsonb_build_object('ok', true, 'wiped_at', now());
+END;
+$$;

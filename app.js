@@ -1,4 +1,4 @@
-const APP_VER='20260527.32';
+const APP_VER='20260527.33';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -386,6 +386,7 @@ function isPulseToday(forDate){var t=new Date(),d=forDate||pulseDate||new Date()
 function pulseDateLabel(){var d=pulseDate||new Date();return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});}
 function refreshDashboardMetrics(){
   rPulse();rKPIs();genIns();
+  if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))rDailyLog();
   if(el('page-tasks')&&el('page-tasks').classList.contains('active'))rTasksPage();
   if(el('page-mytasks')&&el('page-mytasks').classList.contains('active'))rMyTasksPage();
   if(el('page-worklog')&&el('page-worklog').classList.contains('active'))rWorklog();
@@ -412,7 +413,7 @@ function renderTaskLine(t,withActions){
   return'<div class="ti"><div class="tr1"><span class="tn">'+typeLbl+(t.edited_at?'<span class="ebadge">edited</span>':'')+(t.is_recurring?'<span class="rbadge">🔄 '+t.recur_frequency+'</span>':'')+(t._isOccurrence?'<span class="rbadge">📅 day</span>':'')+'</span>'+stag(t.status)+'</div><div class="tm">'+timeMeta+'</div>'+taskDescLine(t)+ebar(t.eta_minutes,t.actual_minutes)+(t.edited_at?taskCardHist(t.id):'')+acts+'</div>';
 }
 
-const PAL=[{n:'Neon Green',h:'#7fff6e'},{n:'Electric Blue',h:'#5b9cf6'},{n:'Purple',h:'#a78bfa'},{n:'Hot Pink',h:'#fb7185'},{n:'Teal',h:'#34d399'},{n:'Amber',h:'#ffb830'},{n:'Cyan',h:'#00ffff'},{n:'Gold',h:'#ffd700'},{n:'Lime',h:'#32cd32'},{n:'Orange',h:'#ff9632'},{n:'Red',h:'#ff4444'},{n:'Sky Blue',h:'#64c8ff'},{n:'Violet',h:'#ee82ee'},{n:'Rose',h:'#ff6496'},{n:'Coral',h:'#ff7f50'},{n:'Mint',h:'#98ff98'},{n:'Lavender',h:'#b57bee'},{n:'Peach',h:'#ffb347'},{n:'Steel',h:'#8899dd'},{n:'Ruby',h:'#e0115f'},{n:'Turquoise',h:'#40e0d0'},{n:'Magenta',h:'#ff00ff'},{n:'Indigo',h:'#6366f1'},{n:'Emerald',h:'#10b981'}];
+const PAL=[{n:'Neon Green',h:'#f0b429'},{n:'Electric Blue',h:'#5b9cf6'},{n:'Purple',h:'#a78bfa'},{n:'Hot Pink',h:'#fb7185'},{n:'Teal',h:'#34d399'},{n:'Amber',h:'#ffb830'},{n:'Cyan',h:'#00ffff'},{n:'Gold',h:'#ffd700'},{n:'Lime',h:'#32cd32'},{n:'Orange',h:'#ff9632'},{n:'Red',h:'#ff4444'},{n:'Sky Blue',h:'#64c8ff'},{n:'Violet',h:'#ee82ee'},{n:'Rose',h:'#ff6496'},{n:'Coral',h:'#ff7f50'},{n:'Mint',h:'#98ff98'},{n:'Lavender',h:'#b57bee'},{n:'Peach',h:'#ffb347'},{n:'Steel',h:'#8899dd'},{n:'Ruby',h:'#e0115f'},{n:'Turquoise',h:'#40e0d0'},{n:'Magenta',h:'#ff00ff'},{n:'Indigo',h:'#6366f1'},{n:'Emerald',h:'#10b981'}];
 
 function ls(k){try{var v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lss(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -718,17 +719,18 @@ function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.l
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{},inactiveMembers=ls('4k_ina')||{},overseerId=ls('4k_oid')||null,taskDayOrder=ls('4k_tdo')||{},daySnapshots=ls('4k_dsn')||{},taskDisplayNames=ls('4k_tdn')||{},taskWorkNotesCache=ls('4k_twn')||{},displayNameColMissing=!!ls('4k_dncm'),workNotesColMissing=!!ls('4k_wncm');
 
 var NAV_TAB_DEFS=[
-  {id:'dashboard',label:'Dashboard',group:'Home',tier:'core'},
-  {id:'log_task',label:'Log task',group:'Work',tier:'core'},{id:'mytasks',label:'Tasks',group:'Work',tier:'core'},{id:'worklog',label:'Log',group:'Work',tier:'core'},
-  {id:'calendar',label:'Calendar',group:'Work',tier:'core'},{id:'library',label:'Task library',group:'Work',tier:'core'},
-  {id:'add_member',label:'Add member',group:'Team',tier:'core',adminDefault:false},{id:'trash',label:'Trash',group:'Team',tier:'core'},
+  {id:'dailylog',label:'Daily Log',group:'Today',tier:'core'},
+  {id:'dashboard',label:'Dashboard',group:'More',tier:'archive'},
+  {id:'log_task',label:'Log task',group:'More',tier:'archive'},{id:'mytasks',label:'Tasks',group:'More',tier:'archive'},{id:'worklog',label:'Task log',group:'More',tier:'archive'},
+  {id:'calendar',label:'Calendar',group:'More',tier:'archive'},{id:'library',label:'Task library',group:'More',tier:'archive'},
+  {id:'add_member',label:'Add member',group:'More',tier:'archive',adminDefault:false},{id:'trash',label:'Trash',group:'More',tier:'archive'},
   {id:'performance',label:'Performance',group:'More',tier:'archive'},{id:'compare',label:'Compare',group:'More',tier:'archive'},
   {id:'oversight',label:'Oversight',group:'More',tier:'archive',adminDefault:false},{id:'intelligence',label:'Intelligence',group:'More',tier:'archive',adminDefault:false},
   {id:'results',label:'Results',group:'More',tier:'archive'},{id:'roles',label:'Role guides',group:'More',tier:'archive'},
   {id:'tasks',label:'Daily profiles',group:'More',tier:'archive'}
 ];
-var DEFAULT_MEMBER_NAV={dashboard:true,log_task:true,mytasks:true,worklog:true,calendar:true,library:true,add_member:false,trash:true,tasks:false,results:false,performance:false,compare:false,oversight:false,intelligence:false,roles:false};
-var ARCHIVED_NAV_IDS=['performance','compare','oversight','intelligence','results','roles','tasks'];
+var DEFAULT_MEMBER_NAV={dailylog:true,dashboard:false,log_task:false,mytasks:false,worklog:false,calendar:false,library:false,add_member:false,trash:false,tasks:false,results:false,performance:false,compare:false,oversight:false,intelligence:false,roles:false};
+var ARCHIVED_NAV_IDS=['dashboard','log_task','mytasks','worklog','calendar','library','add_member','trash','performance','compare','oversight','intelligence','results','roles','tasks'];
 var simpleNavMode=ls('4k_sn')!==false;
 var archiveNavOpen=!!ls('4k_archive_open');
 function isArchivedNav(id){return ARCHIVED_NAV_IDS.indexOf(id)>=0;}
@@ -751,12 +753,12 @@ function syncArchivedPageBanner(page){
   banner.style.display=show?'':'none';
 }
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);lss('4k_sn',simpleNavMode);lss('4k_archive_open',archiveNavOpen);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);lss('4k_sn',simpleNavMode);lss('4k_archive_open',archiveNavOpen);saveSettings();}
 
 async function saveSettings(){
   if(!sb)return;
   try{
-    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,sn:simpleNavMode};
+    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,sn:simpleNavMode,atags:activityTags};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:nowISO()}]);
   }catch(e){console.log('saveSettings err',e);}
 }
@@ -775,6 +777,7 @@ async function loadSettings(){
       if(v.tdo&&typeof v.tdo==='object'){taskDayOrder=v.tdo;lss('4k_tdo',taskDayOrder);}
       if(v.dsn&&typeof v.dsn==='object'){daySnapshots=v.dsn;lss('4k_dsn',daySnapshots);}
       if(typeof v.sn==='boolean'){simpleNavMode=v.sn;lss('4k_sn',simpleNavMode);}
+      if(v.atags&&Array.isArray(v.atags)&&v.atags.length){activityTags=v.atags;lss('4k_atags',activityTags);}
     }
   }catch(e){console.error('[4KPI] loadSettings failed',e);}
 }
@@ -1003,7 +1006,9 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false;
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -1155,8 +1160,8 @@ function enterApp(){
   var ht=el('humorToggle');if(ht)ht.checked=!humorOff;
   initSidebar();
   fetchAndRender(true).then(function(){
-    var btn=document.querySelector('[data-nav="mytasks"]');
-    gp('mytasks',btn||null);
+    var btn=document.querySelector('[data-nav="dailylog"]');
+    gp('dailylog',btn||null);
   });
 }
 
@@ -1200,6 +1205,7 @@ async function fetchAndRender(showLoadErr){
     try{await loadRoleNotes();}catch(e){console.error('[4KPI] loadRoleNotes failed',e);}
     try{await loadResultPosts();}catch(e){console.error('[4KPI] loadResultPosts failed',e);}
     try{await loadTrash();}catch(e){console.error('[4KPI] loadTrash failed',e);}
+    try{await loadActivityLog();}catch(e){console.error('[4KPI] loadActivityLog failed',e);}
 
     render();
     applyNavAccess();
@@ -1278,7 +1284,7 @@ function genIns(){
 
 function toggleP(bid,iid){var b=el(bid),ic=el(iid);b.classList.toggle('coll');ic.classList.toggle('open',!b.classList.contains('coll'));}
 
-function injectPageHelp(){var map={'page-dashboard':['dashboard'],'page-mytasks':['tasks'],'page-worklog':['tasks'],'page-calendar':['calendar'],'page-tasks':['tasks'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
+function injectPageHelp(){var map={'page-dailylog':['tasks'],'page-dashboard':['dashboard'],'page-mytasks':['tasks'],'page-worklog':['tasks'],'page-calendar':['calendar'],'page-tasks':['tasks'],'page-performance':['performance'],'page-oversight':['oversight'],'page-intelligence':['intelligence'],'page-library':['library'],'page-results':['results'],'page-roles':['roles'],'page-compare':['compare'],'page-rolenotes':['rolenotes']};Object.keys(map).forEach(function(pid){var pg=el(pid);if(!pg||pg.querySelector('.ph-help'))return;var ph=pg.querySelector('.ph');if(!ph)return;var d=document.createElement('div');d.className='ph-help';d.innerHTML=map[pid].map(function(k){return'<span class="ph-help-item">'+k.charAt(0).toUpperCase()+k.slice(1)+hBtn(k)+'</span>';}).join('');ph.after(d);});injectDashHelp();fillHelpSlots();}
 function injectDashHelp(){
   var pt=el('pulseTitle');if(pt&&!pt.querySelector('.help-end'))pt.innerHTML='Agency pulse<span class="help-end">'+hBtn('pulse')+'</span>';
   var st=el('streak');if(st&&!st.querySelector('.help-end')){var n=st.textContent;st.innerHTML=n+'<span class="help-end">'+hBtn('streak')+'</span>';}
@@ -1289,6 +1295,7 @@ function render(){
     rKPIs();rPulse();genIns();rMembers();injectPageHelp();
     var ap=function(n){return el('page-'+n).classList.contains('active');};
     if(ap('calendar'))renderCal();
+    if(ap('dailylog'))rDailyLog();
     if(ap('mytasks'))rMyTasksPage();
     if(ap('worklog'))rWorklog();
     if(ap('tasks'))rTasksPage();
@@ -1329,7 +1336,7 @@ function rPulse(){
     var ctx=cv.getContext('2d'),sz=48;
     ctx.clearRect(0,0,sz,sz);
     ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,0,Math.PI*2);ctx.fillStyle='#1a1a1a';ctx.fill();
-    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle=pct>=80?'#7fff6e':pct>=50?'#ffb830':'#ff5c5c';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
+    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle=pct>=80?'#f0b429':pct>=50?'#ffb830':'#ff5c5c';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
   }
   var op=el('opct');if(op)op.textContent=pct+'%';
   var lbl=el('pulseDateLbl');if(lbl)lbl.textContent=pulseDateLabel();
@@ -1740,6 +1747,160 @@ function lineupDateLabel(){
   var d=lineupDate||new Date();
   return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 }
+function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
+function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
+async function loadActivityLog(){
+  if(!sb||!cu){activityLog=[];return;}
+  try{
+    var r=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('log_date',{ascending:false}).order('created_at',{ascending:false});
+    if(r.error){
+      if(/activity_log|does not exist|Could not find|schema cache/i.test((r.error.message||''))){activityLog=[];return;}
+      sbErr('activity_log',r);activityLog=[];return;
+    }
+    activityLog=r.data||[];
+  }catch(e){console.error('[4KPI] loadActivityLog',e);activityLog=[];}
+}
+function dateInputStr(d){var x=new Date(d);if(isNaN(x))x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
+function parseDateInput(s){if(!s)return new Date();var p=String(s).split('-');if(p.length!==3)return new Date();return new Date(parseInt(p[0],10),parseInt(p[1],10)-1,parseInt(p[2],10));}
+function getWeekStartMonday(d){var x=new Date(d);x.setHours(0,0,0,0);var day=x.getDay(),diff=day===0?-6:1-day;x.setDate(x.getDate()+diff);return x;}
+function formatTimeShort(mins){
+  if(mins==null||mins==='')return'';
+  var n=parseInt(mins,10);if(isNaN(n)||n<=0)return'';
+  var h=Math.floor(n/60),m=n%60;
+  if(h&&!m)return h+(h===1?' hr':' hrs');
+  if(!h&&m)return m+(m===1?' min':' mins');
+  return h+(h===1?' hr':' hrs')+' '+m+' mins';
+}
+function activityTimeLabel(e){if(!e)return'';if(e.time_spent&&String(e.time_spent).trim())return String(e.time_spent).trim();return formatTimeShort(e.time_minutes);}
+function formatActivityExportLine(e){var desc=(e.description||'').trim(),time=activityTimeLabel(e);return time?desc+' — '+time:desc;}
+function myActivityForDay(d){
+  if(!cu)return[];
+  var key=dateInputStr(d);
+  return activityLog.filter(function(e){return String(e.member_id)===String(cu.id)&&e.log_date===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+}
+function weeklyCategoryTotals(refDate){
+  var start=getWeekStartMonday(refDate||dailyLogDate||new Date()),end=new Date(start);end.setDate(end.getDate()+7);
+  var totals={};
+  activityLog.filter(function(e){
+    if(!cu||String(e.member_id)!==String(cu.id))return false;
+    var d=parseDateInput(e.log_date);return d>=start&&d<end;
+  }).forEach(function(e){
+    var cat=(e.category||'Uncategorized').trim()||'Uncategorized';
+    if(!totals[cat])totals[cat]=0;
+    if(e.time_minutes)totals[cat]+=e.time_minutes;
+  });
+  return totals;
+}
+function renderWeeklyTotals(){
+  var box=el('dailyLogWeek');if(!box)return;
+  var totals=weeklyCategoryTotals(dailyLogDate),cats=Object.keys(totals).sort();
+  if(!cats.length){box.innerHTML='<div class="dailylog-week-empty">This week — log time to see where it goes</div>';return;}
+  var start=getWeekStartMonday(dailyLogDate),end=new Date(start);end.setDate(end.getDate()+6);
+  box.innerHTML='<div class="dailylog-week-title">This week · '+start.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' – '+end.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</div><div class="dailylog-week-pills">'+cats.map(function(cat){return'<span class="dailylog-week-pill"><strong>'+esc(cat)+'</strong> '+esc(formatTimeShort(totals[cat]))+'</span>';}).join('')+'</div>';
+}
+function syncActivityCatSelect(sel,val){
+  var tags=ensureActivityTags(),node=sel||el('actCat');if(!node)return;
+  node.innerHTML=tags.map(function(t){return'<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
+  if(val&&tags.indexOf(val)>=0)node.value=val;else if(tags.length)node.value=tags[0];
+}
+function renderTagManagerPanel(){
+  var panel=el('dailyLogTagMgr');if(!panel||panel.hidden)return;
+  var tags=ensureActivityTags();
+  panel.innerHTML='<div class="dailylog-tagmgr-inner"><div class="dailylog-tagmgr-list">'+tags.map(function(t,i){return'<span class="dailylog-tag-chip">'+esc(t)+(tags.length>1?'<button type="button" onclick="removeActivityTag('+i+')" title="Remove">×</button>':'')+'</span>';}).join('')+'</div><div class="dailylog-tagmgr-add"><input id="dailyLogTagNew" placeholder="New tag name…"><button type="button" class="btn sm" onclick="addActivityTagFromMgr()">Add tag</button></div></div>';
+}
+function toggleTagManager(){tagMgrOpen=!tagMgrOpen;var panel=el('dailyLogTagMgr');if(panel){panel.hidden=!tagMgrOpen;if(tagMgrOpen)renderTagManagerPanel();}}
+function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Tag already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';syncActivityCatSelect();renderTagManagerPanel();toast('Tag added ✓');}
+function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}syncActivityCatSelect(null,name);inp.value='';toast('Tag added ✓');}
+function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}activityTags.splice(idx,1);saveActivityTags();syncActivityCatSelect();renderTagManagerPanel();rDailyLog();}
+function rDailyLog(){
+  if(!cu)return;
+  var list=el('dailyLogList'),lbl=el('dailyLogDateLbl'),pick=el('dailyLogDatePick');
+  if(!list)return;
+  if(!dailyLogDate)dailyLogDate=new Date();
+  if(lbl)lbl.textContent=dailyLogDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if(pick)pick.value=dateInputStr(dailyLogDate);
+  renderWeeklyTotals();
+  if(tagMgrOpen)renderTagManagerPanel();
+  var entries=myActivityForDay(dailyLogDate);
+  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No activities yet. <button type="button" class="btn p sm" onclick="openActivityModal()">+ Add activity</button></div>';return;}
+  list.innerHTML=entries.map(function(e){
+    return'<div class="dailylog-entry"><div class="dailylog-entry-main"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+(e.category?'<span class="dailylog-tag">'+esc(e.category)+'</span>':'')+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="openActivityModal(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
+  }).join('');
+}
+function chDailyLogDay(n){dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);rDailyLog();}
+function goDailyLogToday(){dailyLogDate=new Date();rDailyLog();}
+function pickDailyLogDate(val){dailyLogDate=parseDateInput(val);rDailyLog();}
+function openActivityModal(id){
+  if(!cu)return;
+  ensureActivityTags();syncActivityCatSelect();
+  var eid=el('actEid'),title=el('activityModalTitle'),delBtn=el('actDelBtn');
+  if(id){
+    var row=activityLog.find(function(x){return x.id===id;});
+    if(!row||String(row.member_id)!==String(cu.id)){toast('Entry not found','error');return;}
+    if(eid)eid.value=row.id;
+    if(title)title.textContent='Edit activity';
+    el('actDesc').value=row.description||'';
+    el('actTime').value=row.time_spent||activityTimeLabel(row)||'';
+    syncActivityCatSelect(null,row.category||'');
+    el('actDate').value=row.log_date||dateInputStr(dailyLogDate);
+    if(delBtn)delBtn.style.display='';
+  }else{
+    if(eid)eid.value='';
+    if(title)title.textContent='Add activity';
+    el('actDesc').value='';el('actTime').value='';
+    syncActivityCatSelect();
+    el('actDate').value=dateInputStr(dailyLogDate);
+    if(delBtn)delBtn.style.display='none';
+  }
+  el('ActivityM').classList.add('open');
+  setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},80);
+}
+function closeActivityModal(){el('ActivityM').classList.remove('open');}
+async function saveActivity(){
+  if(!sb||!cu)return;
+  var desc=(el('actDesc').value||'').trim();
+  if(!desc){toast('Describe what you did','error');return;}
+  var timeRaw=(el('actTime').value||'').trim(),timeMins=timeRaw?parseTimePhrase(timeRaw):null;
+  if(timeRaw&&timeMins==null){toast('Try "4 hrs", "15 mins", or "1 hour 30 mins"','error');return;}
+  var timeSpent=timeRaw||(timeMins!=null?formatTimeShort(timeMins):null);
+  var category=(el('actCat').value||'').trim()||null;
+  var logDate=el('actDate').value||dateInputStr(dailyLogDate);
+  var eid=el('actEid').value,payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
+  var r;
+  if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id);
+  else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]);
+  if(r.error){
+    if(/activity_log|does not exist|Could not find/i.test(r.error.message||'')){toast('Run supabase_migration.sql for activity_log table','error');return;}
+    toast('Could not save — '+r.error.message,'error');return;
+  }
+  toast(eid?'Updated ✓':'Logged ✓');
+  closeActivityModal();
+  await loadActivityLog();
+  dailyLogDate=parseDateInput(logDate);
+  rDailyLog();
+}
+async function deleteActivity(id){
+  if(!sb||!cu||!id)return;
+  if(!confirm('Delete this activity entry?'))return;
+  var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
+  if(r.error){toast('Could not delete','error');return;}
+  toast('Deleted ✓');await loadActivityLog();rDailyLog();
+}
+async function deleteActivityFromModal(){
+  var id=el('actEid').value;if(!id)return;
+  closeActivityModal();await deleteActivity(id);
+}
+async function copyDailyLogDay(){
+  var entries=myActivityForDay(dailyLogDate);
+  if(!entries.length){toast('Nothing to copy for this day','error');return;}
+  var text=entries.slice().reverse().map(formatActivityExportLine).join('\n');
+  try{
+    await navigator.clipboard.writeText(text);
+    toast('Copied to clipboard ✓');
+  }catch(e){
+    prompt('Copy this text:',text);
+  }
+}
 function myTasksDateLabel(){
   var d=myTasksViewDate||new Date();
   return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
@@ -2144,7 +2305,7 @@ function addLibBub(role,btn){
 function delLibT(role,task){if(customRA[role]&&customRA[role].includes(task)){customRA[role]=customRA[role].filter(function(t){return t!==task;});}else{if(!delBase.tasks[role])delBase.tasks[role]=[];if(!delBase.tasks[role].includes(task))delBase.tasks[role].push(task);}saveAll();rLib();toast('"'+task+'" removed');}
 function delCat(role){delete customRA[role];if(catOrder)catOrder=catOrder.filter(function(r){return r!==role;});saveAll();rLib();toast('"'+role+'" removed');}
 function openECM(role){editCat=role;editCatNew=false;var info=getCatInfo(role);el('ecmtitle').textContent='Edit "'+info.name+'"';el('ecmname').value=info.name;el('ecmdesc').value=info.desc;el('ecmicon').value=info.icon;var cur=getRCol(role);el('ecmcolor').value=cur;renderSwatches('ecmcolorgrid','ecmcolor',cur);el('ecmdel').style.display=BRA[role]?'none':'flex';el('ECM').classList.add('open');}
-function openNewCat(){editCat=null;editCatNew=true;el('ecmtitle').textContent='New role category';el('ecmname').value='';el('ecmdesc').value='';el('ecmicon').value='📌';el('ecmcolor').value='#7fff6e';renderSwatches('ecmcolorgrid','ecmcolor','#7fff6e');el('ecmdel').style.display='none';el('ECM').classList.add('open');}
+function openNewCat(){editCat=null;editCatNew=true;el('ecmtitle').textContent='New role category';el('ecmname').value='';el('ecmdesc').value='';el('ecmicon').value='📌';el('ecmcolor').value='#f0b429';renderSwatches('ecmcolorgrid','ecmcolor','#f0b429');el('ecmdel').style.display='none';el('ECM').classList.add('open');}
 function saveECM(){
   if(saveECM._busy)return;
   var n=el('ecmname').value.trim(),d=el('ecmdesc').value.trim(),ic=el('ecmicon').value.trim(),col=el('ecmcolor').value;
@@ -2170,18 +2331,18 @@ function quickLog(role,tt){openT();setTimeout(function(){sRoles=[role];sTTs=[tt]
 
 // CHARTS
 function rCharts(){
-  var lbl=members.map(function(m){return m.name;}),rates=members.map(function(m){return mst(m.id).rate;}),bc=rates.map(function(r){return r>=80?'#7fff6e':r>=50?'#ffb830':'#ff5c5c';});
+  var lbl=members.map(function(m){return m.name;}),rates=members.map(function(m){return mst(m.id).rate;}),bc=rates.map(function(r){return r>=80?'#f0b429':r>=50?'#ffb830':'#ff5c5c';});
   var aA=members.map(function(m){var s=mst(m.id);return s.avgA?+(s.avgA/60).toFixed(1):0;}),aE=members.map(function(m){var s=mst(m.id);return s.avgE?+(s.avgE/60).toFixed(1):0;}),lts=members.map(function(m){return mst(m.id).late;});
   var cd={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#444',font:{size:10}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#444',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}}};
   if(charts.c)charts.c.destroy();charts.c=new Chart(el('cc'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{min:0,max:100,ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'%';}})})})})});
   if(charts.t)charts.t.destroy();charts.t=new Chart(el('ct'),{type:'bar',data:{labels:lbl,datasets:[{label:'Actual',data:aA,backgroundColor:'#5b9cf6',borderRadius:4,borderSkipped:false},{label:'ETA',data:aE,backgroundColor:'#a78bfa',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'h';}})})})})}); 
   var sc=[tasks.filter(function(t){return t.status==='done';}).length,tasks.filter(function(t){return t.status==='prog';}).length,tasks.filter(function(t){return t.status==='nostart';}).length,tasks.filter(function(t){return t.status==='pending';}).length,tasks.filter(function(t){return t.status==='late';}).length];
-  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Not started','Pending','Late'],datasets:[{data:sc,backgroundColor:['#7fff6e','#5b9cf6','#888','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
+  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Not started','Pending','Late'],datasets:[{data:sc,backgroundColor:['#f0b429','#5b9cf6','#888','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
   if(charts.l)charts.l.destroy();charts.l=new Chart(el('cl'),{type:'bar',data:{labels:lbl,datasets:[{data:lts,backgroundColor:'#ff5c5c',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
   var rc={};tasks.forEach(function(t){if(t.result_category)rc[t.result_category]=(rc[t.result_category]||0)+1;});var rl=Object.keys(rc).slice(0,8),rd=rl.map(function(l){return rc[l];});
   if(charts.r)charts.r.destroy();charts.r=new Chart(el('cr'),{type:'bar',data:{labels:rl,datasets:[{data:rd,backgroundColor:'#34d399',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{indexAxis:'y',scales:{x:cd.scales.x,y:{ticks:{color:'#888',font:{size:9}},grid:{display:false},border:{display:false}}}})});
   var days=[],cnts=[];for(var d=13;d>=0;d--){var day=new Date();day.setDate(day.getDate()-d);var ds=day.toLocaleDateString('en-US',{month:'short',day:'numeric'});days.push(ds);cnts.push(tasks.filter(function(t){return new Date(t.logged_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})===ds;}).length);}
-  if(charts.tr)charts.tr.destroy();charts.tr=new Chart(el('ctr'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#7fff6e',backgroundColor:'rgba(127,255,110,.08)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#7fff6e'}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
+  if(charts.tr)charts.tr.destroy();charts.tr=new Chart(el('ctr'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#f0b429',backgroundColor:'rgba(240,180,41,.08)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#f0b429'}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
   var chHelp={cc:'chart_completion',ct:'chart_time',cs:'chart_status',cl:'chart_late',cr:'chart_results',ctr:'chart_trend'};
   Object.keys(chHelp).forEach(function(cid){var cv=el(cid);if(!cv)return;var card=cv.closest('.chcard');if(!card)return;var title=card.querySelector('.chtitle');if(!title||title.querySelector('.help-slot'))return;var hint=title.querySelector('.chhint'),label=title.textContent.replace('click','').trim();title.innerHTML='<span>'+label+'</span><span class="help-slot" data-help="'+chHelp[cid]+'"></span>'+(hint?' <span class="chhint">click</span>':'');});
   fillHelpSlots();
@@ -2711,7 +2872,7 @@ function getCmpScenario(s1,s2){
 function rCompare(){
   if(!el('lbTable'))return;
   var ranked=members.map(function(m){var s=mst(m.id);return{m:m,s:s};}).sort(function(a,b){return b.s.rate-a.s.rate||b.s.done-a.s.done||a.m.name.localeCompare(b.m.name);});
-  var lbl=ranked.map(function(x){return x.m.name;}),rates=ranked.map(function(x){return x.s.rate;}),bc=rates.map(function(r){return r>=80?'#7fff6e':r>=50?'#ffb830':'#ff5c5c';});
+  var lbl=ranked.map(function(x){return x.m.name;}),rates=ranked.map(function(x){return x.s.rate;}),bc=rates.map(function(r){return r>=80?'#f0b429':r>=50?'#ffb830':'#ff5c5c';});
   if(charts.lb)charts.lb.destroy();
   if(el('lbChart')){
     charts.lb=new Chart(el('lbChart'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}},y:{min:0,max:100,ticks:{color:'#888'},grid:{color:'rgba(255,255,255,.04)'}}}}});
@@ -2757,6 +2918,7 @@ function gp(page,btn){
   qsa('.btn-log-task').forEach(function(b){b.classList.remove('active');});
   el('page-'+page).classList.add('active');
   if(btn&&btn.classList&&(btn.classList.contains('ni')||btn.classList.contains('btn-log-task')))btn.classList.add('active');
+  if(page==='dailylog')rDailyLog();
   if(page==='mytasks')rMyTasksPage();
   if(page==='worklog')rWorklog();
   if(page==='calendar')renderCal();
@@ -2994,7 +3156,7 @@ function fireConfetti(){
   c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:99999';
   c.width=window.innerWidth;c.height=window.innerHeight;
   document.body.appendChild(c);
-  var ctx=c.getContext('2d'),colors=['#7fff6e','#ffb830','#5b9cf6','#fb7185','#a78bfa','#34d399'],parts=[];
+  var ctx=c.getContext('2d'),colors=['#f0b429','#ffb830','#5b9cf6','#fb7185','#a78bfa','#34d399'],parts=[];
   for(var i=0;i<130;i++)parts.push({x:Math.random()*c.width,y:-Math.random()*c.height*.5,vx:(Math.random()-.5)*8,vy:Math.random()*4+2,r:Math.random()*6+3,color:colors[Math.floor(Math.random()*colors.length)],rot:Math.random()*360,vr:(Math.random()-.5)*12});
   var frames=0;
   (function tick(){
@@ -3193,13 +3355,13 @@ function resetLocalPrefs(){
 
 function subscribeRealtime(){
   if(!sb||!cu)return;
-  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
+  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'activity_log'},function(){if(!cu)return;loadActivityLog().then(function(){if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))rDailyLog();});}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else node.classList.remove('open');}});});
+['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','ActivityM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='ActivityM')closeActivityModal();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
@@ -3214,5 +3376,18 @@ window.clearStartTime=clearStartTime;
 window.syncStartClearBtn=syncStartClearBtn;
 window.closeDaySnapM=closeDaySnapM;
 window.toggleSbArchive=toggleSbArchive;
+window.openActivityModal=openActivityModal;
+window.closeActivityModal=closeActivityModal;
+window.saveActivity=saveActivity;
+window.deleteActivity=deleteActivity;
+window.deleteActivityFromModal=deleteActivityFromModal;
+window.copyDailyLogDay=copyDailyLogDay;
+window.chDailyLogDay=chDailyLogDay;
+window.goDailyLogToday=goDailyLogToday;
+window.pickDailyLogDate=pickDailyLogDate;
+window.toggleTagManager=toggleTagManager;
+window.addActivityTagFromModal=addActivityTagFromModal;
+window.addActivityTagFromMgr=addActivityTagFromMgr;
+window.removeActivityTag=removeActivityTag;
 initLogin();
 initSidebar();
