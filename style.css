@@ -756,15 +756,16 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-entry-main.dailylog-entry-tap{cursor:pointer;border-radius:8px;margin:-4px;padding:4px;transition:background .15s}
 .dailylog-entry-main.dailylog-entry-tap:hover{background:rgba(255,255,255,.03)}
 .dailylog-entry-hint{font-size:10px;color:var(--text3);margin-top:4px}
-.dailylog-lead{font-size:12px;color:var(--text2);margin-top:4px;max-width:520px;line-height:1.5}
+.dailylog-composer{margin-bottom:16px;padding:16px 18px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;border-left:3px solid var(--accent);max-width:720px}
+.dailylog-composer.editing{border-left-color:var(--amber);box-shadow:0 0 0 1px rgba(255,184,48,.15)}
+.dailylog-composer-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dailylog-composer-title{font-size:13px;font-weight:600;color:var(--text)}
+.dailylog-composer-editing{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);padding:2px 8px;border-radius:20px;background:rgba(255,184,48,.12);border:1px solid rgba(255,184,48,.25)}
+.dailylog-composer-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.dailylog-composer-actions .btn.p{margin-left:auto}
+.dailylog-composer-date{max-width:200px}
 .dailylog-list-head{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.activity-modal-sub{font-size:13px;color:var(--text2);line-height:1.55;margin:-4px 0 16px}
-.act-desc-fg-hero{margin-bottom:18px}
-.act-desc-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;display:block}
-.act-desc-area{width:100%;min-height:360px;padding:16px 18px;border-radius:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:15px;line-height:1.6;resize:vertical;display:block}
-.act-meta-fg{margin-bottom:12px}
-.act-opt-lbl{font-size:11px;font-weight:500;color:var(--text3);text-transform:none}
-.act-date-fg{max-width:220px}
+.act-desc-area{width:100%;min-height:200px;padding:14px 16px;border-radius:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:15px;line-height:1.55;resize:vertical;display:block}
 .act-time-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .tchip{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg4);color:var(--text2);transition:all .15s;font-family:inherit}
 .tchip:hover{border-color:var(--accent);color:var(--accent)}

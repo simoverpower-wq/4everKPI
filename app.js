@@ -1,4 +1,4 @@
-const APP_VER='20260527.36';
+const APP_VER='20260527.37';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -719,7 +719,7 @@ function lastEditSummary(t){if(t._isOccurrence)return'';var h=getTH(t.id);if(h.l
 var RCOLS=ls('4k_rc')||{},customRA=ls('4k_cra')||{},delBase=ls('4k_del')||{tasks:{},rc:[],rcByRole:{}},customRC=ls('4k_crc')||[],customRCByRole=ls('4k_crcr')||{},catMeta=ls('4k_cm')||{},catOrder=ls('4k_co')||null,loginOrder=ls('4k_lo')||null,rolesOrder=ls('4k_ro')||null,memberNavAccess=ls('4k_mna')||{},inactiveMembers=ls('4k_ina')||{},overseerId=ls('4k_oid')||null,taskDayOrder=ls('4k_tdo')||{},daySnapshots=ls('4k_dsn')||{},taskDisplayNames=ls('4k_tdn')||{},taskWorkNotesCache=ls('4k_twn')||{},displayNameColMissing=!!ls('4k_dncm'),workNotesColMissing=!!ls('4k_wncm');
 
 var NAV_TAB_DEFS=[
-  {id:'dailylog',label:'Daily report',group:'Today',tier:'core'},
+  {id:'dailylog',label:'Daily Log',group:'Today',tier:'core'},
   {id:'dashboard',label:'Dashboard',group:'More',tier:'archive'},
   {id:'log_task',label:'Log task',group:'More',tier:'archive'},{id:'mytasks',label:'Tasks',group:'More',tier:'archive'},{id:'worklog',label:'Task log',group:'More',tier:'archive'},
   {id:'calendar',label:'Calendar',group:'More',tier:'archive'},{id:'library',label:'Task library',group:'More',tier:'archive'},
@@ -1009,7 +1009,7 @@ var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=fal
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false;
-var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false;
+var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false;
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
   green:{label:'Green',accent:'#22c55e',accent2:'#16a34a',rgb:'34,197,94'},
@@ -1943,15 +1943,76 @@ function applyActivityTimeFromRow(row){
 function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
-  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Common work</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
+  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
     return'<button type="button" class="dailylog-preset-btn" onclick="startFromPreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
   }).join('')+'</div>';
 }
 function startFromPreset(idx){
   var presets=ensureActivityPresets(),p=presets[idx];if(!p)return;
-  openActivityModal(null,p);
+  focusActivityComposer(p);
 }
+function syncComposerUI(){
+  var editing=!!(el('actEid')&&el('actEid').value);
+  var title=el('activityComposerTitle'),saveBtn=el('actSaveBtn'),delBtn=el('actDelBtn'),cancelBtn=el('actCancelBtn'),badge=el('activityComposerEditing'),comp=el('dailyLogComposer');
+  if(title)title.textContent=editing?'Edit entry':'Log entry';
+  if(saveBtn)saveBtn.textContent=editing?'Update':'Save & next';
+  if(delBtn)delBtn.style.display=editing?'':'none';
+  if(cancelBtn)cancelBtn.hidden=!editing;
+  if(badge)badge.hidden=!editing;
+  if(comp)comp.classList.toggle('editing',editing);
+}
+function resetActivityComposer(focusDesc){
+  if(el('actEid'))el('actEid').value='';
+  if(el('actDesc'))el('actDesc').value='';
+  setActTimeMins(null,false);
+  setActCategories([]);
+  if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
+  syncComposerUI();
+  renderActCatBubbles();
+  if(focusDesc){setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},40);}
+}
+function initActivityComposer(){
+  if(activityComposerInited)return;
+  activityComposerInited=true;
+  bindActTimeChips();
+  ensureActivityTags();
+  renderActCatBubbles();
+  if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
+  syncComposerUI();
+}
+function focusActivityComposer(preset){
+  if(!cu)return;
+  initActivityComposer();
+  var comp=el('dailyLogComposer');
+  if(comp)comp.scrollIntoView({behavior:'smooth',block:'start'});
+  resetActivityComposer(false);
+  if(preset){
+    el('actDesc').value=preset.description||'';
+    var pcats=entryCategories(preset).length?entryCategories(preset):[preset.category].filter(Boolean);
+    setActCategories(pcats);
+    if(preset.time_mins)setActTimeMins(preset.time_mins,false);
+    renderActCatBubbles();
+  }
+  setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},80);
+}
+function loadActivityForEdit(id){
+  if(!cu)return;
+  var row=activityLog.find(function(x){return x.id===id;});
+  if(!row||String(row.member_id)!==String(cu.id)){toast('Entry not found','error');return;}
+  initActivityComposer();
+  el('actEid').value=row.id;
+  el('actDesc').value=row.description||'';
+  applyActivityTimeFromRow(row);
+  setActCategories(entryCategories(row));
+  el('actDate').value=normalizeLogDate(row.log_date)||dateInputStr(dailyLogDate);
+  syncComposerUI();
+  renderActCatBubbles();
+  var comp=el('dailyLogComposer');
+  if(comp)comp.scrollIntoView({behavior:'smooth',block:'nearest'});
+  setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},60);
+}
+function cancelActivityEdit(){resetActivityComposer(true);}
 function openPresetManager(){
   renderPresetMgrList();
   el('PresetM').classList.add('open');
@@ -2016,57 +2077,26 @@ function rDailyLog(){
   if(!dailyLogDate)dailyLogDate=new Date();
   if(lbl)lbl.textContent=dailyLogDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   if(pick)pick.value=dateInputStr(dailyLogDate);
+  initActivityComposer();
+  if(el('actEid')&&!el('actEid').value&&el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
   renderWeeklyTotals();
   renderDailyLogPresets();
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
-  if(!entries.length){list.innerHTML='<div class="dailylog-empty">Nothing logged for this day yet.<br><button type="button" class="btn p sm" style="margin-top:10px" onclick="openActivityModal()">What did you do today?</button></div>';return;}
-  list.innerHTML='<div class="dailylog-list-head">Today\'s report</div>'+entries.map(function(e){
-    return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="openActivityModal(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div><div class="dailylog-entry-hint">Tap to edit</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();openActivityModal(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
+  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet — use the form above to log your first one.</div>';return;}
+  list.innerHTML='<div class="dailylog-list-head">Today ('+entries.length+') · newest first</div>'+entries.map(function(e){
+    return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
   }).join('');
 }
 function chDailyLogDay(n){dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);rDailyLog();}
 function goDailyLogToday(){dailyLogDate=new Date();rDailyLog();}
 function pickDailyLogDate(val){dailyLogDate=parseDateInput(val);rDailyLog();}
 function openActivityModal(id,preset){
-  if(!cu)return;
   if(typeof id==='object'&&!preset){preset=id;id=null;}
-  ensureActivityTags();bindActTimeChips();setActCategories([]);
-  var eid=el('actEid'),title=el('activityModalTitle'),delBtn=el('actDelBtn'),sub=el('activityModalSub'),saveBtn=el('actSaveBtn');
-  if(id){
-    var row=activityLog.find(function(x){return x.id===id;});
-    if(!row||String(row.member_id)!==String(cu.id)){toast('Entry not found','error');return;}
-    if(eid)eid.value=row.id;
-    if(title)title.textContent='Edit today\'s report';
-    if(sub)sub.textContent='Update what you did — tap areas to change tags.';
-    if(saveBtn)saveBtn.textContent='Update report';
-    el('actDesc').value=row.description||'';
-    applyActivityTimeFromRow(row);
-    setActCategories(entryCategories(row));
-    el('actDate').value=normalizeLogDate(row.log_date)||dateInputStr(dailyLogDate);
-    if(delBtn)delBtn.style.display='';
-  }else{
-    if(eid)eid.value='';
-    if(title)title.textContent='What did you do today?';
-    if(sub)sub.textContent='Write your daily report — what you worked on, outcomes, notes. Select all areas that apply.';
-    if(saveBtn)saveBtn.textContent='Add to report';
-    el('actDesc').value='';
-    if(preset){
-      el('actDesc').value=preset.description||'';
-      var pcats=entryCategories(preset).length?entryCategories(preset):[preset.category].filter(Boolean);
-      setActCategories(pcats);
-      if(preset.time_mins)setActTimeMins(preset.time_mins,false);
-      else setActTimeMins(null,false);
-    }else{
-      setActTimeMins(null,false);
-    }
-    el('actDate').value=dateInputStr(dailyLogDate);
-    if(delBtn)delBtn.style.display='none';
-  }
-  el('ActivityM').classList.add('open');
-  setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},80);
+  if(id)loadActivityForEdit(id);
+  else focusActivityComposer(preset);
 }
-function closeActivityModal(){el('ActivityM').classList.remove('open');}
+function closeActivityModal(){focusActivityComposer();}
 async function saveActivity(){
   if(!sb||!cu){console.error('[4KPI] saveActivity: no Supabase client or user');toast('Not connected — refresh and try again','error');return;}
   var desc=(el('actDesc').value||'').trim();
@@ -2087,6 +2117,7 @@ async function saveActivity(){
   var category=cats.length?cats.join(', '):null;
   var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
   var eid=el('actEid').value;
+  var wasEdit=!!eid;
   var payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,categories:cats.length?cats:null,log_date:logDate,updated_at:nowISO()};
   console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
   try{
@@ -2110,10 +2141,10 @@ async function saveActivity(){
       var idx=activityLog.findIndex(function(x){return x.id===row.id;});
       if(idx>=0)activityLog[idx]=row;else activityLog.unshift(row);
     }else await loadActivityLog();
-    toast(eid?'Report updated ✓':'Added to today\'s report ✓');
-    closeActivityModal();
+    toast(wasEdit?'Updated ✓':'Logged ✓');
     dailyLogDate=parseDateInput(logDate);
     rDailyLog();
+    resetActivityComposer(true);
   }catch(e){
     console.error('[4KPI] saveActivity exception',e,payload);
     toast('Could not save — see console for details','error');
@@ -2121,15 +2152,17 @@ async function saveActivity(){
 }
 async function deleteActivity(id){
   if(!sb||!cu||!id)return;
-  if(!confirm('Delete this activity entry?'))return;
+  if(!confirm('Delete this entry?'))return;
   var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
   if(r.error){toast('Could not delete','error');return;}
+  if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
   toast('Deleted ✓');await loadActivityLog();rDailyLog();
 }
-async function deleteActivityFromModal(){
+async function deleteActivityFromComposer(){
   var id=el('actEid').value;if(!id)return;
-  closeActivityModal();await deleteActivity(id);
+  await deleteActivity(id);
 }
+async function deleteActivityFromModal(){await deleteActivityFromComposer();}
 async function copyDailyLogDay(){
   var entries=myActivityForDay(dailyLogDate);
   if(!entries.length){toast('Nothing to copy for this day','error');return;}
@@ -3602,7 +3635,7 @@ function subscribeRealtime(){
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','ActivityM','PresetM','ThemeM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='ActivityM')closeActivityModal();else if(id==='PresetM')closePresetManager();else if(id==='ThemeM')closeThemeModal();else node.classList.remove('open');}});});
+['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','PresetM','ThemeM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='PresetM')closePresetManager();else if(id==='ThemeM')closeThemeModal();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
@@ -3619,6 +3652,10 @@ window.closeDaySnapM=closeDaySnapM;
 window.toggleSbArchive=toggleSbArchive;
 window.openActivityModal=openActivityModal;
 window.closeActivityModal=closeActivityModal;
+window.focusActivityComposer=focusActivityComposer;
+window.loadActivityForEdit=loadActivityForEdit;
+window.cancelActivityEdit=cancelActivityEdit;
+window.deleteActivityFromComposer=deleteActivityFromComposer;
 window.saveActivity=saveActivity;
 window.deleteActivity=deleteActivity;
 window.deleteActivityFromModal=deleteActivityFromModal;
