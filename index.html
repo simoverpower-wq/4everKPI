@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.40';
+  var V='20260527.41';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.40">
+<link rel="stylesheet" href="style.css?v=20260527.41">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -158,7 +158,11 @@
           <button type="button" class="btn sm" onclick="retryActivityLogSupabase()">I ran it — retry</button>
         </div>
       </div>
-      <div class="dailylog-week" id="dailyLogWeek"></div>
+      <div class="dailylog-today" id="dailyLogToday"></div>
+      <div class="dailylog-week-wrap" id="dailyLogWeekWrap" hidden>
+        <div class="dailylog-week" id="dailyLogWeek"></div>
+      </div>
+      <div class="dailylog-list" id="dailyLogList"></div>
       <div class="dailylog-presets-wrap" id="dailyLogPresetsWrap">
         <div class="dailylog-presets" id="dailyLogPresets"></div>
       </div>
@@ -196,7 +200,6 @@
         <button type="button" class="btn sm" onclick="toggleTagManager()">Manage tags</button>
         <div class="dailylog-tagmgr" id="dailyLogTagMgr" hidden></div>
       </div>
-      <div class="dailylog-list" id="dailyLogList"></div>
     </div>
     <div class="page" id="page-dashboard">
       <div class="ph dash-ph"><div><div class="pt">Agency dashboard</div><div class="ps" id="today"></div></div><button class="btn p" data-require-nav="log_task" onclick="openT()">+ Log task</button></div>
@@ -502,6 +505,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.40"></script>
+<script src="app.js?v=20260527.41"></script>
 </body>
 </html>

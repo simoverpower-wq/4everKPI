@@ -728,7 +728,17 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-setup-banner{margin-bottom:14px;padding:12px 14px;background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.28);border-radius:12px;max-width:720px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
 .dailylog-setup-banner-text{flex:1;min-width:200px;font-size:12px;color:var(--text2);line-height:1.5}
 .dailylog-setup-banner-text strong{color:var(--text);font-weight:600}
-.dailylog-week{margin-bottom:14px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;max-width:720px}
+.dailylog-today{margin-bottom:14px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;max-width:720px}
+.dailylog-today-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 12px;margin-bottom:8px}
+.dailylog-today-head-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dailylog-today-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.dailylog-today-meta{font-size:12px;color:var(--text2)}
+.dailylog-today-pills{display:flex;flex-wrap:wrap;gap:8px}
+.dailylog-today-pill{font-size:12px;padding:5px 10px;border-radius:20px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.22);color:var(--text2)}
+.dailylog-today-pill strong{color:var(--accent);font-weight:600;margin-right:4px}
+.dailylog-today-empty{font-size:12px;color:var(--text3)}
+.dailylog-week-wrap{margin-bottom:14px;max-width:720px}
+.dailylog-week{margin-bottom:0;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px}
 .dailylog-week-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
 .dailylog-week-pills{display:flex;flex-wrap:wrap;gap:8px}
 .dailylog-week-pill{font-size:12px;padding:5px 10px;border-radius:20px;background:rgba(var(--accent-rgb),.1);border:1px solid rgba(var(--accent-rgb),.22);color:var(--text2)}
@@ -741,7 +751,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-tag-chip button{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0 2px}
 .dailylog-tagmgr-add{display:flex;gap:8px;flex-wrap:wrap}
 .dailylog-tagmgr-add input{flex:1;min-width:140px;padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:12px;font-family:inherit}
-.dailylog-list{display:flex;flex-direction:column;gap:8px;max-width:720px}
+.dailylog-list{display:flex;flex-direction:column;gap:8px;max-width:720px;margin-bottom:16px}
 .dailylog-entry{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;border-left:3px solid var(--accent)}
 .dailylog-entry-main{flex:1;min-width:0}
 .dailylog-entry-desc{font-size:14px;font-weight:500;line-height:1.45;color:var(--text);margin-bottom:6px;white-space:pre-wrap}

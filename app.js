@@ -1,4 +1,4 @@
-const APP_VER='20260527.40';
+const APP_VER='20260527.41';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1007,7 +1007,7 @@ const QT=['The agency moves when the team moves.','Consistency beats motivation 
 
 var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
-var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
+var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
@@ -1937,13 +1937,9 @@ function myActivityForDay(d){
   var key=dateInputStr(d);
   return activityLog.filter(function(e){return String(e.member_id)===String(cu.id)&&normalizeLogDate(e.log_date)===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
 }
-function weeklyCategoryTotals(refDate){
-  var start=getWeekStartMonday(refDate||dailyLogDate||new Date()),end=new Date(start);end.setDate(end.getDate()+7);
+function categoryTotalsForEntries(entries){
   var totals={};
-  activityLog.filter(function(e){
-    if(!cu||String(e.member_id)!==String(cu.id))return false;
-    var d=parseDateInput(normalizeLogDate(e.log_date));return d>=start&&d<end;
-  }).forEach(function(e){
+  entries.forEach(function(e){
     var cats=entryCategories(e);
     if(!cats.length)cats=['Uncategorized'];
     var mins=e.time_minutes||0,share=cats.length&&mins?Math.round(mins/cats.length):mins;
@@ -1954,12 +1950,43 @@ function weeklyCategoryTotals(refDate){
   });
   return totals;
 }
+function dailyCategoryTotals(refDate){
+  return categoryTotalsForEntries(myActivityForDay(refDate||dailyLogDate||new Date()));
+}
+function weeklyCategoryTotals(refDate){
+  var start=getWeekStartMonday(refDate||dailyLogDate||new Date()),end=new Date(start);end.setDate(end.getDate()+7);
+  return categoryTotalsForEntries(activityLog.filter(function(e){
+    if(!cu||String(e.member_id)!==String(cu.id))return false;
+    var d=parseDateInput(normalizeLogDate(e.log_date));return d>=start&&d<end;
+  }));
+}
+function dailyLogDayLabel(d){
+  d=d||dailyLogDate||new Date();
+  return dateInputStr(d)===dateInputStr(new Date())?'Today':d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+function renderTodayTotals(){
+  var box=el('dailyLogToday');if(!box)return;
+  var entries=myActivityForDay(dailyLogDate),totals=dailyCategoryTotals(dailyLogDate),cats=Object.keys(totals).sort();
+  var totalMins=entries.reduce(function(s,e){return s+(e.time_minutes||0);},0);
+  var label=dailyLogDayLabel(dailyLogDate);
+  var meta=!entries.length?'Nothing logged yet':entries.length+' entr'+(entries.length===1?'y':'ies')+(totalMins?' · '+formatTimeShort(totalMins)+' total':'');
+  var head='<div class="dailylog-today-head"><div class="dailylog-today-head-main"><span class="dailylog-today-title">'+esc(label)+'</span><span class="dailylog-today-meta">'+esc(meta)+'</span></div><button type="button" class="btn sm dailylog-week-toggle" onclick="toggleWeekView()">'+(weekViewOpen?'Hide week':'This week')+'</button></div>';
+  if(!cats.length){box.innerHTML=head+'<div class="dailylog-today-empty">Log time below to see where it went</div>';return;}
+  box.innerHTML=head+'<div class="dailylog-today-pills">'+cats.map(function(cat){return'<span class="dailylog-today-pill"><strong>'+esc(cat)+'</strong> '+esc(formatTimeShort(totals[cat]))+'</span>';}).join('')+'</div>';
+}
 function renderWeeklyTotals(){
   var box=el('dailyLogWeek');if(!box)return;
   var totals=weeklyCategoryTotals(dailyLogDate),cats=Object.keys(totals).sort();
   if(!cats.length){box.innerHTML='<div class="dailylog-week-empty">This week — log time to see where it goes</div>';return;}
   var start=getWeekStartMonday(dailyLogDate),end=new Date(start);end.setDate(end.getDate()+6);
   box.innerHTML='<div class="dailylog-week-title">This week · '+start.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' – '+end.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</div><div class="dailylog-week-pills">'+cats.map(function(cat){return'<span class="dailylog-week-pill"><strong>'+esc(cat)+'</strong> '+esc(formatTimeShort(totals[cat]))+'</span>';}).join('')+'</div>';
+}
+function toggleWeekView(){
+  weekViewOpen=!weekViewOpen;
+  var wrap=el('dailyLogWeekWrap');
+  if(wrap)wrap.hidden=!weekViewOpen;
+  renderTodayTotals();
+  if(weekViewOpen)renderWeeklyTotals();
 }
 function renderActCatBubbles(){
   var tags=ensureActivityTags(),wrap=el('actCatWrap');if(!wrap)return;
@@ -2198,13 +2225,14 @@ function rDailyLog(){
   if(pick)pick.value=dateInputStr(dailyLogDate);
   initActivityComposer();
   if(el('actEid')&&!el('actEid').value&&el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
-  renderWeeklyTotals();
+  renderTodayTotals();
+  if(weekViewOpen)renderWeeklyTotals();
   renderDailyLogPresets();
   syncActivitySetupBanner();
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
-  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet — use the form above to log your first one.</div>';return;}
-  list.innerHTML='<div class="dailylog-list-head">Today ('+entries.length+') · newest first</div>'+entries.map(function(e){
+  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet — use the form below to log your first one.</div>';return;}
+  list.innerHTML='<div class="dailylog-list-head">'+esc(dailyLogDayLabel(dailyLogDate))+' ('+entries.length+') · newest first</div>'+entries.map(function(e){
     return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
   }).join('');
 }
@@ -3835,6 +3863,7 @@ window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;
 window.copyActivityLogSetupSQL=copyActivityLogSetupSQL;
 window.retryActivityLogSupabase=retryActivityLogSupabase;
+window.toggleWeekView=toggleWeekView;
 window.togglePreset=togglePreset;
 window.startFromPreset=startFromPreset;
 window.openPresetManager=openPresetManager;
