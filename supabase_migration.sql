@@ -310,3 +310,6 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION wipe_test_data_keep_results() TO anon, authenticated;
+
+-- Daily work log notes (what actually happened — separate from blockers/follow-ups in notes)
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS work_notes TEXT;
