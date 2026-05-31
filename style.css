@@ -747,9 +747,33 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-time{font-size:11px;color:var(--text3);font-weight:600}
 .dailylog-entry-actions{display:flex;gap:4px;flex-shrink:0}
 .dailylog-empty{padding:24px 0;color:var(--text3);font-size:13px}
-.act-cat-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.act-cat-row select{flex:1;min-width:120px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:13px}
-.act-cat-row input{min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:13px}
+.dailylog-presets-wrap{margin-bottom:14px;max-width:720px}
+.dailylog-presets-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.dailylog-presets-lbl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
+.dailylog-presets-grid{display:flex;flex-wrap:wrap;gap:8px}
+.dailylog-preset-btn{padding:10px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s;font-family:inherit;text-align:left;line-height:1.35;max-width:100%}
+.dailylog-preset-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.06)}
+.act-desc-area{width:100%;min-height:140px;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:14px;line-height:1.5;resize:vertical}
+.act-time-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tchip{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg4);color:var(--text2);transition:all .15s;font-family:inherit}
+.tchip:hover{border-color:var(--accent);color:var(--accent)}
+.tchip.on{border-color:var(--accent);background:rgba(var(--accent-rgb),.12);color:var(--accent)}
+.act-time-custom{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:13px;margin-top:4px}
+.act-cat-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.act-cat-row input{flex:1;min-width:100px;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:13px}
+.preset-mgr-desc,.theme-mgr-desc{font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5}
+.preset-mgr-list{display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;margin-bottom:12px}
+.preset-mgr-row{display:flex;flex-direction:column;gap:8px;padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:10px}
+.preset-mgr-row-top{display:flex;gap:8px;align-items:flex-start}
+.preset-mgr-row-top input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:13px}
+.preset-mgr-row-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.preset-mgr-row-meta select,.preset-mgr-row-meta input{padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px}
+.preset-mgr-del{margin-left:auto}
+.theme-swatches{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0 4px}
+.theme-swatch{width:52px;height:52px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .15s,border-color .15s;position:relative}
+.theme-swatch:hover{transform:scale(1.08)}
+.theme-swatch.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg),0 0 0 4px currentColor}
+.theme-swatch-lbl{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--text3);white-space:nowrap;width:max-content;max-width:80px;overflow:hidden;text-overflow:ellipsis}
 .mytask-row.expanded{border-color:rgba(var(--accent-rgb),.28)}
 .mytask-note-input:focus{border-color:rgba(var(--accent-rgb),.45);box-shadow:0 0 0 2px rgba(var(--accent-rgb),.08)}
 @media(max-width:900px){.cmp-grid{grid-template-columns:1fr}}

@@ -1,4 +1,4 @@
-const APP_VER='20260527.33';
+const APP_VER='20260527.34';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1009,6 +1009,16 @@ var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=fal
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false;
+var memberPrefs={},actCategory=null,actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false;
+var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
+var ACCENT_THEMES={
+  green:{label:'Green',accent:'#22c55e',accent2:'#16a34a',rgb:'34,197,94'},
+  blue:{label:'Electric blue',accent:'#5b9cf6',accent2:'#3b82f6',rgb:'91,156,246'},
+  purple:{label:'Purple',accent:'#a78bfa',accent2:'#8b5cf6',rgb:'167,139,250'},
+  magenta:{label:'Magenta',accent:'#e879f9',accent2:'#d946ef',rgb:'232,121,249'},
+  gold:{label:'Gold',accent:'#f0b429',accent2:'#d99a1a',rgb:'240,180,41'},
+  cyan:{label:'Cyan',accent:'#22d3ee',accent2:'#06b6d4',rgb:'34,211,238'}
+};
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
   losing_badly:['lock in 💀','buddy you getting cooked rn 💀','this ain\'t it chief 😭','they running laps around you fr','go touch grass then come back'],
@@ -1159,6 +1169,7 @@ function enterApp(){
   el('quote').textContent=QT[new Date().getDay()%QT.length];
   var ht=el('humorToggle');if(ht)ht.checked=!humorOff;
   initSidebar();
+  if(cu){var mp=ls('4k_mp_'+cu.id);if(mp&&mp.accentTheme)applyAccentTheme(mp.accentTheme,false);}
   fetchAndRender(true).then(function(){
     var btn=document.querySelector('[data-nav="dailylog"]');
     gp('dailylog',btn||null);
@@ -1206,6 +1217,7 @@ async function fetchAndRender(showLoadErr){
     try{await loadResultPosts();}catch(e){console.error('[4KPI] loadResultPosts failed',e);}
     try{await loadTrash();}catch(e){console.error('[4KPI] loadTrash failed',e);}
     try{await loadActivityLog();}catch(e){console.error('[4KPI] loadActivityLog failed',e);}
+    loadMemberPrefsForCurrentUser();
 
     render();
     applyNavAccess();
@@ -1336,7 +1348,7 @@ function rPulse(){
     var ctx=cv.getContext('2d'),sz=48;
     ctx.clearRect(0,0,sz,sz);
     ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,0,Math.PI*2);ctx.fillStyle='#1a1a1a';ctx.fill();
-    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle=pct>=80?'#f0b429':pct>=50?'#ffb830':'#ff5c5c';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
+    if(pct>0){ctx.beginPath();ctx.arc(sz/2,sz/2,sz/2-3,-Math.PI/2,-Math.PI/2+Math.PI*2*(pct/100));ctx.strokeStyle=pct>=80?accentHex():pct>=50?accentHex2():'#ff5c5c';ctx.lineWidth=4;ctx.lineCap='round';ctx.stroke();}
   }
   var op=el('opct');if(op)op.textContent=pct+'%';
   var lbl=el('pulseDateLbl');if(lbl)lbl.textContent=pulseDateLabel();
@@ -1747,6 +1759,65 @@ function lineupDateLabel(){
   var d=lineupDate||new Date();
   return d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
 }
+function accentHex(){return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()||'#f0b429';}
+function accentHex2(){return getComputedStyle(document.documentElement).getPropertyValue('--accent2').trim()||'#d99a1a';}
+function accentRgba(a){var rgb=getComputedStyle(document.documentElement).getPropertyValue('--accent-rgb').trim()||'240,180,41';return'rgba('+rgb+','+a+')';}
+function applyAccentTheme(key,persist){
+  var t=ACCENT_THEMES[key]||ACCENT_THEMES.gold;
+  document.documentElement.style.setProperty('--accent',t.accent);
+  document.documentElement.style.setProperty('--accent2',t.accent2);
+  document.documentElement.style.setProperty('--accent-rgb',t.rgb);
+  if(persist!==false&&cu){memberPrefs.accentTheme=key;saveMemberPrefs();}
+  rPulse();
+  if(el('page-performance')&&el('page-performance').classList.contains('active'))rCharts();
+  if(el('page-compare')&&el('page-compare').classList.contains('active'))rCompare();
+  var ts=el('themeSwatches');if(ts)renderThemeSwatches();
+}
+function loadMemberPrefsForCurrentUser(){
+  if(!cu)return;
+  var m=members.find(function(x){return String(x.id)===String(cu.id);});
+  var fromDb=(m&&m.prefs&&typeof m.prefs==='object')?m.prefs:null;
+  var fromLs=ls('4k_mp_'+cu.id);
+  memberPrefs=Object.assign({},fromLs&&typeof fromLs==='object'?fromLs:{},fromDb||{});
+  if(!memberPrefs.activity_presets||!memberPrefs.activity_presets.length)memberPrefs.activity_presets=getDefaultActivityPresets();
+  applyAccentTheme(memberPrefs.accentTheme||'gold',false);
+}
+async function saveMemberPrefs(){
+  if(!cu)return;
+  lss('4k_mp_'+cu.id,memberPrefs);
+  var m=members.find(function(x){return String(x.id)===String(cu.id);});
+  if(m)m.prefs=memberPrefs;
+  if(!sb)return;
+  try{
+    var r=await sb.from('members').update({prefs:memberPrefs}).eq('id',cu.id);
+    if(r.error){
+      if(/prefs|column.*does not exist|Could not find|PGRST204/i.test((r.error.message||'')+(r.error.details||''))){console.warn('[4KPI] members.prefs column missing — stored locally. Run supabase_migration.sql');return;}
+      console.error('[4KPI] saveMemberPrefs failed',r.error,memberPrefs);
+    }
+  }catch(e){console.error('[4KPI] saveMemberPrefs exception',e,memberPrefs);}
+}
+function getDefaultActivityPresets(){
+  return[
+    {id:'p_recruit',description:'Recruitment messages',category:'Recruitment',time_mins:60},
+    {id:'p_chat',description:'Watching chat team',category:'Chatting',time_mins:120},
+    {id:'p_walls',description:'Posting on OF walls',category:'Content',time_mins:60},
+    {id:'p_telegram',description:'Networking on Telegram',category:'Networking',time_mins:60},
+    {id:'p_leads',description:'Replying to leads',category:'Recruitment',time_mins:60},
+    {id:'p_affiliate',description:'Affiliate/referral outreach',category:'Networking',time_mins:60}
+  ];
+}
+function ensureActivityPresets(){
+  if(!memberPrefs.activity_presets||!memberPrefs.activity_presets.length)memberPrefs.activity_presets=getDefaultActivityPresets();
+  return memberPrefs.activity_presets;
+}
+function presetUid(){return'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function saveActivityPresets(){saveMemberPrefs();}
+function normalizeLogDate(v){
+  if(v==null||v==='')return'';
+  if(typeof v==='string'){var m=v.match(/^(\d{4}-\d{2}-\d{2})/);if(m)return m[1];}
+  var d=new Date(v);if(!isNaN(d))return dateInputStr(d);
+  return String(v).slice(0,10);
+}
 function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
 async function loadActivityLog(){
@@ -1776,14 +1847,14 @@ function formatActivityExportLine(e){var desc=(e.description||'').trim(),time=ac
 function myActivityForDay(d){
   if(!cu)return[];
   var key=dateInputStr(d);
-  return activityLog.filter(function(e){return String(e.member_id)===String(cu.id)&&e.log_date===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+  return activityLog.filter(function(e){return String(e.member_id)===String(cu.id)&&normalizeLogDate(e.log_date)===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
 }
 function weeklyCategoryTotals(refDate){
   var start=getWeekStartMonday(refDate||dailyLogDate||new Date()),end=new Date(start);end.setDate(end.getDate()+7);
   var totals={};
   activityLog.filter(function(e){
     if(!cu||String(e.member_id)!==String(cu.id))return false;
-    var d=parseDateInput(e.log_date);return d>=start&&d<end;
+    var d=parseDateInput(normalizeLogDate(e.log_date));return d>=start&&d<end;
   }).forEach(function(e){
     var cat=(e.category||'Uncategorized').trim()||'Uncategorized';
     if(!totals[cat])totals[cat]=0;
@@ -1798,20 +1869,120 @@ function renderWeeklyTotals(){
   var start=getWeekStartMonday(dailyLogDate),end=new Date(start);end.setDate(end.getDate()+6);
   box.innerHTML='<div class="dailylog-week-title">This week · '+start.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' – '+end.toLocaleDateString(undefined,{month:'short',day:'numeric'})+'</div><div class="dailylog-week-pills">'+cats.map(function(cat){return'<span class="dailylog-week-pill"><strong>'+esc(cat)+'</strong> '+esc(formatTimeShort(totals[cat]))+'</span>';}).join('')+'</div>';
 }
-function syncActivityCatSelect(sel,val){
-  var tags=ensureActivityTags(),node=sel||el('actCat');if(!node)return;
-  node.innerHTML=tags.map(function(t){return'<option value="'+esc(t)+'">'+esc(t)+'</option>';}).join('');
-  if(val&&tags.indexOf(val)>=0)node.value=val;else if(tags.length)node.value=tags[0];
+function renderActCatBubbles(selected){
+  var tags=ensureActivityTags(),wrap=el('actCatWrap');if(!wrap)return;
+  var sel=selected||(tags.length?tags[0]:null);
+  actCategory=sel;
+  wrap.innerHTML=tags.map(function(t){return'<span class="sb'+(sel===t?' on':'')+'" data-act-cat="'+esc(t)+'">'+esc(t)+'</span>';}).join('');
+  qsa('[data-act-cat]',wrap).forEach(function(b){b.onclick=function(){setActCategory(this.dataset.actCat);};});
 }
+function setActCategory(cat){
+  actCategory=cat||null;
+  renderActCatBubbles(actCategory);
+}
+function bindActTimeChips(){
+  if(actTimeChipsBound)return;
+  var box=el('actTimeChips');if(!box)return;
+  actTimeChipsBound=true;
+  box.addEventListener('click',function(e){
+    var btn=e.target.closest('[data-act-mins]');if(!btn)return;
+    var v=btn.dataset.actMins;
+    if(v==='custom')setActTimeMins(null,true);
+    else setActTimeMins(parseInt(v,10),false);
+  });
+}
+function setActTimeMins(mins,isCustom){
+  actSelectedMins=isCustom?null:(mins==null?null:mins);
+  actTimeIsCustom=!!isCustom;
+  qsa('#actTimeChips .tchip').forEach(function(b){
+    var m=b.dataset.actMins;
+    if(m==='custom')b.classList.toggle('on',isCustom);
+    else b.classList.toggle('on',!isCustom&&actSelectedMins!=null&&parseInt(m,10)===actSelectedMins);
+  });
+  var cust=el('actTimeCustom');
+  if(cust){cust.hidden=!isCustom;if(isCustom)setTimeout(function(){cust.focus();},50);else cust.value='';}
+}
+function applyActivityTimeFromRow(row){
+  if(!row){setActTimeMins(null,false);return;}
+  if(row.time_minutes&&ACT_TIME_CHIP_MINS.indexOf(row.time_minutes)>=0){setActTimeMins(row.time_minutes,false);return;}
+  if(row.time_spent){
+    var parsed=parseTimePhrase(row.time_spent);
+    if(parsed&&ACT_TIME_CHIP_MINS.indexOf(parsed)>=0){setActTimeMins(parsed,false);return;}
+    setActTimeMins(null,true);
+    var cust=el('actTimeCustom');if(cust)cust.value=row.time_spent;
+    return;
+  }
+  if(row.time_minutes){setActTimeMins(null,true);var c=el('actTimeCustom');if(c)c.value=formatTimeShort(row.time_minutes);return;}
+  setActTimeMins(null,false);
+}
+function renderDailyLogPresets(){
+  var box=el('dailyLogPresets');if(!box)return;
+  var presets=ensureActivityPresets();
+  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
+    return'<button type="button" class="dailylog-preset-btn" onclick="startFromPreset('+i+')" title="'+(p.category?esc(p.category)+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
+  }).join('')+'</div>';
+}
+function startFromPreset(idx){
+  var presets=ensureActivityPresets(),p=presets[idx];if(!p)return;
+  openActivityModal(null,p);
+}
+function openPresetManager(){
+  renderPresetMgrList();
+  el('PresetM').classList.add('open');
+}
+function closePresetManager(){el('PresetM').classList.remove('open');renderDailyLogPresets();}
+function renderPresetMgrList(){
+  var box=el('presetMgrList');if(!box)return;
+  var presets=ensureActivityPresets(),tags=ensureActivityTags();
+  box.innerHTML=presets.map(function(p,i){
+    var tagOpts=tags.map(function(t){return'<option value="'+esc(t)+'"'+(p.category===t?' selected':'')+'>'+esc(t)+'</option>';}).join('');
+    var timeOpts=ACT_TIME_CHIP_MINS.map(function(m){return'<option value="'+m+'"'+(p.time_mins===m?' selected':'')+'>'+esc(formatTimeShort(m))+'</option>';}).join('');
+    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><input type="text" value="'+esc(p.description)+'" placeholder="Activity description" onchange="updatePresetField('+i+',\'description\',this.value)"><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')">Delete</button></div><div class="preset-mgr-row-meta"><label style="font-size:11px;color:var(--text3)">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label style="font-size:11px;color:var(--text3)">Default time</label><select onchange="updatePresetField('+i+',\'time_mins\',parseInt(this.value,10)||null)"><option value="">—</option>'+timeOpts+'</select></div></div>';
+  }).join('');
+}
+function updatePresetField(idx,field,val){
+  var presets=ensureActivityPresets();if(!presets[idx])return;
+  if(field==='description')presets[idx].description=String(val||'').trim();
+  else if(field==='category')presets[idx].category=val||null;
+  else if(field==='time_mins')presets[idx].time_mins=val||null;
+  saveActivityPresets();
+}
+function deletePreset(idx){
+  var presets=ensureActivityPresets();
+  if(presets.length<=1){toast('Keep at least one preset','error');return;}
+  if(!confirm('Delete this preset?'))return;
+  presets.splice(idx,1);
+  saveActivityPresets();
+  renderPresetMgrList();
+  renderDailyLogPresets();
+}
+function addPresetRow(){
+  var presets=ensureActivityPresets(),tags=ensureActivityTags();
+  presets.push({id:presetUid(),description:'New activity',category:tags[0]||'Other',time_mins:60});
+  saveActivityPresets();
+  renderPresetMgrList();
+  renderDailyLogPresets();
+}
+function openThemeModal(){renderThemeSwatches();el('ThemeM').classList.add('open');}
+function closeThemeModal(){el('ThemeM').classList.remove('open');}
+function renderThemeSwatches(){
+  var box=el('themeSwatches');if(!box)return;
+  var cur=memberPrefs.accentTheme||'gold';
+  box.innerHTML=Object.keys(ACCENT_THEMES).map(function(k){
+    var t=ACCENT_THEMES[k];
+    return'<button type="button" class="theme-swatch'+(cur===k?' on':'')+'" style="background:'+t.accent+';color:'+t.accent+'" title="'+esc(t.label)+'" onclick="pickAccentTheme(\''+k+'\')"><span class="theme-swatch-lbl">'+esc(t.label)+'</span></button>';
+  }).join('');
+}
+function pickAccentTheme(key){applyAccentTheme(key,true);toast('Accent updated ✓');}
 function renderTagManagerPanel(){
   var panel=el('dailyLogTagMgr');if(!panel||panel.hidden)return;
   var tags=ensureActivityTags();
   panel.innerHTML='<div class="dailylog-tagmgr-inner"><div class="dailylog-tagmgr-list">'+tags.map(function(t,i){return'<span class="dailylog-tag-chip">'+esc(t)+(tags.length>1?'<button type="button" onclick="removeActivityTag('+i+')" title="Remove">×</button>':'')+'</span>';}).join('')+'</div><div class="dailylog-tagmgr-add"><input id="dailyLogTagNew" placeholder="New tag name…"><button type="button" class="btn sm" onclick="addActivityTagFromMgr()">Add tag</button></div></div>';
 }
 function toggleTagManager(){tagMgrOpen=!tagMgrOpen;var panel=el('dailyLogTagMgr');if(panel){panel.hidden=!tagMgrOpen;if(tagMgrOpen)renderTagManagerPanel();}}
-function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Tag already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';syncActivityCatSelect();renderTagManagerPanel();toast('Tag added ✓');}
-function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}syncActivityCatSelect(null,name);inp.value='';toast('Tag added ✓');}
-function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}activityTags.splice(idx,1);saveActivityTags();syncActivityCatSelect();renderTagManagerPanel();rDailyLog();}
+function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Tag already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';renderActCatBubbles(actCategory);renderTagManagerPanel();toast('Tag added ✓');}
+function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}setActCategory(name);inp.value='';toast('Tag added ✓');}
+function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}activityTags.splice(idx,1);saveActivityTags();renderActCatBubbles(actCategory);renderTagManagerPanel();rDailyLog();}
 function rDailyLog(){
   if(!cu)return;
   var list=el('dailyLogList'),lbl=el('dailyLogDateLbl'),pick=el('dailyLogDatePick');
@@ -1820,6 +1991,7 @@ function rDailyLog(){
   if(lbl)lbl.textContent=dailyLogDate.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   if(pick)pick.value=dateInputStr(dailyLogDate);
   renderWeeklyTotals();
+  renderDailyLogPresets();
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
   if(!entries.length){list.innerHTML='<div class="dailylog-empty">No activities yet. <button type="button" class="btn p sm" onclick="openActivityModal()">+ Add activity</button></div>';return;}
@@ -1830,9 +2002,10 @@ function rDailyLog(){
 function chDailyLogDay(n){dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);rDailyLog();}
 function goDailyLogToday(){dailyLogDate=new Date();rDailyLog();}
 function pickDailyLogDate(val){dailyLogDate=parseDateInput(val);rDailyLog();}
-function openActivityModal(id){
+function openActivityModal(id,preset){
   if(!cu)return;
-  ensureActivityTags();syncActivityCatSelect();
+  if(typeof id==='object'&&!preset){preset=id;id=null;}
+  ensureActivityTags();bindActTimeChips();renderActCatBubbles();
   var eid=el('actEid'),title=el('activityModalTitle'),delBtn=el('actDelBtn');
   if(id){
     var row=activityLog.find(function(x){return x.id===id;});
@@ -1840,15 +2013,23 @@ function openActivityModal(id){
     if(eid)eid.value=row.id;
     if(title)title.textContent='Edit activity';
     el('actDesc').value=row.description||'';
-    el('actTime').value=row.time_spent||activityTimeLabel(row)||'';
-    syncActivityCatSelect(null,row.category||'');
-    el('actDate').value=row.log_date||dateInputStr(dailyLogDate);
+    applyActivityTimeFromRow(row);
+    setActCategory(row.category||ensureActivityTags()[0]);
+    el('actDate').value=normalizeLogDate(row.log_date)||dateInputStr(dailyLogDate);
     if(delBtn)delBtn.style.display='';
   }else{
     if(eid)eid.value='';
     if(title)title.textContent='Add activity';
-    el('actDesc').value='';el('actTime').value='';
-    syncActivityCatSelect();
+    el('actDesc').value='';
+    if(preset){
+      el('actDesc').value=preset.description||'';
+      setActCategory(preset.category||ensureActivityTags()[0]);
+      if(preset.time_mins)setActTimeMins(preset.time_mins,false);
+      else setActTimeMins(null,false);
+    }else{
+      setActTimeMins(null,false);
+      setActCategory(ensureActivityTags()[0]);
+    }
     el('actDate').value=dateInputStr(dailyLogDate);
     if(delBtn)delBtn.style.display='none';
   }
@@ -1857,27 +2038,48 @@ function openActivityModal(id){
 }
 function closeActivityModal(){el('ActivityM').classList.remove('open');}
 async function saveActivity(){
-  if(!sb||!cu)return;
+  if(!sb||!cu){console.error('[4KPI] saveActivity: no Supabase client or user');toast('Not connected — refresh and try again','error');return;}
   var desc=(el('actDesc').value||'').trim();
   if(!desc){toast('Describe what you did','error');return;}
-  var timeRaw=(el('actTime').value||'').trim(),timeMins=timeRaw?parseTimePhrase(timeRaw):null;
-  if(timeRaw&&timeMins==null){toast('Try "4 hrs", "15 mins", or "1 hour 30 mins"','error');return;}
-  var timeSpent=timeRaw||(timeMins!=null?formatTimeShort(timeMins):null);
-  var category=(el('actCat').value||'').trim()||null;
-  var logDate=el('actDate').value||dateInputStr(dailyLogDate);
-  var eid=el('actEid').value,payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
-  var r;
-  if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id);
-  else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]);
-  if(r.error){
-    if(/activity_log|does not exist|Could not find/i.test(r.error.message||'')){toast('Run supabase_migration.sql for activity_log table','error');return;}
-    toast('Could not save — '+r.error.message,'error');return;
+  var timeMins=null,timeSpent=null;
+  if(actTimeIsCustom){
+    var timeRaw=(el('actTimeCustom').value||'').trim();
+    if(timeRaw){
+      timeMins=parseTimePhrase(timeRaw);
+      if(timeMins==null){toast('Try "4 hrs", "15 mins", or "1 hour 30 mins"','error');return;}
+      timeSpent=timeRaw;
+    }
+  }else if(actSelectedMins!=null){
+    timeMins=actSelectedMins;
+    timeSpent=formatTimeShort(timeMins);
   }
-  toast(eid?'Updated ✓':'Logged ✓');
-  closeActivityModal();
-  await loadActivityLog();
-  dailyLogDate=parseDateInput(logDate);
-  rDailyLog();
+  var category=(actCategory||'').trim()||null;
+  var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
+  var eid=el('actEid').value;
+  var payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
+  console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
+  try{
+    var r;
+    if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id).select();
+    else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
+    if(r.error){
+      console.error('[4KPI] saveActivity failed',r.error,payload);
+      if(/activity_log|does not exist|Could not find/i.test(r.error.message||'')){toast('Run supabase_migration.sql for activity_log table','error');return;}
+      toast('Could not save — '+r.error.message,'error');return;
+    }
+    var row=Array.isArray(r.data)?r.data[0]:r.data;
+    if(row){
+      var idx=activityLog.findIndex(function(x){return x.id===row.id;});
+      if(idx>=0)activityLog[idx]=row;else activityLog.unshift(row);
+    }else await loadActivityLog();
+    toast(eid?'Updated ✓':'Logged ✓');
+    closeActivityModal();
+    dailyLogDate=parseDateInput(logDate);
+    rDailyLog();
+  }catch(e){
+    console.error('[4KPI] saveActivity exception',e,payload);
+    toast('Could not save — see console for details','error');
+  }
 }
 async function deleteActivity(id){
   if(!sb||!cu||!id)return;
@@ -2331,18 +2533,19 @@ function quickLog(role,tt){openT();setTimeout(function(){sRoles=[role];sTTs=[tt]
 
 // CHARTS
 function rCharts(){
-  var lbl=members.map(function(m){return m.name;}),rates=members.map(function(m){return mst(m.id).rate;}),bc=rates.map(function(r){return r>=80?'#f0b429':r>=50?'#ffb830':'#ff5c5c';});
+  var ah=accentHex(),ah2=accentHex2(),ara=accentRgba(.08);
+  var lbl=members.map(function(m){return m.name;}),rates=members.map(function(m){return mst(m.id).rate;}),bc=rates.map(function(r){return r>=80?ah:r>=50?ah2:'#ff5c5c';});
   var aA=members.map(function(m){var s=mst(m.id);return s.avgA?+(s.avgA/60).toFixed(1):0;}),aE=members.map(function(m){var s=mst(m.id);return s.avgE?+(s.avgE/60).toFixed(1):0;}),lts=members.map(function(m){return mst(m.id).late;});
   var cd={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#444',font:{size:10}},grid:{display:false},border:{display:false}},y:{ticks:{color:'#444',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'},border:{display:false}}}};
   if(charts.c)charts.c.destroy();charts.c=new Chart(el('cc'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{min:0,max:100,ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'%';}})})})})});
   if(charts.t)charts.t.destroy();charts.t=new Chart(el('ct'),{type:'bar',data:{labels:lbl,datasets:[{label:'Actual',data:aA,backgroundColor:'#5b9cf6',borderRadius:4,borderSkipped:false},{label:'ETA',data:aE,backgroundColor:'#a78bfa',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{callback:function(v){return v+'h';}})})})})}); 
   var sc=[tasks.filter(function(t){return t.status==='done';}).length,tasks.filter(function(t){return t.status==='prog';}).length,tasks.filter(function(t){return t.status==='nostart';}).length,tasks.filter(function(t){return t.status==='pending';}).length,tasks.filter(function(t){return t.status==='late';}).length];
-  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Not started','Pending','Late'],datasets:[{data:sc,backgroundColor:['#f0b429','#5b9cf6','#888','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
+  if(charts.s)charts.s.destroy();charts.s=new Chart(el('cs'),{type:'doughnut',data:{labels:['Done','In progress','Not started','Pending','Late'],datasets:[{data:sc,backgroundColor:[ah,'#5b9cf6','#888','#ffb830','#ff5c5c'],borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:'#888',font:{size:10},boxWidth:10}}},cutout:'60%'}});
   if(charts.l)charts.l.destroy();charts.l=new Chart(el('cl'),{type:'bar',data:{labels:lbl,datasets:[{data:lts,backgroundColor:'#ff5c5c',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
   var rc={};tasks.forEach(function(t){if(t.result_category)rc[t.result_category]=(rc[t.result_category]||0)+1;});var rl=Object.keys(rc).slice(0,8),rd=rl.map(function(l){return rc[l];});
   if(charts.r)charts.r.destroy();charts.r=new Chart(el('cr'),{type:'bar',data:{labels:rl,datasets:[{data:rd,backgroundColor:'#34d399',borderRadius:4,borderSkipped:false}]},options:Object.assign({},cd,{indexAxis:'y',scales:{x:cd.scales.x,y:{ticks:{color:'#888',font:{size:9}},grid:{display:false},border:{display:false}}}})});
   var days=[],cnts=[];for(var d=13;d>=0;d--){var day=new Date();day.setDate(day.getDate()-d);var ds=day.toLocaleDateString('en-US',{month:'short',day:'numeric'});days.push(ds);cnts.push(tasks.filter(function(t){return new Date(t.logged_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})===ds;}).length);}
-  if(charts.tr)charts.tr.destroy();charts.tr=new Chart(el('ctr'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:'#f0b429',backgroundColor:'rgba(240,180,41,.08)',tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#f0b429'}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
+  if(charts.tr)charts.tr.destroy();charts.tr=new Chart(el('ctr'),{type:'line',data:{labels:days,datasets:[{data:cnts,borderColor:ah,backgroundColor:ara,tension:.4,fill:true,pointRadius:3,pointBackgroundColor:ah}]},options:Object.assign({},cd,{scales:Object.assign({},cd.scales,{y:Object.assign({},cd.scales.y,{ticks:Object.assign({},cd.scales.y.ticks,{stepSize:1})})})})});
   var chHelp={cc:'chart_completion',ct:'chart_time',cs:'chart_status',cl:'chart_late',cr:'chart_results',ctr:'chart_trend'};
   Object.keys(chHelp).forEach(function(cid){var cv=el(cid);if(!cv)return;var card=cv.closest('.chcard');if(!card)return;var title=card.querySelector('.chtitle');if(!title||title.querySelector('.help-slot'))return;var hint=title.querySelector('.chhint'),label=title.textContent.replace('click','').trim();title.innerHTML='<span>'+label+'</span><span class="help-slot" data-help="'+chHelp[cid]+'"></span>'+(hint?' <span class="chhint">click</span>':'');});
   fillHelpSlots();
@@ -2872,7 +3075,7 @@ function getCmpScenario(s1,s2){
 function rCompare(){
   if(!el('lbTable'))return;
   var ranked=members.map(function(m){var s=mst(m.id);return{m:m,s:s};}).sort(function(a,b){return b.s.rate-a.s.rate||b.s.done-a.s.done||a.m.name.localeCompare(b.m.name);});
-  var lbl=ranked.map(function(x){return x.m.name;}),rates=ranked.map(function(x){return x.s.rate;}),bc=rates.map(function(r){return r>=80?'#f0b429':r>=50?'#ffb830':'#ff5c5c';});
+  var lbl=ranked.map(function(x){return x.m.name;}),rates=ranked.map(function(x){return x.s.rate;}),bc=rates.map(function(r){return r>=80?accentHex():r>=50?accentHex2():'#ff5c5c';});
   if(charts.lb)charts.lb.destroy();
   if(el('lbChart')){
     charts.lb=new Chart(el('lbChart'),{type:'bar',data:{labels:lbl,datasets:[{data:rates,backgroundColor:bc,borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#888',font:{size:10}},grid:{display:false}},y:{min:0,max:100,ticks:{color:'#888'},grid:{color:'rgba(255,255,255,.04)'}}}}});
@@ -3156,7 +3359,7 @@ function fireConfetti(){
   c.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:99999';
   c.width=window.innerWidth;c.height=window.innerHeight;
   document.body.appendChild(c);
-  var ctx=c.getContext('2d'),colors=['#f0b429','#ffb830','#5b9cf6','#fb7185','#a78bfa','#34d399'],parts=[];
+  var ctx=c.getContext('2d'),colors=[accentHex(),accentHex2(),'#5b9cf6','#fb7185','#a78bfa','#34d399'],parts=[];
   for(var i=0;i<130;i++)parts.push({x:Math.random()*c.width,y:-Math.random()*c.height*.5,vx:(Math.random()-.5)*8,vy:Math.random()*4+2,r:Math.random()*6+3,color:colors[Math.floor(Math.random()*colors.length)],rot:Math.random()*360,vr:(Math.random()-.5)*12});
   var frames=0;
   (function tick(){
@@ -3361,7 +3564,7 @@ function subscribeRealtime(){
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','ActivityM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='ActivityM')closeActivityModal();else node.classList.remove('open');}});});
+['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','ActivityM','PresetM','ThemeM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='ActivityM')closeActivityModal();else if(id==='PresetM')closePresetManager();else if(id==='ThemeM')closeThemeModal();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
@@ -3389,5 +3592,14 @@ window.toggleTagManager=toggleTagManager;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;
+window.startFromPreset=startFromPreset;
+window.openPresetManager=openPresetManager;
+window.closePresetManager=closePresetManager;
+window.updatePresetField=updatePresetField;
+window.deletePreset=deletePreset;
+window.addPresetRow=addPresetRow;
+window.openThemeModal=openThemeModal;
+window.closeThemeModal=closeThemeModal;
+window.pickAccentTheme=pickAccentTheme;
 initLogin();
 initSidebar();

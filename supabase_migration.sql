@@ -286,6 +286,10 @@ BEGIN
 END;
 $$;
 
+-- Per-user preferences: accent theme, activity presets, etc.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS prefs JSONB DEFAULT '{}'::jsonb;
+UPDATE members SET prefs = '{}'::jsonb WHERE prefs IS NULL;
+
 GRANT EXECUTE ON FUNCTION wipe_agency_data() TO anon, authenticated;
 
 -- Inactive members: not yet tracking KPIs (excluded from pulse, insights, oversight warnings)
