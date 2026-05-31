@@ -77,8 +77,25 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .btn-log-task:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(127,255,110,.2)}
 .btn-log-task svg{width:15px;height:15px;flex-shrink:0}
 .sb-bot{margin-top:auto;padding:12px 10px 16px;border-top:1px solid var(--border);flex-shrink:0}
-.sb-trash{margin-top:auto;padding:8px 10px 10px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:4px}
-.sb-trash .ni{width:100%}
+.sb-archive{margin-top:auto;padding-top:10px;border-top:1px solid var(--border);flex-shrink:0}
+.sb-archive-toggle{display:flex;align-items:center;gap:8px;width:100%;padding:9px 11px;border-radius:10px;cursor:pointer;color:var(--text3);font-size:12px;font-weight:600;border:none;background:transparent;text-align:left;transition:all .15s;font-family:'DM Sans',sans-serif}
+.sb-archive-toggle:hover{background:rgba(255,255,255,.04);color:var(--text2)}
+.sb-archive-toggle-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;color:var(--text2);font-size:13px;font-weight:500}
+.sb-archive-toggle-main svg{width:17px;height:17px;flex-shrink:0;opacity:.75}
+.sb-archive-hint{font-size:10px;color:var(--text3);font-weight:500;white-space:nowrap}
+.sb-archive-exp{font-size:16px;line-height:1;transform:rotate(0deg);transition:transform .2s;padding:0 2px}
+.sb-archive-exp.open{transform:rotate(90deg)}
+.sb-archive-body{display:none;padding:2px 0 6px}
+.sb-archive.open .sb-archive-body{display:block}
+.sb-archive-note{font-size:10px;color:var(--text3);line-height:1.45;padding:4px 11px 8px;margin:0}
+.sb-archive .ni{margin-bottom:2px}
+.sidebar.collapsed .sb-archive-hint,.sidebar.collapsed .sb-archive-note{display:none}
+.sidebar.collapsed .sb-archive-toggle{justify-content:center;padding:10px;font-size:0}
+.sidebar.collapsed .sb-archive-toggle-main{font-size:0;gap:0;justify-content:center}
+.sidebar.collapsed .sb-archive-toggle-main svg{width:20px;height:20px;opacity:1}
+.sidebar.collapsed .sb-archive-exp{font-size:14px}
+.arch-page-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;margin:0 0 14px;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.22);border-radius:12px;font-size:12px;color:var(--text2)}
+.arch-page-banner strong{color:var(--text);font-weight:600}
 .wipe-btn{display:none !important}
 body.is-admin .wipe-btn{display:flex !important}
 .wipe-btn{border-color:rgba(255,92,92,.35)!important;color:#ff8a8a!important;background:rgba(255,60,60,.06)!important;animation:wipeGlow 2.4s ease-in-out infinite}
