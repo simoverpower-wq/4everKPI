@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.34';
+  var V='20260527.36';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.34">
+<link rel="stylesheet" href="style.css?v=20260527.36">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -86,8 +86,8 @@
     <nav class="sb-nav">
       <div class="sb-section sb-section-core">
         <div class="nlbl">Today</div>
-        <button class="btn-log-task btn-daily-add" onclick="openActivityModal()" title="Add activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Add activity</span></button>
-        <button class="ni active" data-nav="dailylog" data-nav-tier="core" onclick="gp('dailylog',this)" title="Daily Log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="ni-text">Daily Log</span></button>
+        <button class="btn-log-task btn-daily-add" onclick="openActivityModal()" title="What did you do today?"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Log today</span></button>
+        <button class="ni active" data-nav="dailylog" data-nav-tier="core" onclick="gp('dailylog',this)" title="Daily report"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="ni-text">Daily report</span></button>
       </div>
       <div class="sb-archive" id="sbArchive">
         <button type="button" class="sb-archive-toggle" id="sbArchiveToggle" onclick="toggleSbArchive()" title="Tasks, dashboard, charts & team tools">
@@ -132,14 +132,15 @@
   <button class="mob-menu" id="mobMenu" onclick="toggleMobileNav()" aria-label="Open menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
   <main class="main">
     <div class="arch-page-banner" id="archPageBanner" hidden>
-      <span><strong>More</strong> — assigned tasks, dashboard & charts. Your daily progress report is on Daily Log.</span>
-      <button type="button" class="btn sm" onclick="gp('dailylog',document.querySelector('[data-nav=dailylog].ni'))">← Daily Log</button>
+      <span><strong>More</strong> — assigned tasks, dashboard & charts. Your daily progress report is on Daily report.</span>
+      <button type="button" class="btn sm" onclick="gp('dailylog',document.querySelector('[data-nav=dailylog].ni'))">← Daily report</button>
     </div>
     <div class="page active" id="page-dailylog">
       <div class="ph dailylog-ph">
         <div>
-          <div class="pt">Daily Log</div>
+          <div class="pt">Daily report</div>
           <div class="ps" id="dailyLogDateLbl">—</div>
+          <div class="dailylog-lead">What did you do today? Log your work as a daily progress report.</div>
           <span class="app-ver-lbl" id="appVerLbl"></span>
         </div>
         <div class="dailylog-ph-actions">
@@ -148,7 +149,7 @@
           <button type="button" class="btn sm" onclick="chDailyLogDay(1)">›</button>
           <input type="date" class="dailylog-date-input" id="dailyLogDatePick" onchange="pickDailyLogDate(this.value)">
           <button type="button" class="btn sm" onclick="copyDailyLogDay()">Copy day as text</button>
-          <button type="button" class="btn p" onclick="openActivityModal()">+ Add activity</button>
+          <button type="button" class="btn p" onclick="openActivityModal()">What did you do today?</button>
         </div>
       </div>
       <div class="dailylog-week" id="dailyLogWeek"></div>
@@ -439,10 +440,15 @@
   </div>
 </div>
 <div class="mov" id="ActivityM">
-  <div class="modal activity-modal" style="max-width:560px">
-    <div class="modal-title" id="activityModalTitle">Add activity</div>
-    <div class="fg"><label>What did you do?</label><textarea id="actDesc" class="act-desc-area" rows="6" placeholder="e.g. Watched chat team + took notes on strengths/weaknesses"></textarea></div>
-    <div class="fg"><label>Time spent</label>
+  <div class="modal activity-modal" style="max-width:720px">
+    <div class="modal-title" id="activityModalTitle">What did you do today?</div>
+    <p class="activity-modal-sub" id="activityModalSub">Write your daily report — what you worked on, outcomes, notes. Select all areas that apply.</p>
+    <div class="fg act-desc-fg act-desc-fg-hero"><label class="act-desc-label">What did you do?</label><textarea id="actDesc" class="act-desc-area" rows="14" placeholder="Describe what you worked on today…&#10;&#10;e.g. Watched chat team and took notes on strengths/weaknesses. Posted on walls. Replied to 12 recruitment leads."></textarea></div>
+    <div class="fg act-meta-fg">
+      <div class="bsel"><div class="bsel-lbl">Areas <span class="bsel-hint">· tap all that apply</span></div><div class="bwrap" id="actCatWrap"></div></div>
+      <div class="act-cat-row"><input id="actCatNew" placeholder="New area…" style="flex:1"><button type="button" class="btn sm" onclick="addActivityTagFromModal()">Add area</button></div>
+    </div>
+    <div class="fg act-meta-fg"><label>Time spent <span class="act-opt-lbl">optional</span></label>
       <div class="act-time-chips" id="actTimeChips">
         <button type="button" class="tchip" data-act-mins="15">15m</button>
         <button type="button" class="tchip" data-act-mins="30">30m</button>
@@ -454,19 +460,15 @@
       </div>
       <input id="actTimeCustom" class="act-time-custom" hidden placeholder='e.g. 45 mins, 1 hour 30 mins' autocomplete="off">
     </div>
-    <div class="fg">
-      <div class="bsel"><div class="bsel-lbl">Category</div><div class="bwrap" id="actCatWrap"></div></div>
-      <div class="act-cat-row"><input id="actCatNew" placeholder="New tag…" style="flex:1"><button type="button" class="btn sm" onclick="addActivityTagFromModal()">Add tag</button></div>
-    </div>
-    <div class="fg"><label>Date</label><input type="date" id="actDate"></div>
+    <div class="fg act-meta-fg act-date-fg"><label>Date <span class="act-opt-lbl">for backdating</span></label><input type="date" id="actDate"></div>
     <input type="hidden" id="actEid">
-    <div class="ma"><button class="btn danger" id="actDelBtn" onclick="deleteActivityFromModal()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeActivityModal()">Cancel</button><button class="btn p" onclick="saveActivity()">Save</button></div>
+    <div class="ma"><button class="btn danger" id="actDelBtn" onclick="deleteActivityFromModal()" style="display:none;margin-right:auto">Delete</button><button class="btn" onclick="closeActivityModal()">Cancel</button><button class="btn p" id="actSaveBtn" onclick="saveActivity()">Add to report</button></div>
   </div>
 </div>
 <div class="mov" id="PresetM">
   <div class="modal" style="max-width:560px">
-    <div class="modal-title">Activity presets</div>
-    <p class="preset-mgr-desc">Tap a preset on Daily Log to pre-fill an entry. Edit names, categories, and default times here.</p>
+    <div class="modal-title">Report presets</div>
+    <p class="preset-mgr-desc">Tap a preset to pre-fill your daily report. Edit descriptions, areas, and default times here.</p>
     <div class="preset-mgr-list" id="presetMgrList"></div>
     <div class="ma"><button class="btn" onclick="closePresetManager()">Close</button><button class="btn p" onclick="addPresetRow()">+ Add preset</button></div>
   </div>
@@ -490,6 +492,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.34"></script>
+<script src="app.js?v=20260527.36"></script>
 </body>
 </html>

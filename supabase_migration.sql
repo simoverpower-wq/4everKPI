@@ -327,6 +327,7 @@ CREATE TABLE IF NOT EXISTS activity_log (
   time_spent TEXT,
   time_minutes INTEGER,
   category TEXT,
+  categories TEXT[],
   log_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
