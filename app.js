@@ -1,4 +1,4 @@
-const APP_VER='20260527.52';
+const APP_VER='20260527.53';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -723,14 +723,16 @@ var NAV_TAB_DEFS=[
   {id:'dashboard',label:'Dashboard',group:'More',tier:'archive'},
   {id:'log_task',label:'Log task',group:'More',tier:'archive'},{id:'mytasks',label:'Tasks',group:'More',tier:'archive'},{id:'worklog',label:'Task log',group:'More',tier:'archive'},
   {id:'calendar',label:'Calendar',group:'More',tier:'archive'},{id:'library',label:'Task library',group:'More',tier:'archive'},
-  {id:'add_member',label:'Add member',group:'More',tier:'archive',adminDefault:false},{id:'trash',label:'Trash',group:'More',tier:'archive'},
+  {id:'add_member',label:'Add member',group:'Team',tier:'sidebar',adminDefault:false},{id:'trash',label:'Trash',group:'Team',tier:'sidebar'},
   {id:'performance',label:'Performance',group:'More',tier:'archive'},{id:'compare',label:'Compare',group:'More',tier:'archive'},
   {id:'oversight',label:'Oversight',group:'More',tier:'archive',adminDefault:false},{id:'intelligence',label:'Intelligence',group:'More',tier:'archive',adminDefault:false},
-  {id:'results',label:'Results',group:'More',tier:'archive'},{id:'roles',label:'Role guides',group:'More',tier:'archive'},
+  {id:'results',label:'Results',group:'More',tier:'archive'},{id:'roles',label:'Role guides',group:'Team',tier:'sidebar'},
   {id:'tasks',label:'Daily profiles',group:'More',tier:'archive'}
 ];
 var DEFAULT_MEMBER_NAV={dailylog:true,dashboard:false,log_task:false,mytasks:false,worklog:false,calendar:false,library:false,add_member:false,trash:false,tasks:false,results:false,performance:false,compare:false,oversight:false,intelligence:false,roles:false};
+var SIDEBAR_NAV_IDS=['roles','add_member','trash'];
 var ARCHIVED_NAV_IDS=['dashboard','log_task','mytasks','worklog','calendar','library','add_member','trash','performance','compare','oversight','intelligence','results','roles','tasks'];
+var TOOLS_DRAWER_NAV_IDS=ARCHIVED_NAV_IDS.filter(function(id){return SIDEBAR_NAV_IDS.indexOf(id)<0;});
 var TOOL_NAV_META={
   dashboard:{group:'Overview',desc:'Agency pulse, KPIs, and team grid'},
   performance:{group:'Overview',desc:'Charts and performance trends'},
@@ -750,17 +752,18 @@ var TOOL_NAV_META={
 };
 var TOOL_GROUP_ORDER=['Overview','Tasks','Team','Admin'];
 var simpleNavMode=true;
-function isArchivedNav(id){return ARCHIVED_NAV_IDS.indexOf(id)>=0;}
-function navTier(id){var t=NAV_TAB_DEFS.find(function(x){return x.id===id;});return t&&t.tier==='archive'?'archive':'core';}
+function isSidebarNav(id){return SIDEBAR_NAV_IDS.indexOf(id)>=0;}
+function isArchivedNav(id){return TOOLS_DRAWER_NAV_IDS.indexOf(id)>=0;}
+function navTier(id){var t=NAV_TAB_DEFS.find(function(x){return x.id===id;});return t?t.tier||'core':'core';}
 function hasAnyToolAccess(access){
-  return ARCHIVED_NAV_IDS.some(function(id){return access[id]!==false;});
+  return TOOLS_DRAWER_NAV_IDS.some(function(id){return access[id]!==false;});
 }
 function renderToolsDrawer(){
   var box=el('toolsDrawerGrid');if(!box||!cu)return;
   var access=getNavAccess(cu.id);
   var html='';
   TOOL_GROUP_ORDER.forEach(function(gname){
-    var items=ARCHIVED_NAV_IDS.filter(function(id){
+    var items=TOOLS_DRAWER_NAV_IDS.filter(function(id){
       if(access[id]===false)return false;
       var meta=TOOL_NAV_META[id]||{group:'Other'};
       return meta.group===gname;
@@ -3525,7 +3528,7 @@ async function confirmDeleteTask(){
 }
 
 // MEMBER MODAL
-function openM(){if(!cu||!cu.isAdmin||getNavAccess(cu.id).add_member===false){toast('You don\'t have access to add members','error');return;}el('mmtitle').textContent='Add team member';el('meid').value='';el('mdel').style.display='none';var oBtn=el('msetoverseer');if(oBtn)oBtn.style.display='none';['mname','mrole','mtags','mdesc','mpin'].forEach(function(id){el(id).value='';});el('madmin').value='false';el('minactive').value='false';el('mcolor').value='#34d399';renderSwatches('mcolorgrid','mcolor','#34d399');syncMAccessSec();el('MM').classList.add('open');}
+function openM(){if(!cu||!cu.isAdmin||getNavAccess(cu.id).add_member===false){toast('You don\'t have access to add members','error');return;}closeMobileNav();el('mmtitle').textContent='Add team member';el('meid').value='';el('mdel').style.display='none';var oBtn=el('msetoverseer');if(oBtn)oBtn.style.display='none';['mname','mrole','mtags','mdesc','mpin'].forEach(function(id){el(id).value='';});el('madmin').value='false';el('minactive').value='false';el('mcolor').value='#34d399';renderSwatches('mcolorgrid','mcolor','#34d399');syncMAccessSec();el('MM').classList.add('open');}
 function openEM(mid){var m=members.find(function(x){return x.id===mid;});if(!m)return;var col=(m.color&&m.color.charAt(0)==='#')?m.color:(getMC(m).text);el('mmtitle').textContent='Edit member';el('meid').value=mid;el('mdel').style.display='flex';el('mname').value=m.name||'';el('mrole').value=m.role||'';el('mtags').value=m.role_tags||'';el('mdesc').value=m.description||'';el('mpin').value=m.pin||'';el('madmin').value=m.is_admin?'true':'false';el('minactive').value=isInactiveMember(m)?'true':'false';el('mcolor').value=col;renderSwatches('mcolorgrid','mcolor',col);syncMAccessSec();var oBtn=el('msetoverseer');if(oBtn){oBtn.style.display=(cu&&cu.isAdmin)?'inline-flex':'none';oBtn.textContent=isOverseerMember(m)?'Agency overseer ✓':'Set as agency overseer';oBtn.disabled=!!isOverseerMember(m);}el('MM').classList.add('open');}
 function closeMM(){el('MM').classList.remove('open');}
 

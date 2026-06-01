@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.52';
+  var V='20260527.53';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.52">
+<link rel="stylesheet" href="style.css?v=20260527.53">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -85,6 +85,12 @@
         <div class="nlbl">Today</div>
         <button class="btn-log-task btn-daily-add" onclick="focusActivityComposer()" title="Add activity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span class="ni-text">Add activity</span></button>
         <button class="ni active" data-nav="dailylog" data-nav-tier="core" onclick="gp('dailylog',this)" title="Daily Log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span class="ni-text">Daily Log</span></button>
+      </div>
+      <div class="sb-section sb-section-team">
+        <div class="nlbl">Team</div>
+        <button class="ni" data-nav="roles" data-nav-tier="sidebar" onclick="gp('roles',this)" title="Role guides"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="ni-text">Role guides</span></button>
+        <button class="ni" data-nav="add_member" data-nav-tier="sidebar" onclick="openM()" title="Add member"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg><span class="ni-text">Add member</span></button>
+        <button class="ni" data-nav="trash" data-nav-tier="sidebar" onclick="gp('trash',this)" title="Trash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg><span class="ni-text">Trash</span></button>
       </div>
     </nav>
     <div class="sb-bot">
@@ -494,6 +500,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.52"></script>
+<script src="app.js?v=20260527.53"></script>
 </body>
 </html>
