@@ -727,6 +727,9 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-date-input{padding:4px 8px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:12px;font-family:inherit}
 .dailylog-setup-banner{margin-bottom:14px;padding:12px 14px;background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.28);border-radius:12px;max-width:720px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
 .dailylog-setup-banner[hidden],.dailylog-setup-banner.is-hidden{display:none!important}
+.copy-day-hint{font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.5}
+.copy-day-text{width:100%;min-height:160px;padding:12px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;line-height:1.55;font-family:inherit;resize:vertical}
+.copy-day-text:focus{outline:none;border-color:rgba(var(--accent-rgb),.45)}
 .dailylog-setup-banner-text{flex:1;min-width:200px;font-size:12px;color:var(--text2);line-height:1.5}
 .dailylog-setup-banner-text strong{color:var(--text);font-weight:600}
 .dailylog-today{margin-bottom:14px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;max-width:720px}
