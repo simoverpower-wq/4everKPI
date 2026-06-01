@@ -1,4 +1,4 @@
-const APP_VER='20260527.42';
+const APP_VER='20260527.43';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1009,7 +1009,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogProbing=false;
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogProbing=false,activityLogLoadSeq=0,activityLogLastErr=null;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1839,7 +1839,10 @@ function loadActivityLogFromLocal(){
 }
 function persistActivityLogLocal(){var key=localActivityKey();if(key)lss(key,activityLog);}
 function syncActivitySetupBanner(){
-  var b=el('dailyLogSetupBanner');if(b)b.hidden=!activityLogLocalOnly;
+  var b=el('dailyLogSetupBanner');
+  if(!b)return;
+  b.hidden=!activityLogLocalOnly;
+  b.classList.toggle('is-hidden',!activityLogLocalOnly);
 }
 var ACTIVITY_LOG_SETUP_SQL="CREATE TABLE IF NOT EXISTS activity_log (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,\n  description TEXT NOT NULL,\n  time_spent TEXT,\n  time_minutes INTEGER,\n  category TEXT,\n  log_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE INDEX IF NOT EXISTS activity_log_member_date ON activity_log (member_id, log_date DESC);\n\nALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS \"activity_log_select\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_insert\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_update\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_delete\" ON activity_log;\n\nCREATE POLICY \"activity_log_select\" ON activity_log FOR SELECT USING (true);\nCREATE POLICY \"activity_log_insert\" ON activity_log FOR INSERT WITH CHECK (true);\nCREATE POLICY \"activity_log_update\" ON activity_log FOR UPDATE USING (true);\nCREATE POLICY \"activity_log_delete\" ON activity_log FOR DELETE USING (true);\n\nGRANT ALL ON TABLE activity_log TO anon, authenticated;";
 async function copyActivityLogSetupSQL(){
@@ -1851,11 +1854,18 @@ async function copyActivityLogSetupSQL(){
   }
 }
 async function retryActivityLogSupabase(){
+  var btn=el('dailyLogSetupRetryBtn');
+  if(btn)btn.disabled=true;
   activityLogLocalOnly=false;
-  await loadActivityLog();
+  var res=await loadActivityLog();
   syncActivitySetupBanner();
-  if(!activityLogLocalOnly){toast('Connected to Supabase ✓');rDailyLog();}
-  else toast('Table still missing — copy SQL and run it in Supabase','error');
+  if(btn)btn.disabled=false;
+  if(res.ok||!activityLogLocalOnly){
+    toast('Connected to Supabase ✓');
+    rDailyLogInner();
+  }else{
+    toast((res.error||'Could not reach activity_log')+' — try a hard refresh','error');
+  }
 }
 function saveActivityLogLocalRow(payload,eid){
   var now=nowISO(),row;
@@ -1871,42 +1881,75 @@ function saveActivityLogLocalRow(payload,eid){
   persistActivityLogLocal();
   return row;
 }
+function clearActivityLogLocalIfSynced(){
+  var key=localActivityKey();if(!key)return;
+  var local=ls(key);
+  if(!local||!local.length){lss(key,[]);return;}
+  var remoteIds={};
+  activityLog.forEach(function(e){remoteIds[e.id]=true;});
+  var remaining=local.filter(function(L){return L&&L.id&&!remoteIds[L.id];});
+  if(!remaining.length)lss(key,[]);
+  else lss(key,remaining);
+}
 async function loadActivityLog(){
-  if(!cu){activityLog=[];return;}
-  if(!sb){loadActivityLogFromLocal();activityLogLocalOnly=true;syncActivitySetupBanner();return;}
+  if(!cu){activityLog=[];return{ok:false};}
+  var seq=++activityLogLoadSeq;
+  function stale(){return seq!==activityLogLoadSeq;}
+  function apply(fn){if(!stale())fn();}
+  if(!sb){
+    apply(function(){loadActivityLogFromLocal();activityLogLocalOnly=true;syncActivitySetupBanner();});
+    activityLogLastErr='No Supabase client';
+    return{ok:false,error:activityLogLastErr};
+  }
   try{
-    var r=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('log_date',{ascending:false}).order('created_at',{ascending:false});
+    var r=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('created_at',{ascending:false});
+    if(stale())return{ok:false,stale:true};
     if(r.error){
+      activityLogLastErr=r.error.message||'Unknown error';
       if(isActivityLogTableMissing(r.error)){
         console.warn('[4KPI] activity_log table missing — using local storage',r.error);
-        loadActivityLogFromLocal();
-        activityLogLocalOnly=true;
-        syncActivitySetupBanner();
-        return;
+        apply(function(){loadActivityLogFromLocal();activityLogLocalOnly=true;syncActivitySetupBanner();});
+        return{ok:false,error:activityLogLastErr,missing:true};
       }
-      sbErr('activity_log',r);activityLog=[];activityLogLocalOnly=false;syncActivitySetupBanner();return;
+      apply(function(){sbErr('activity_log',r);activityLog=[];activityLogLocalOnly=false;syncActivitySetupBanner();});
+      return{ok:false,error:activityLogLastErr};
     }
-    activityLog=r.data||[];
-    activityLogLocalOnly=false;
-    syncActivitySetupBanner();
+    apply(function(){
+      activityLog=r.data||[];
+      activityLogLocalOnly=false;
+      syncActivitySetupBanner();
+    });
+    if(stale())return{ok:true,stale:true};
     var local=ls(localActivityKey());
     if(local&&local.length){
       try{
+        var remoteIds={};
+        activityLog.forEach(function(e){remoteIds[e.id]=true;});
+        var synced=0;
         for(var i=0;i<local.length;i++){
-          var L=local[i],pl={member_id:cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
-          await sb.from('activity_log').insert([pl]);
+          var L=local[i];
+          if(!L||!L.description||!String(L.description).trim())continue;
+          if(L.id&&remoteIds[L.id])continue;
+          var pl={member_id:cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
+          if(L.id)pl.id=L.id;
+          var ins=await sb.from('activity_log').insert([pl]);
+          if(!ins.error)synced++;
         }
-        lss(localActivityKey(),[]);
-        var r2=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('log_date',{ascending:false}).order('created_at',{ascending:false});
-        if(!r2.error)activityLog=r2.data||[];
-        toast('Local entries synced to Supabase ✓');
+        clearActivityLogLocalIfSynced();
+        if(synced>0){
+          var r2=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('created_at',{ascending:false});
+          if(!r2.error&&!stale())activityLog=r2.data||[];
+          toast('Local entries synced to Supabase ✓');
+        }else clearActivityLogLocalIfSynced();
       }catch(syncErr){console.warn('[4KPI] local activity sync failed',syncErr);}
-    }
+    }else clearActivityLogLocalIfSynced();
+    return{ok:true};
   }catch(e){
+    if(stale())return{ok:false,stale:true};
+    activityLogLastErr=e.message||String(e);
     console.error('[4KPI] loadActivityLog',e);
-    loadActivityLogFromLocal();
-    activityLogLocalOnly=true;
-    syncActivitySetupBanner();
+    apply(function(){loadActivityLogFromLocal();activityLogLocalOnly=true;syncActivitySetupBanner();});
+    return{ok:false,error:activityLogLastErr};
   }
 }
 function dateInputStr(d){var x=new Date(d);if(isNaN(x))x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');}
