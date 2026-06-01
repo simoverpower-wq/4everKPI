@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.46';
+  var V='20260527.47';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.46">
+<link rel="stylesheet" href="style.css?v=20260527.47">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -147,7 +147,7 @@
           <button type="button" class="btn sm" onclick="goDailyLogToday()">Today</button>
           <button type="button" class="btn sm" onclick="chDailyLogDay(1)">›</button>
           <input type="date" class="dailylog-date-input" id="dailyLogDatePick" onchange="pickDailyLogDate(this.value)">
-          <button type="button" class="btn sm" onclick="copyDailyLogDay()">Copy day as text</button>
+          <button type="button" class="btn sm" onclick="copyDailyLogDay()">Copy summary</button>
           <button type="button" class="btn p" onclick="focusActivityComposer()">+ Add activity</button>
         </div>
       </div>
@@ -497,11 +497,12 @@
 <div class="mov" id="CopyDayM">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">Day summary</div>
-    <p class="copy-day-hint">Text is selected — press ⌘C (Mac) or Ctrl+C (Windows) to copy.</p>
-    <textarea id="copyDayText" class="copy-day-text" readonly rows="10"></textarea>
-    <div class="ma"><button type="button" class="btn" onclick="closeCopyDayModal()">Close</button><button type="button" class="btn p" onclick="copyFromDayModal()">Copy again</button></div>
+    <p class="copy-day-hint">Your summary is selected below. Press <strong>⌘C</strong> (Mac) or <strong>Ctrl+C</strong> (Windows) to copy, or use the buttons.</p>
+    <textarea id="copyDayText" class="copy-day-text" rows="10" onclick="selectDaySummaryText()" onfocus="selectDaySummaryText()"></textarea>
+    <div class="ma"><button type="button" class="btn" onclick="closeCopyDayModal()">Close</button><button type="button" class="btn" onclick="selectDaySummaryText()">Select all</button><button type="button" class="btn" onclick="downloadDaySummary()">Download .txt</button><button type="button" class="btn p" onclick="copyFromDayModal()">Copy</button></div>
   </div>
 </div>
+<textarea id="copyHelper" class="copy-helper" aria-hidden="true" tabindex="-1"></textarea>
 <div class="mov" id="WPM">
   <div class="modal" style="max-width:440px">
     <div class="modal-title" style="color:var(--red)">Erase all agency data</div>
@@ -513,6 +514,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.46"></script>
+<script src="app.js?v=20260527.47"></script>
 </body>
 </html>

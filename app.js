@@ -1,4 +1,4 @@
-const APP_VER='20260527.46';
+const APP_VER='20260527.47';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1826,55 +1826,80 @@ function normalizeLogDate(v){
 function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
 function localActivityKey(){return cu?'4k_alog_'+cu.id:'';}
+function selectCopyField(field){
+  if(!field)return;
+  field.focus({preventScroll:true});
+  field.select();
+  if(typeof field.setSelectionRange==='function')field.setSelectionRange(0,(field.value||'').length);
+}
+function execCopyField(field){
+  if(!field)return false;
+  selectCopyField(field);
+  try{return document.execCommand('copy');}catch(e){return false;}
+}
+async function verifyClipboardText(text){
+  if(!navigator.clipboard||!navigator.clipboard.readText)return null;
+  try{return(await navigator.clipboard.readText())===text;}catch(e){return null;}
+}
 function copyTextSync(text){
+  var helper=el('copyHelper');
+  if(helper){
+    helper.value=text;
+    return execCopyField(helper);
+  }
   if(!text)return false;
   var ta=document.createElement('textarea');
   ta.value=text;
-  ta.setAttribute('aria-hidden','true');
-  ta.style.cssText='position:fixed;top:0;left:0;width:2px;height:2px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0.01;z-index:-1';
+  ta.style.cssText='position:fixed;top:0;left:0;width:2em;height:2em;padding:8px;border:1px solid transparent;background:#fff;color:#000;opacity:0.01;z-index:99999';
   document.body.appendChild(ta);
-  ta.focus({preventScroll:true});
-  ta.select();
-  ta.setSelectionRange(0,text.length);
-  var ok=false;
-  try{ok=document.execCommand('copy');}catch(e){}
+  var ok=execCopyField(ta);
   document.body.removeChild(ta);
   return ok;
 }
 async function copyTextToClipboard(text){
   if(!text)return false;
-  if(copyTextSync(text))return true;
-  if(navigator.clipboard&&window.isSecureContext){
-    try{
-      await navigator.clipboard.writeText(text);
-      try{
-        var got=await navigator.clipboard.readText();
-        if(got===text)return true;
-      }catch(e){
-        return copyTextSync(text);
-      }
-    }catch(e){}
-  }
-  return copyTextSync(text);
+  copyTextSync(text);
+  var verified=await verifyClipboardText(text);
+  if(verified===true)return true;
+  if(verified===false)return false;
+  return false;
 }
 function openDailyLogCopyModal(text){
+  var box=el('copyDayText'),modal=el('CopyDayM');
+  if(!box||!modal)return;
+  box.value=text;
+  modal.classList.add('open');
+  void box.offsetHeight;
+  selectCopyField(box);
+}
+function closeCopyDayModal(){var m=el('CopyDayM');if(m)m.classList.remove('open');}
+function selectDaySummaryText(){
+  var box=el('copyDayText');
+  if(box)selectCopyField(box);
+}
+function copyFromDayModal(){
   var box=el('copyDayText');
   if(!box)return;
-  box.value=text;
-  el('CopyDayM').classList.add('open');
-  setTimeout(function(){
-    box.focus();
-    box.select();
-    box.setSelectionRange(0,text.length);
-  },50);
+  var text=box.value||'';
+  execCopyField(box);
+  verifyClipboardText(text).then(function(verified){
+    if(verified===true){toast('Day summary copied ✓');closeCopyDayModal();}
+    else toast('Press ⌘C (Mac) or Ctrl+C with the text selected','error');
+  });
 }
-function closeCopyDayModal(){el('CopyDayM').classList.remove('open');}
-async function copyFromDayModal(){
-  var text=(el('copyDayText').value||'').trim();
-  if(!text){toast('Nothing to copy','error');return;}
-  var ok=await copyTextToClipboard(text);
-  if(ok){toast('Day summary copied ✓');closeCopyDayModal();}
-  else toast('Press ⌘C (or Ctrl+C) with the text selected','error');
+function downloadDaySummary(){
+  var box=el('copyDayText');
+  var text=box&&(box.value||'').trim();
+  if(!text){toast('Nothing to download','error');return;}
+  var blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='daily-log-'+dateInputStr(dailyLogDate||new Date())+'.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('Downloaded ✓');
 }
 function genActId(){
   if(typeof crypto!=='undefined'&&crypto.randomUUID)return crypto.randomUUID();
@@ -2500,10 +2525,11 @@ function copyDailyLogDay(){
   var entries=myActivityForDay(dailyLogDate);
   if(!entries.length){toast('Nothing to copy for this day','error');return;}
   var text=formatDailyLogExportSummary(entries,dailyLogDate);
-  copyTextToClipboard(text).then(function(ok){
-    if(ok){toast('Day summary copied ✓');return;}
-    openDailyLogCopyModal(text);
-    toast('Select the text and press ⌘C to copy','error');
+  openDailyLogCopyModal(text);
+  execCopyField(el('copyDayText'));
+  verifyClipboardText(text).then(function(verified){
+    if(verified===true){toast('Day summary copied ✓');closeCopyDayModal();}
+    else toast('Summary ready — press ⌘C to copy');
   });
 }
 function myTasksDateLabel(){
@@ -4022,6 +4048,8 @@ window.deleteActivityFromModal=deleteActivityFromModal;
 window.copyDailyLogDay=copyDailyLogDay;
 window.closeCopyDayModal=closeCopyDayModal;
 window.copyFromDayModal=copyFromDayModal;
+window.selectDaySummaryText=selectDaySummaryText;
+window.downloadDaySummary=downloadDaySummary;
 window.chDailyLogDay=chDailyLogDay;
 window.goDailyLogToday=goDailyLogToday;
 window.pickDailyLogDate=pickDailyLogDate;
