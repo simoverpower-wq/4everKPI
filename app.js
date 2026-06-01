@@ -1,4 +1,4 @@
-const APP_VER='20260527.43';
+const APP_VER='20260527.44';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1009,7 +1009,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogProbing=false,activityLogLoadSeq=0,activityLogLastErr=null;
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1171,6 +1171,8 @@ function enterApp(){
   var ht=el('humorToggle');if(ht)ht.checked=!humorOff;
   initSidebar();
   if(cu){var mp=ls('4k_mp_'+cu.id);if(mp&&mp.accentTheme)applyAccentTheme(mp.accentTheme,false);}
+  try{if(sessionStorage.getItem('4k_alog_ok')==='1')activityLogSupabaseOk=true;}catch(x){}
+  syncActivitySetupBanner();
   fetchAndRender(true).then(function(){
     var btn=document.querySelector('[data-nav="dailylog"]');
     gp('dailylog',btn||null);
@@ -1235,6 +1237,8 @@ async function load(){await fetchAndRender(false);}
 
 function logout(){
   cu=null;
+  activityLogSupabaseOk=false;
+  try{sessionStorage.removeItem('4k_alog_ok');}catch(x){}
   syncUserRole();
   el('LS').classList.remove('hidden');
   el('APP').style.display='none';
@@ -1838,11 +1842,40 @@ function loadActivityLogFromLocal(){
   var data=ls(key);activityLog=Array.isArray(data)?data:[];
 }
 function persistActivityLogLocal(){var key=localActivityKey();if(key)lss(key,activityLog);}
+function markActivityLogConnected(){
+  activityLogSupabaseOk=true;
+  activityLogLocalOnly=false;
+  try{sessionStorage.setItem('4k_alog_ok','1');}catch(x){}
+  syncActivitySetupBanner();
+}
 function syncActivitySetupBanner(){
   var b=el('dailyLogSetupBanner');
   if(!b)return;
-  b.hidden=!activityLogLocalOnly;
-  b.classList.toggle('is-hidden',!activityLogLocalOnly);
+  var show=activityLogLocalOnly&&!activityLogSupabaseOk;
+  b.hidden=!show;
+  b.classList.toggle('is-hidden',!show);
+  b.style.display=show?'flex':'none';
+}
+async function probeActivityLogSupabase(){
+  if(!sb||!cu)return false;
+  if(activityLogSupabaseOk)return true;
+  try{
+    var r=await sb.from('activity_log').select('id').eq('member_id',cu.id).limit(1);
+    if(!r.error){
+      markActivityLogConnected();
+      return true;
+    }
+    activityLogLastErr=r.error.message||'Unknown error';
+    if(isActivityLogTableMissing(r.error)){
+      activityLogLocalOnly=true;
+      syncActivitySetupBanner();
+      return false;
+    }
+  }catch(e){
+    activityLogLastErr=e.message||String(e);
+  }
+  syncActivitySetupBanner();
+  return false;
 }
 var ACTIVITY_LOG_SETUP_SQL="CREATE TABLE IF NOT EXISTS activity_log (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,\n  description TEXT NOT NULL,\n  time_spent TEXT,\n  time_minutes INTEGER,\n  category TEXT,\n  log_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE INDEX IF NOT EXISTS activity_log_member_date ON activity_log (member_id, log_date DESC);\n\nALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS \"activity_log_select\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_insert\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_update\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_delete\" ON activity_log;\n\nCREATE POLICY \"activity_log_select\" ON activity_log FOR SELECT USING (true);\nCREATE POLICY \"activity_log_insert\" ON activity_log FOR INSERT WITH CHECK (true);\nCREATE POLICY \"activity_log_update\" ON activity_log FOR UPDATE USING (true);\nCREATE POLICY \"activity_log_delete\" ON activity_log FOR DELETE USING (true);\n\nGRANT ALL ON TABLE activity_log TO anon, authenticated;";
 async function copyActivityLogSetupSQL(){
@@ -1857,14 +1890,16 @@ async function retryActivityLogSupabase(){
   var btn=el('dailyLogSetupRetryBtn');
   if(btn)btn.disabled=true;
   activityLogLocalOnly=false;
-  var res=await loadActivityLog();
+  var probed=await probeActivityLogSupabase();
+  var res=probed?{ok:true}:await loadActivityLog();
   syncActivitySetupBanner();
   if(btn)btn.disabled=false;
-  if(res.ok||!activityLogLocalOnly){
+  if(res.ok||activityLogSupabaseOk||!activityLogLocalOnly){
+    markActivityLogConnected();
     toast('Connected to Supabase ✓');
     rDailyLogInner();
   }else{
-    toast((res.error||'Could not reach activity_log')+' — try a hard refresh','error');
+    toast((res.error||activityLogLastErr||'Could not reach activity_log')+' — try a hard refresh','error');
   }
 }
 function saveActivityLogLocalRow(payload,eid){
@@ -1916,8 +1951,7 @@ async function loadActivityLog(){
     }
     apply(function(){
       activityLog=r.data||[];
-      activityLogLocalOnly=false;
-      syncActivitySetupBanner();
+      markActivityLogConnected();
     });
     if(stale())return{ok:true,stale:true};
     var local=ls(localActivityKey());
@@ -2263,12 +2297,8 @@ function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var na
 function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}var removed=activityTags[idx];activityTags.splice(idx,1);saveActivityTags();actCategories=actCategories.filter(function(c){return c!==removed;});renderActCatBubbles();renderTagManagerPanel();rDailyLog();}
 function rDailyLog(){
   if(!cu)return;
-  if(activityLogLocalOnly&&sb&&!activityLogProbing){
-    activityLogProbing=true;
-    loadActivityLog().finally(function(){activityLogProbing=false;}).then(function(){rDailyLogInner();});
-    return;
-  }
   rDailyLogInner();
+  if(!activityLogSupabaseOk&&sb)probeActivityLogSupabase().then(function(ok){if(ok)rDailyLogInner();});
 }
 function rDailyLogInner(){
   if(!cu)return;
@@ -2341,8 +2371,7 @@ async function saveActivity(){
           return;
         }
       }else{
-        activityLogLocalOnly=false;
-        syncActivitySetupBanner();
+        markActivityLogConnected();
         row=Array.isArray(r.data)?r.data[0]:r.data;
       }
     }
@@ -2376,8 +2405,7 @@ async function deleteActivity(id){
         persistActivityLogLocal();
       }else{toast('Could not delete','error');return;}
     }else{
-      activityLogLocalOnly=false;
-      syncActivitySetupBanner();
+      markActivityLogConnected();
     }
   }
   if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
