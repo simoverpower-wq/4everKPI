@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.50';
+  var V='20260527.51';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,13 +24,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.50">
+<link rel="stylesheet" href="style.css?v=20260527.51">
 </head>
 <body>
 <div class="login-screen" id="LS">
   <div class="login-layout">
     <div class="login-hero">
-      <img src="icon.png" alt="4everKPI" class="login-icon">
+      <div class="app-brand-icon login-icon" role="img" aria-label="4everKPI"></div>
       <div class="login-brand">4everKPI</div>
       <div class="login-tagline">Agency operations, measured.</div>
       <p class="login-lead">Your overseer command center — log tasks for the team, track time and outcomes, and see what's actually moving the agency forward.</p>
@@ -48,18 +48,15 @@
       </div>
       <div class="login-roadmap">
         <div class="login-roadmap-title">On the horizon</div>
-        <p class="login-roadmap-note">Ideas we're exploring — no dates, no guarantees. Core KPI tracking stays the focus.</p>
+        <p class="login-roadmap-note">One thing we're building toward — no dates, no guarantees yet.</p>
         <ul class="login-roadmap-list">
           <li><strong>Lyra gets smarter</strong> — deeper personality-aware insights and actionable requests as your team logs real work</li>
-          <li><strong>Notion + Google Drive sync</strong> — connect docs and files to your workflow</li>
-          <li><strong>Stronger security</strong> — tighter access controls and data protection</li>
-          <li><strong>Per-category dashboards</strong> — deeper tracking per role area (e.g. Reddit rev, proof charts). Possible expansion; still evaluating fit with the KPI-first mission</li>
         </ul>
       </div>
     </div>
     <div class="login-box">
       <div class="login-box-head">
-        <img src="icon.png" alt="" class="login-box-icon">
+        <div class="app-brand-icon login-box-icon" role="img" aria-hidden="true"></div>
         <div><div class="login-logo">Sign in</div><div class="login-sub">Select your name to continue</div></div>
       </div>
     <div id="step1">
@@ -80,7 +77,7 @@
 <div class="app" id="APP" style="display:none">
   <aside class="sidebar" id="sidebar">
     <div class="sb-top">
-      <div class="logo"><img src="icon.png" alt="" class="logo-icon"><span class="logo-text">4everKPI</span></div>
+      <div class="logo"><div class="app-brand-icon logo-icon" role="img" aria-hidden="true"></div><span class="logo-text">4everKPI</span></div>
       <button class="sb-toggle" id="sbToggle" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Toggle sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>
     </div>
     <nav class="sb-nav">
@@ -514,6 +511,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.50"></script>
+<script src="app.js?v=20260527.51"></script>
 </body>
 </html>

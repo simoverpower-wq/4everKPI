@@ -1,4 +1,4 @@
-const APP_VER='20260527.50';
+const APP_VER='20260527.51';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1013,12 +1013,17 @@ var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLo
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
+  red:{label:'Bright red',accent:'#ff3333',accent2:'#e61919',rgb:'255,51,51'},
+  orange:{label:'Orange',accent:'#ff9632',accent2:'#f97316',rgb:'255,150,50'},
+  gold:{label:'Gold',accent:'#f0b429',accent2:'#d99a1a',rgb:'240,180,41'},
   green:{label:'Green',accent:'#22c55e',accent2:'#16a34a',rgb:'34,197,94'},
+  lime:{label:'Lime',accent:'#84cc16',accent2:'#65a30d',rgb:'132,204,22'},
+  teal:{label:'Teal',accent:'#2dd4bf',accent2:'#14b8a6',rgb:'45,212,191'},
+  cyan:{label:'Cyan',accent:'#22d3ee',accent2:'#06b6d4',rgb:'34,211,238'},
   blue:{label:'Electric blue',accent:'#5b9cf6',accent2:'#3b82f6',rgb:'91,156,246'},
   purple:{label:'Purple',accent:'#a78bfa',accent2:'#8b5cf6',rgb:'167,139,250'},
   magenta:{label:'Magenta',accent:'#e879f9',accent2:'#d946ef',rgb:'232,121,249'},
-  gold:{label:'Gold',accent:'#f0b429',accent2:'#d99a1a',rgb:'240,180,41'},
-  cyan:{label:'Cyan',accent:'#22d3ee',accent2:'#06b6d4',rgb:'34,211,238'}
+  rose:{label:'Rose',accent:'#fb7185',accent2:'#f43f5e',rgb:'251,113,133'}
 };
 var cmpMeId=null,cmpThemId=null,humorOff=ls('4k_humor')===true,humorLastPair=null,fbRating=0,curNoteRole=null,roleNotesCache={},feedbackList=[],resultPosts=[],pendingResultFiles=[],keptResultFiles=[],sResultType=null,editingResultId=null,resultBusy=false,trashItems=[];
 const HUMOR={
@@ -1042,8 +1047,13 @@ function qs(sel,ctx){return(ctx||document).querySelector(sel);}
 function qsa(sel,ctx){return(ctx||document).querySelectorAll(sel);}
 
 // LOGIN
+function loginVisibleMembers(list){
+  return(list||[]).filter(function(m){return !isInactiveMember(m);});
+}
 async function initLogin(){
   if(!sb){console.error('[4KPI] Cannot load login — Supabase client missing');return;}
+  var savedAccent=ls('4k_accent_theme');
+  if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
   logKPI('initLogin start');
   var r=await sb.from('members').select('*').order('name');
   sbErr('members (login)',r);
@@ -1052,7 +1062,7 @@ async function initLogin(){
   logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
   await loadSettings();
   setupLoginSearch();
-  renderLG(members);
+  renderLG(loginVisibleMembers(members));
   var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
 }
 
@@ -1096,18 +1106,18 @@ function dropLoginOrder(targetId){
   var fi=ids.indexOf(dragLoginId),ti=ids.indexOf(targetId);
   if(fi<0||ti<0)return;
   ids.splice(fi,1);ids.splice(ti,0,dragLoginId);
-  loginOrder=ids;saveAll();renderLG(members);toast('Login order saved');
+  loginOrder=ids;saveAll();renderLG(loginVisibleMembers(members));toast('Login order saved');
 }
 function toggleLoginEdit(){
-  if(loginEditMode){loginEditMode=false;el('loginGear').classList.remove('on');renderLG(members);return;}
+  if(loginEditMode){loginEditMode=false;el('loginGear').classList.remove('on');renderLG(loginVisibleMembers(members));return;}
   var pin=prompt('Enter any admin PIN to reorder login names:');
   if(!pin)return;
   var ok=members.some(function(m){return m.is_admin&&m.pin===pin;});
   if(!ok){toast('Wrong admin PIN','error');return;}
-  loginEditMode=true;el('loginGear').classList.add('on');renderLG(members);
+  loginEditMode=true;el('loginGear').classList.add('on');renderLG(loginVisibleMembers(members));
 }
 
-function filterM(){var q=el('msearch').value.toLowerCase();renderLG(q?members.filter(function(m){return m.name.toLowerCase().includes(q);}):members);}
+function filterM(){var q=el('msearch').value.toLowerCase();var pool=loginVisibleMembers(members);renderLG(q?pool.filter(function(m){return m.name.toLowerCase().includes(q);}):pool);}
 
 function setupLoginSearch(){
   var ms=el('msearch');if(!ms)return;
@@ -1245,7 +1255,7 @@ function logout(){
   el('step2').classList.remove('show');
   el('msearch').value='';
   setupLoginSearch();
-  renderLG(members);
+  renderLG(loginVisibleMembers(members));
 }
 
 // DATA (mt, mst, etc. below)
@@ -1772,6 +1782,7 @@ function applyAccentTheme(key,persist){
   document.documentElement.style.setProperty('--accent',t.accent);
   document.documentElement.style.setProperty('--accent2',t.accent2);
   document.documentElement.style.setProperty('--accent-rgb',t.rgb);
+  try{lss('4k_accent_theme',key);}catch(x){}
   if(persist!==false&&cu){memberPrefs.accentTheme=key;saveMemberPrefs();}
   rPulse();
   if(el('page-performance')&&el('page-performance').classList.contains('active'))rCharts();
@@ -4128,5 +4139,6 @@ window.addPresetRow=addPresetRow;
 window.openThemeModal=openThemeModal;
 window.closeThemeModal=closeThemeModal;
 window.pickAccentTheme=pickAccentTheme;
+try{var _bootAccent=ls('4k_accent_theme');if(_bootAccent&&ACCENT_THEMES[_bootAccent])applyAccentTheme(_bootAccent,false);}catch(e){}
 initLogin();
 initSidebar();
