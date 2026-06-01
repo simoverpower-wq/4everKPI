@@ -1,4 +1,4 @@
-const APP_VER='20260527.49';
+const APP_VER='20260527.50';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -2243,6 +2243,23 @@ function applyActivityTimeFromRow(row){
   if(row.time_minutes){setActTimeMins(null,true);var c=el('actTimeCustom');if(c)c.value=formatTimeShort(row.time_minutes);return;}
   setActTimeMins(null,false);
 }
+function presetTimeIsCustom(mins){
+  return mins!=null&&ACT_TIME_CHIP_MINS.indexOf(mins)<0;
+}
+function presetTimeSelectValue(mins){
+  if(mins==null||mins==='')return'';
+  if(ACT_TIME_CHIP_MINS.indexOf(mins)>=0)return String(mins);
+  return'custom';
+}
+function presetCustomTimeLabel(mins){
+  if(mins==null||ACT_TIME_CHIP_MINS.indexOf(mins)>=0)return'';
+  return formatTimeShort(mins)||'';
+}
+function applyPresetTimeMins(mins){
+  if(mins==null){setActTimeMins(null,false);return;}
+  if(ACT_TIME_CHIP_MINS.indexOf(mins)>=0)setActTimeMins(mins,false);
+  else{setActTimeMins(null,true);var c=el('actTimeCustom');if(c)c.value=formatTimeShort(mins);}
+}
 function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
@@ -2321,7 +2338,7 @@ function focusActivityComposer(preset){
     if(el('actDesc'))el('actDesc').value=preset.description||'';
     var pcats=entryCategories(preset).length?entryCategories(preset):[preset.category].filter(Boolean);
     setActCategories(pcats);
-    if(preset.time_mins)setActTimeMins(preset.time_mins,false);
+    if(preset.time_mins)applyPresetTimeMins(preset.time_mins);
     renderActCatBubbles();
   }
   setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},80);
@@ -2365,8 +2382,28 @@ function renderPresetMgrList(){
   box.innerHTML=presets.map(function(p,i){
     var tagOpts=tags.map(function(t){return'<option value="'+esc(t)+'"'+(p.category===t?' selected':'')+'>'+esc(t)+'</option>';}).join('');
     var timeOpts=ACT_TIME_CHIP_MINS.map(function(m){return'<option value="'+m+'"'+(p.time_mins===m?' selected':'')+'>'+esc(formatTimeShort(m))+'</option>';}).join('');
-    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment messages" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select onchange="updatePresetField('+i+',\'time_mins\',parseInt(this.value,10)||null)"><option value="">—</option>'+timeOpts+'</select></div></div>';
+    var isCustom=presetTimeIsCustom(p.time_mins);
+    var selVal=presetTimeSelectValue(p.time_mins);
+    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment messages" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select id="presetTimeSel_'+i+'" onchange="onPresetTimeSelect('+i+',this)"><option value="">—</option>'+timeOpts+'<option value="custom"'+(selVal==='custom'?' selected':'')+'>Custom</option></select><input type="text" id="presetTimeCustom_'+i+'" class="preset-time-custom" placeholder="e.g. 45 mins, 1 hr 30 mins"'+(isCustom?' value="'+esc(presetCustomTimeLabel(p.time_mins))+'"':' hidden')+' onchange="updatePresetCustomTime('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();updatePresetCustomTime('+i+',this.value);}"></div></div>';
   }).join('');
+}
+function onPresetTimeSelect(idx,sel){
+  var custom=el('presetTimeCustom_'+idx);
+  if(sel.value==='custom'){
+    if(custom){custom.hidden=false;custom.focus();var p=ensureActivityPresets()[idx];if(!custom.value&&p&&p.time_mins)custom.value=presetCustomTimeLabel(p.time_mins);}
+    return;
+  }
+  if(custom)custom.hidden=true;
+  updatePresetField(idx,'time_mins',sel.value?parseInt(sel.value,10):null);
+}
+function updatePresetCustomTime(idx,raw){
+  var rawStr=(raw||'').trim();
+  if(!rawStr){updatePresetField(idx,'time_mins',null);return;}
+  var mins=parseTimePhrase(rawStr);
+  if(mins==null){toast('Try "45 mins", "1 hour 30 mins", etc.','error');return;}
+  updatePresetField(idx,'time_mins',mins);
+  var sel=el('presetTimeSel_'+idx);
+  if(sel)sel.value='custom';
 }
 function updatePresetField(idx,field,val){
   var presets=ensureActivityPresets();if(!presets[idx])return;
@@ -4083,6 +4120,8 @@ window.togglePreset=togglePreset;
 window.startFromPreset=startFromPreset;
 window.openPresetManager=openPresetManager;
 window.closePresetManager=closePresetManager;
+window.onPresetTimeSelect=onPresetTimeSelect;
+window.updatePresetCustomTime=updatePresetCustomTime;
 window.updatePresetField=updatePresetField;
 window.deletePreset=deletePreset;
 window.addPresetRow=addPresetRow;

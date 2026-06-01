@@ -807,6 +807,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .preset-mgr-row-top input{flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:13px}
 .preset-mgr-row-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .preset-mgr-row-meta select,.preset-mgr-row-meta input{padding:6px 10px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text);font-family:inherit;font-size:12px}
+.preset-time-custom{min-width:140px;flex:1}
 .preset-mgr-del{margin-left:auto}
 .theme-swatches{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0 4px}
 .theme-swatch{width:52px;height:52px;border-radius:50%;cursor:pointer;border:3px solid transparent;transition:transform .15s,border-color .15s;position:relative}
