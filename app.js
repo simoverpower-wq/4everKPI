@@ -1,4 +1,4 @@
-const APP_VER='20260527.51';
+const APP_VER='20260527.52';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -731,19 +731,67 @@ var NAV_TAB_DEFS=[
 ];
 var DEFAULT_MEMBER_NAV={dailylog:true,dashboard:false,log_task:false,mytasks:false,worklog:false,calendar:false,library:false,add_member:false,trash:false,tasks:false,results:false,performance:false,compare:false,oversight:false,intelligence:false,roles:false};
 var ARCHIVED_NAV_IDS=['dashboard','log_task','mytasks','worklog','calendar','library','add_member','trash','performance','compare','oversight','intelligence','results','roles','tasks'];
-var simpleNavMode=ls('4k_sn')!==false;
-var archiveNavOpen=!!ls('4k_archive_open');
+var TOOL_NAV_META={
+  dashboard:{group:'Overview',desc:'Agency pulse, KPIs, and team grid'},
+  performance:{group:'Overview',desc:'Charts and performance trends'},
+  compare:{group:'Overview',desc:'Head-to-head member stats'},
+  results:{group:'Overview',desc:'Logged results with proof'},
+  log_task:{group:'Tasks',desc:'Log a new assigned task'},
+  mytasks:{group:'Tasks',desc:'Your tasks for today'},
+  worklog:{group:'Tasks',desc:'Team task activity feed'},
+  tasks:{group:'Tasks',desc:'Daily profiles by person'},
+  calendar:{group:'Tasks',desc:'Calendar view of work'},
+  library:{group:'Team',desc:'Task library and role bubbles'},
+  roles:{group:'Team',desc:'Role guides and who does what'},
+  add_member:{group:'Team',desc:'Add or edit team members'},
+  oversight:{group:'Team',desc:'Overseer oversight view'},
+  intelligence:{group:'Team',desc:'Agency intelligence panel'},
+  trash:{group:'Admin',desc:'Restore deleted items'}
+};
+var TOOL_GROUP_ORDER=['Overview','Tasks','Team','Admin'];
+var simpleNavMode=true;
 function isArchivedNav(id){return ARCHIVED_NAV_IDS.indexOf(id)>=0;}
 function navTier(id){var t=NAV_TAB_DEFS.find(function(x){return x.id===id;});return t&&t.tier==='archive'?'archive':'core';}
-function toggleSbArchive(force){
-  archiveNavOpen=typeof force==='boolean'?force:!archiveNavOpen;
-  lss('4k_archive_open',archiveNavOpen);
-  syncArchiveNavUI();
+function hasAnyToolAccess(access){
+  return ARCHIVED_NAV_IDS.some(function(id){return access[id]!==false;});
 }
-function syncArchiveNavUI(){
-  var exp=el('sbArchiveExp'),wrap=el('sbArchive');
-  if(exp)exp.classList.toggle('open',archiveNavOpen);
-  if(wrap)wrap.classList.toggle('open',archiveNavOpen);
+function renderToolsDrawer(){
+  var box=el('toolsDrawerGrid');if(!box||!cu)return;
+  var access=getNavAccess(cu.id);
+  var html='';
+  TOOL_GROUP_ORDER.forEach(function(gname){
+    var items=ARCHIVED_NAV_IDS.filter(function(id){
+      if(access[id]===false)return false;
+      var meta=TOOL_NAV_META[id]||{group:'Other'};
+      return meta.group===gname;
+    }).map(function(id){
+      var def=NAV_TAB_DEFS.find(function(t){return t.id===id;});
+      var meta=TOOL_NAV_META[id]||{};
+      return{id:id,label:def?def.label:id,desc:meta.desc||''};
+    });
+    if(!items.length)return;
+    html+='<div class="tools-drawer-group"><div class="tools-drawer-group-lbl">'+esc(gname)+'</div><div class="tools-drawer-grid">';
+    items.forEach(function(item){
+      html+='<button type="button" class="tools-drawer-btn" data-nav="'+esc(item.id)+'" onclick="openToolNav(\''+item.id+'\')"><span class="tools-drawer-btn-label">'+esc(item.label)+'</span>'+(item.desc?'<span class="tools-drawer-btn-desc">'+esc(item.desc)+'</span>':'')+'</button>';
+    });
+    html+='</div></div>';
+  });
+  if(cu.isAdmin){
+    html+='<div class="tools-drawer-group tools-drawer-group-danger"><div class="tools-drawer-group-lbl">Danger zone</div><div class="tools-drawer-grid"><button type="button" class="tools-drawer-btn tools-drawer-btn-danger" onclick="closeToolsDrawer();openWipeModal()"><span class="tools-drawer-btn-label">Erase all data</span><span class="tools-drawer-btn-desc">Clear tasks & agency data — keeps member accounts</span></button></div></div>';
+  }
+  box.innerHTML=html||'<div class="tools-drawer-empty">No tools available for your account.</div>';
+}
+function openToolsDrawer(){renderToolsDrawer();el('ToolsM').classList.add('open');}
+function closeToolsDrawer(){el('ToolsM').classList.remove('open');}
+function openToolNav(id){
+  if(!cu)return;
+  var access=getNavAccess(cu.id);
+  if(access[id]===false){toast('You don\'t have access to this section','error');return;}
+  closeToolsDrawer();
+  closeMobileNav();
+  if(id==='log_task')openT();
+  else if(id==='add_member')openM();
+  else gp(id);
 }
 function syncArchivedPageBanner(page){
   var banner=el('archPageBanner');
@@ -753,7 +801,7 @@ function syncArchivedPageBanner(page){
   banner.style.display=show?'':'none';
 }
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);lss('4k_sn',simpleNavMode);lss('4k_archive_open',archiveNavOpen);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);saveSettings();}
 
 async function saveSettings(){
   if(!sb)return;
@@ -776,7 +824,6 @@ async function loadSettings(){
       if(v.oid){overseerId=v.oid;lss('4k_oid',overseerId);}
       if(v.tdo&&typeof v.tdo==='object'){taskDayOrder=v.tdo;lss('4k_tdo',taskDayOrder);}
       if(v.dsn&&typeof v.dsn==='object'){daySnapshots=v.dsn;lss('4k_dsn',daySnapshots);}
-      if(typeof v.sn==='boolean'){simpleNavMode=v.sn;lss('4k_sn',simpleNavMode);}
       if(v.atags&&Array.isArray(v.atags)&&v.atags.length){activityTags=v.atags;lss('4k_atags',activityTags);}
     }
   }catch(e){console.error('[4KPI] loadSettings failed',e);}
@@ -805,13 +852,7 @@ function applyNavAccess(){
   var access=getNavAccess(cu.id);
   qsa('[data-nav]').forEach(function(node){
     var key=node.dataset.nav;
-    var accessOk=access[key]!==false;
-    var tier=node.dataset.navTier||navTier(key);
-    var show=accessOk;
-    if(show&&simpleNavMode){
-      if(tier==='archive')show=node.closest('#sbArchiveBody')!=null;
-      else show=node.closest('#sbArchiveBody')==null;
-    }
+    var show=access[key]!==false;
     node.hidden=!show;
     node.style.display=show?'':'none';
   });
@@ -821,28 +862,13 @@ function applyNavAccess(){
     node.hidden=!show;
     node.style.display=show?'':'none';
   });
-  var sidebar=el('sidebar');
-  if(sidebar){
-    qsa('.sb-section-core',sidebar).forEach(function(sec){
-      var items=Array.from(qsa('[data-nav]',sec));
-      var any=items.some(function(n){return!n.hidden&&n.style.display!=='none';});
-      sec.style.display=any?'':'none';
-    });
-    var archiveWrap=el('sbArchive');
-    if(archiveWrap){
-      var archItems=Array.from(qsa('[data-nav]',el('sbArchiveBody')||archiveWrap));
-      var anyArch=archItems.some(function(n){return access[n.dataset.nav]!==false;});
-      archiveWrap.style.display=anyArch&&simpleNavMode?'':'none';
-    }
-    var wipeBtn=sidebar.querySelector('.wipe-btn');
-    if(wipeBtn){
-      var wipeShow=!!(cu&&cu.isAdmin);
-      if(simpleNavMode)wipeShow=wipeShow&&archiveNavOpen;
-      wipeBtn.hidden=!wipeShow;
-      wipeBtn.style.display=wipeShow?'':'none';
-    }
+  var toolsBtn=el('toolsDrawerBtn');
+  if(toolsBtn){
+    var showTools=hasAnyToolAccess(access);
+    toolsBtn.hidden=!showTools;
+    toolsBtn.style.display=showTools?'':'none';
   }
-  syncArchiveNavUI();
+  renderToolsDrawer();
 }
 function bindBubble(node,onTap,ignoreSel){
   node.addEventListener('click',function(e){
@@ -3612,7 +3638,6 @@ function gp(page,btn){
     if(!cu){toast('Please log in first','error');return;}
     var access=cu?getNavAccess(cu.id):{};
     if(page!=='dailylog'&&access[page]===false){toast('You don\'t have access to this section','error');return;}
-    if(simpleNavMode&&isArchivedNav(page))toggleSbArchive(true);
     syncArchivedPageBanner(page);
     var pageEl=el('page-'+page);
     if(!pageEl){console.error('[4KPI] gp: page not found',page);toast('Page not found — try refreshing','error');return;}
@@ -4095,14 +4120,15 @@ window.openFeedback=openFeedback;
 window.closeFeedback=closeFeedback;
 window.saveFeedback=saveFeedback;
 window.setStar=setStar;
-window.toggleSbArchive=toggleSbArchive;
 window.closeMobileNav=closeMobileNav;
 window.toggleMobileNav=toggleMobileNav;
 window.clearActTime=clearActTime;
 window.clearStartTime=clearStartTime;
 window.syncStartClearBtn=syncStartClearBtn;
 window.closeDaySnapM=closeDaySnapM;
-window.toggleSbArchive=toggleSbArchive;
+window.openToolsDrawer=openToolsDrawer;
+window.closeToolsDrawer=closeToolsDrawer;
+window.openToolNav=openToolNav;
 window.openActivityModal=openActivityModal;
 window.closeActivityModal=closeActivityModal;
 window.focusActivityComposer=focusActivityComposer;
