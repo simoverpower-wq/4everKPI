@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.47';
+  var V='20260527.48';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.47">
+<link rel="stylesheet" href="style.css?v=20260527.48">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -497,7 +497,7 @@
 <div class="mov" id="CopyDayM">
   <div class="modal" style="max-width:520px">
     <div class="modal-title">Day summary</div>
-    <p class="copy-day-hint">Your summary is selected below. Press <strong>⌘C</strong> (Mac) or <strong>Ctrl+C</strong> (Windows) to copy, or use the buttons.</p>
+    <p class="copy-day-hint">Summarized from your full notes — edit below, then press <strong>⌘C</strong> or tap <strong>Copy</strong>.</p>
     <textarea id="copyDayText" class="copy-day-text" rows="10" onclick="selectDaySummaryText()" onfocus="selectDaySummaryText()"></textarea>
     <div class="ma"><button type="button" class="btn" onclick="closeCopyDayModal()">Close</button><button type="button" class="btn" onclick="selectDaySummaryText()">Select all</button><button type="button" class="btn" onclick="downloadDaySummary()">Download .txt</button><button type="button" class="btn p" onclick="copyFromDayModal()">Copy</button></div>
   </div>
@@ -514,6 +514,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.47"></script>
+<script src="app.js?v=20260527.48"></script>
 </body>
 </html>
