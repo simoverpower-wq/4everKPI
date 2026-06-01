@@ -1,4 +1,4 @@
-const APP_VER='20260527.44';
+const APP_VER='20260527.45';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1826,6 +1826,29 @@ function normalizeLogDate(v){
 function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
 function localActivityKey(){return cu?'4k_alog_'+cu.id:'';}
+function copyTextToClipboard(text){
+  if(navigator.clipboard&&window.isSecureContext){
+    return navigator.clipboard.writeText(text);
+  }
+  return new Promise(function(resolve,reject){
+    var ta=document.createElement('textarea');
+    ta.value=text;
+    ta.setAttribute('readonly','');
+    ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0,text.length);
+    try{
+      var ok=document.execCommand('copy');
+      document.body.removeChild(ta);
+      ok?resolve():reject(new Error('Copy failed'));
+    }catch(e){
+      if(ta.parentNode)document.body.removeChild(ta);
+      reject(e);
+    }
+  });
+}
 function genActId(){
   if(typeof crypto!=='undefined'&&crypto.randomUUID)return crypto.randomUUID();
   return'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0,v=c==='x'?r:(r&0x3|0x8);return v.toString(16);});
@@ -1880,7 +1903,7 @@ async function probeActivityLogSupabase(){
 var ACTIVITY_LOG_SETUP_SQL="CREATE TABLE IF NOT EXISTS activity_log (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,\n  member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,\n  description TEXT NOT NULL,\n  time_spent TEXT,\n  time_minutes INTEGER,\n  category TEXT,\n  log_date DATE NOT NULL DEFAULT CURRENT_DATE,\n  created_at TIMESTAMPTZ DEFAULT now(),\n  updated_at TIMESTAMPTZ DEFAULT now()\n);\n\nCREATE INDEX IF NOT EXISTS activity_log_member_date ON activity_log (member_id, log_date DESC);\n\nALTER TABLE activity_log ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS \"activity_log_select\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_insert\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_update\" ON activity_log;\nDROP POLICY IF EXISTS \"activity_log_delete\" ON activity_log;\n\nCREATE POLICY \"activity_log_select\" ON activity_log FOR SELECT USING (true);\nCREATE POLICY \"activity_log_insert\" ON activity_log FOR INSERT WITH CHECK (true);\nCREATE POLICY \"activity_log_update\" ON activity_log FOR UPDATE USING (true);\nCREATE POLICY \"activity_log_delete\" ON activity_log FOR DELETE USING (true);\n\nGRANT ALL ON TABLE activity_log TO anon, authenticated;";
 async function copyActivityLogSetupSQL(){
   try{
-    await navigator.clipboard.writeText(ACTIVITY_LOG_SETUP_SQL);
+    await copyTextToClipboard(ACTIVITY_LOG_SETUP_SQL);
     toast('SQL copied — paste in Supabase SQL Editor & Run');
   }catch(e){
     prompt('Copy this SQL into Supabase → SQL Editor → Run:',ACTIVITY_LOG_SETUP_SQL);
@@ -2004,12 +2027,38 @@ function entryCategories(e){
   if(!e.category)return[];
   return String(e.category).split(',').map(function(s){return s.trim();}).filter(Boolean);
 }
+function condenseActivityDescription(desc){
+  var s=(desc||'').trim();
+  if(!s)return'';
+  s=s.replace(/\s*\([^)]*\)/g,' ').replace(/\s+/g,' ').trim();
+  var first=s.split(/\.\s+/)[0].split(/\n+/)[0].trim();
+  if(first.length>100)first=first.slice(0,97).trim()+'…';
+  return first;
+}
 function formatActivityExportLine(e){
-  var desc=(e.description||'').trim(),time=activityTimeLabel(e),cats=entryCategories(e);
+  var desc=condenseActivityDescription(e.description),time=activityTimeLabel(e),cats=entryCategories(e);
   var suffix='';
   if(time)suffix+=' — '+time;
   if(cats.length)suffix+=' ['+cats.join(', ')+']';
-  return desc+suffix;
+  return(desc||'Activity')+suffix;
+}
+function formatDailyLogExportSummary(entries,refDate){
+  var d=refDate||dailyLogDate||new Date();
+  var label=d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  var totalMins=entries.reduce(function(s,e){return s+(e.time_minutes||0);},0);
+  var lines=['Daily log — '+label,entries.length+' entr'+(entries.length===1?'y':'ies')+(totalMins?' · '+formatTimeShort(totalMins)+' total':'')];
+  lines.push('');
+  entries.slice().reverse().forEach(function(e){
+    var desc=condenseActivityDescription(e.description);
+    var time=activityTimeLabel(e);
+    var cats=entryCategories(e);
+    var head=cats.length?cats.join(', '):'Activity';
+    var line='• '+head;
+    if(time)line+=' ('+time+')';
+    if(desc)line+=': '+desc;
+    lines.push(line);
+  });
+  return lines.join('\n');
 }
 function myActivityForDay(d){
   if(!cu)return[];
@@ -2418,16 +2467,16 @@ async function deleteActivityFromComposer(){
   await deleteActivity(id);
 }
 async function deleteActivityFromModal(){await deleteActivityFromComposer();}
-async function copyDailyLogDay(){
+function copyDailyLogDay(){
+  if(!cu){toast('Please log in first','error');return;}
   var entries=myActivityForDay(dailyLogDate);
   if(!entries.length){toast('Nothing to copy for this day','error');return;}
-  var text=entries.slice().reverse().map(formatActivityExportLine).join('\n');
-  try{
-    await navigator.clipboard.writeText(text);
-    toast('Copied to clipboard ✓');
-  }catch(e){
-    prompt('Copy this text:',text);
-  }
+  var text=formatDailyLogExportSummary(entries,dailyLogDate);
+  copyTextToClipboard(text).then(function(){
+    toast('Day summary copied ✓');
+  }).catch(function(){
+    prompt('Copy this summary:',text);
+  });
 }
 function myTasksDateLabel(){
   var d=myTasksViewDate||new Date();
