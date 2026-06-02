@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.57';
+  var V='20260527.58';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.57">
+<link rel="stylesheet" href="style.css?v=20260527.58">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -173,8 +173,9 @@
           <input id="actTimeCustom" class="act-time-custom" hidden placeholder='e.g. 45 mins, 1 hour 30 mins' autocomplete="off">
         </div>
         <div class="fg">
-          <div class="bsel"><div class="bsel-lbl">Categories <span class="bsel-hint">· tap all that apply</span></div><div class="bwrap" id="actCatWrap"></div></div>
-          <div class="act-cat-row"><input id="actCatNew" placeholder="New tag…" style="flex:1"><button type="button" class="btn sm" onclick="addActivityTagFromModal()">Add tag</button></div>
+          <div class="bsel"><div class="bsel-lbl">Categories <span class="bsel-hint">· tap all that apply</span><button type="button" class="btn sm cat-mgr-toggle" onclick="toggleTagManager()">Manage</button></div><div class="bwrap" id="actCatWrap"></div></div>
+          <div class="act-cat-row"><input id="actCatNew" placeholder="New category…" style="flex:1"><button type="button" class="btn sm" onclick="addActivityTagFromModal()">Add category</button></div>
+          <div class="dailylog-tagmgr" id="dailyLogTagMgr" hidden></div>
         </div>
         <div class="fg dailylog-composer-date"><label>Date</label><input type="date" id="actDate"></div>
         <input type="hidden" id="actEid">
@@ -183,10 +184,6 @@
           <button type="button" class="btn" id="actCancelBtn" onclick="cancelActivityEdit()" hidden>Cancel edit</button>
           <button type="button" class="btn p" id="actSaveBtn" onclick="saveActivity()">Save &amp; next</button>
         </div>
-      </div>
-      <div class="dailylog-toolbar">
-        <button type="button" class="btn sm" onclick="toggleTagManager()">Manage tags</button>
-        <div class="dailylog-tagmgr" id="dailyLogTagMgr" hidden></div>
       </div>
     </div>
     <div class="page" id="page-dashboard">
@@ -511,6 +508,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.57"></script>
+<script src="app.js?v=20260527.58"></script>
 </body>
 </html>

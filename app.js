@@ -1,4 +1,4 @@
-const APP_VER='20260527.57';
+const APP_VER='20260527.58';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -2001,8 +2001,21 @@ function normalizeLogDate(v){
   var d=new Date(v);if(!isNaN(d))return dateInputStr(d);
   return String(v).slice(0,10);
 }
-function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
+function ensureActivityTags(){
+  if(activityTags===null||activityTags===undefined)activityTags=DEFAULT_ACTIVITY_TAGS.slice();
+  return activityTags;
+}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
+function syncPresetsAfterCategoryRemoved(removed){
+  var presets=ensureActivityPresets(),fallback=activityTags&&activityTags.length?activityTags[0]:null,changed=false;
+  presets.forEach(function(p){
+    if(p.category===removed){
+      p.category=fallback;
+      changed=true;
+    }
+  });
+  if(changed)saveActivityPresets();
+}
 function presetUid(){return'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
 function localActivityKey(){
   if(!cu)return'';
@@ -2672,12 +2685,40 @@ function pickAccentTheme(key){applyAccentTheme(key,true);toast('Accent updated �
 function renderTagManagerPanel(){
   var panel=el('dailyLogTagMgr');if(!panel||panel.hidden)return;
   var tags=ensureActivityTags();
-  panel.innerHTML='<div class="dailylog-tagmgr-inner"><div class="dailylog-tagmgr-list">'+tags.map(function(t,i){return'<span class="dailylog-tag-chip">'+esc(t)+(tags.length>1?'<button type="button" onclick="removeActivityTag('+i+')" title="Remove">×</button>':'')+'</span>';}).join('')+'</div><div class="dailylog-tagmgr-add"><input id="dailyLogTagNew" placeholder="New tag name…"><button type="button" class="btn sm" onclick="addActivityTagFromMgr()">Add tag</button></div></div>';
+  var listHtml=!tags.length?'<div class="dailylog-tagmgr-empty">No categories yet — add one above.</div>':tags.map(function(t,i){
+    return'<span class="dailylog-tag-chip"><span class="dailylog-tag-chip-name">'+esc(t)+'</span><button type="button" class="tag-del-btn" onclick="removeActivityTag('+i+')" title="Delete category">×</button></span>';
+  }).join('');
+  panel.innerHTML='<div class="dailylog-tagmgr-inner"><div class="dailylog-tagmgr-title">Tap × to delete a category. Past log entries keep their labels.</div><div class="dailylog-tagmgr-list">'+listHtml+'</div><div class="dailylog-tagmgr-add"><input id="dailyLogTagNew" placeholder="New category name…"><button type="button" class="btn sm" onclick="addActivityTagFromMgr()">Add category</button></div></div>';
 }
-function toggleTagManager(){tagMgrOpen=!tagMgrOpen;var panel=el('dailyLogTagMgr');if(panel){panel.hidden=!tagMgrOpen;if(tagMgrOpen)renderTagManagerPanel();}}
-function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Tag already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';renderActCatBubbles();renderTagManagerPanel();toast('Tag added ✓');}
-function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}toggleActCategory(name);inp.value='';toast('Tag added ✓');}
-function removeActivityTag(idx){ensureActivityTags();if(activityTags.length<=1){toast('Keep at least one tag','error');return;}var removed=activityTags[idx];activityTags.splice(idx,1);saveActivityTags();actCategories=actCategories.filter(function(c){return c!==removed;});renderActCatBubbles();renderTagManagerPanel();rDailyLog();}
+function toggleTagManager(forceOpen){
+  var panel=el('dailyLogTagMgr');
+  if(!panel)return;
+  if(forceOpen===true)tagMgrOpen=true;
+  else if(forceOpen===false)tagMgrOpen=false;
+  else tagMgrOpen=!tagMgrOpen;
+  panel.hidden=!tagMgrOpen;
+  if(tagMgrOpen){
+    renderTagManagerPanel();
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+}
+function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Category already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';renderActCatBubbles();renderTagManagerPanel();toast('Category added ✓');}
+function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}toggleActCategory(name);inp.value='';renderTagManagerPanel();toast('Category added ✓');}
+function removeActivityTag(idx){
+  ensureActivityTags();
+  if(idx<0||idx>=activityTags.length)return;
+  var removed=activityTags[idx];
+  if(!confirm('Delete category “'+removed+'”? Existing log entries are unchanged.'))return;
+  activityTags.splice(idx,1);
+  saveActivityTags();
+  syncPresetsAfterCategoryRemoved(removed);
+  actCategories=actCategories.filter(function(c){return c!==removed;});
+  renderActCatBubbles();
+  renderTagManagerPanel();
+  if(el('PresetM')&&el('PresetM').classList.contains('open'))renderPresetMgrList();
+  rDailyLog();
+  toast('Category deleted ✓');
+}
 function rDailyLog(){
   if(!cu)return;
   rDailyLogInner();
