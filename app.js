@@ -1,4 +1,4 @@
-const APP_VER='20260527.55';
+const APP_VER='20260527.56';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -805,12 +805,12 @@ function syncArchivedPageBanner(page){
   banner.style.display=show?'':'none';
 }
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_apresets',activityPresets);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);saveSettings();}
 
 async function saveSettings(){
   if(!sb)return;
   try{
-    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,sn:simpleNavMode,atags:activityTags};
+    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,sn:simpleNavMode,atags:activityTags,apresets:activityPresets};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:nowISO()}]);
   }catch(e){console.log('saveSettings err',e);}
 }
@@ -829,6 +829,7 @@ async function loadSettings(){
       if(v.tdo&&typeof v.tdo==='object'){taskDayOrder=v.tdo;lss('4k_tdo',taskDayOrder);}
       if(v.dsn&&typeof v.dsn==='object'){daySnapshots=v.dsn;lss('4k_dsn',daySnapshots);}
       if(v.atags&&Array.isArray(v.atags)&&v.atags.length){activityTags=v.atags;lss('4k_atags',activityTags);}
+      if(v.apresets&&Array.isArray(v.apresets)&&v.apresets.length){activityPresets=v.apresets;lss('4k_apresets',activityPresets);}
     }
   }catch(e){console.error('[4KPI] loadSettings failed',e);}
 }
@@ -1039,7 +1040,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
+var activityLog=[],activityTags=ls('4k_atags')||null,activityPresets=ls('4k_apresets')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1895,39 +1896,52 @@ async function saveMemberPrefs(){
 }
 function getDefaultActivityPresets(){
   return[
-    {id:'p_recruit',description:'Recruitment messages',category:'Recruitment',time_mins:60},
-    {id:'p_chat',description:'Watching chat team',category:'Chatting',time_mins:120},
-    {id:'p_walls',description:'Posting on OF walls',category:'Content',time_mins:60},
-    {id:'p_telegram',description:'Networking on Telegram',category:'Networking',time_mins:60},
-    {id:'p_leads',description:'Replying to leads',category:'Recruitment',time_mins:60},
-    {id:'p_affiliate',description:'Affiliate/referral outreach',category:'Networking',time_mins:60}
+    {id:'p_recruit',description:'Recruitment',category:'Recruitment',time_mins:60},
+    {id:'p_chat',description:'Chat review',category:'Chatting',time_mins:120},
+    {id:'p_walls',description:'OF walls',category:'Content',time_mins:60},
+    {id:'p_telegram',description:'Telegram',category:'Networking',time_mins:60},
+    {id:'p_leads',description:'Lead replies',category:'Recruitment',time_mins:60},
+    {id:'p_affiliate',description:'Affiliate outreach',category:'Networking',time_mins:60}
   ];
 }
-function getMemberActivityPresets(mid){
-  var prefs=getMemberPrefsObj(mid);
-  if(!prefs.activity_presets||!prefs.activity_presets.length)prefs.activity_presets=getDefaultActivityPresets();
-  return prefs.activity_presets;
-}
-async function saveMemberActivityPresets(mid,presets){
-  if(!mid||!presets)return;
-  var m=members.find(function(x){return String(x.id)===String(mid);});
-  var prefs=getMemberPrefsObj(mid);
-  prefs.activity_presets=presets;
-  lss('4k_mp_'+mid,prefs);
-  if(m)m.prefs=prefs;
-  if(!sb)return;
-  try{
-    var r=await sb.from('members').update({prefs:prefs}).eq('id',mid);
-    if(r.error&&/prefs|column.*does not exist|Could not find|PGRST204/i.test((r.error.message||'')+(r.error.details||''))){console.warn('[4KPI] members.prefs column missing — presets stored locally');return;}
-    if(r.error)console.error('[4KPI] saveMemberActivityPresets failed',r.error);
-  }catch(e){console.error('[4KPI] saveMemberActivityPresets exception',e);}
+function migrateSharedActivityPresets(){
+  if(activityPresets&&activityPresets.length)return;
+  var fromLs=ls('4k_apresets');
+  if(fromLs&&fromLs.length){activityPresets=fromLs;return;}
+  var seen={},merged=[];
+  function addList(list){
+    (list||[]).forEach(function(p){
+      if(!p||!(p.description||'').trim())return;
+      var key=String(p.description).trim().toLowerCase();
+      if(seen[key])return;
+      seen[key]=true;
+      merged.push({id:p.id||presetUid(),description:String(p.description).trim(),category:p.category||null,time_mins:p.time_mins!=null?p.time_mins:null});
+    });
+  }
+  members.forEach(function(m){
+    var prefs=getMemberPrefsObj(m.id);
+    addList(prefs.activity_presets);
+  });
+  activityPresets=merged.length?merged:getDefaultActivityPresets();
+  lss('4k_apresets',activityPresets);
+  if(sb)saveSettings();
 }
 function ensureActivityPresets(){
-  var mid=getActivityLogTargetId();
-  if(!mid)return getDefaultActivityPresets();
-  return getMemberActivityPresets(mid);
+  if(!activityPresets||!activityPresets.length)migrateSharedActivityPresets();
+  if(!activityPresets||!activityPresets.length)activityPresets=getDefaultActivityPresets();
+  return activityPresets;
 }
-function saveActivityPresets(){saveMemberActivityPresets(getActivityLogTargetId(),ensureActivityPresets());}
+function saveActivityPresets(){lss('4k_apresets',activityPresets);saveSettings();}
+function filterPresetsBySearch(presets,q){
+  q=(q||'').trim().toLowerCase();
+  return presets.map(function(p,i){return{p:p,i:i};}).filter(function(x){
+    if(!q)return true;
+    var hay=((x.p.description||'')+' '+(x.p.category||'')).toLowerCase();
+    return hay.indexOf(q)>=0;
+  });
+}
+function onPresetSearchInput(){renderDailyLogPresets();}
+function onPresetMgrSearchInput(){renderPresetMgrList();}
 function normalizeLogDate(v){
   if(v==null||v==='')return'';
   if(typeof v==='string'){var m=v.match(/^(\d{4}-\d{2}-\d{2})/);if(m)return m[1];}
@@ -2398,16 +2412,16 @@ function applyPresetTimeMins(mins){
 function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
-  var tm=activityLogTargetMember();
-  var forLbl='';
-  if(cuIsOverseer()&&tm){
-    forLbl=isSelfMember(tm.id)?' · your presets':' · '+tm.name.split(' ')[0]+'\'s presets';
-  }
-  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start'+esc(forLbl)+'</span><span class="dailylog-presets-hint">Tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
+  var prev=el('dailyLogPresetSearch');
+  var q=prev?prev.value:'';
+  var filtered=filterPresetsBySearch(presets,q);
+  var gridHtml=filtered.length?filtered.map(function(x){
+    var p=x.p,i=x.i;
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
     var on=selectedPresetIndices.indexOf(i)>=0;
     return'<button type="button" class="dailylog-preset-btn'+(on?' on':'')+'" onclick="togglePreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
-  }).join('')+'</div>';
+  }).join(''):'<div class="dailylog-presets-empty">'+(q?'No presets match your search.':'No presets yet — open Manage presets.')+'</div>';
+  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><span class="dailylog-presets-hint">Shared · tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><input type="search" id="dailyLogPresetSearch" class="dailylog-preset-search" placeholder="Search presets…" value="'+esc(q)+'" oninput="onPresetSearchInput()" autocomplete="off"><div class="dailylog-presets-grid">'+gridHtml+'</div>';
 }
 function clearPresetSelection(){selectedPresetIndices=[];renderDailyLogPresets();}
 function applySelectedPresetsToComposer(){
@@ -2514,24 +2528,28 @@ function cancelActivityEdit(){resetActivityComposer(true);}
 function openPresetManager(){
   renderPresetMgrList();
   var title=el('presetMgrTitle');
-  var tm=activityLogTargetMember();
-  if(title)title.textContent=cuIsOverseer()&&tm?(isSelfMember(tm.id)?'Your presets':'Presets for '+tm.name):'Activity presets';
+  if(title)title.textContent='Team presets';
   var desc=el('presetMgrDesc');
-  if(desc)desc.textContent=cuIsOverseer()&&tm?(isSelfMember(tm.id)?'Your personal quick-start buttons — saved on your profile.':'These quick-start buttons are saved on '+tm.name+'\'s profile. Each team member can have their own set.'):'Rename presets, set default category & time, or delete any you don\'t need.';
+  if(desc)desc.textContent='One shared list for everyone — rename, set default time/category, or delete. Changes sync for the whole team.';
   el('PresetM').classList.add('open');
 }
 function closePresetManager(){el('PresetM').classList.remove('open');renderDailyLogPresets();}
 function renderPresetMgrList(){
   var box=el('presetMgrList');if(!box)return;
   var presets=ensureActivityPresets(),tags=ensureActivityTags();
+  var prev=el('presetMgrSearch');
+  var q=prev?prev.value:'';
+  var filtered=filterPresetsBySearch(presets,q);
   if(!presets.length){box.innerHTML='<div class="preset-mgr-empty">No presets yet — add one below.</div>';return;}
-  box.innerHTML=presets.map(function(p,i){
+  var rows=filtered.length?filtered.map(function(x){
+    var p=x.p,i=x.i;
     var tagOpts=tags.map(function(t){return'<option value="'+esc(t)+'"'+(p.category===t?' selected':'')+'>'+esc(t)+'</option>';}).join('');
     var timeOpts=ACT_TIME_CHIP_MINS.map(function(m){return'<option value="'+m+'"'+(p.time_mins===m?' selected':'')+'>'+esc(formatTimeShort(m))+'</option>';}).join('');
     var isCustom=presetTimeIsCustom(p.time_mins);
     var selVal=presetTimeSelectValue(p.time_mins);
-    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment messages" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select id="presetTimeSel_'+i+'" onchange="onPresetTimeSelect('+i+',this)"><option value="">—</option>'+timeOpts+'<option value="custom"'+(selVal==='custom'?' selected':'')+'>Custom</option></select><input type="text" id="presetTimeCustom_'+i+'" class="preset-time-custom" placeholder="e.g. 45 mins, 1 hr 30 mins"'+(isCustom?' value="'+esc(presetCustomTimeLabel(p.time_mins))+'"':' hidden')+' onchange="updatePresetCustomTime('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();updatePresetCustomTime('+i+',this.value);}"></div></div>';
-  }).join('');
+    return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select id="presetTimeSel_'+i+'" onchange="onPresetTimeSelect('+i+',this)"><option value="">—</option>'+timeOpts+'<option value="custom"'+(selVal==='custom'?' selected':'')+'>Custom</option></select><input type="text" id="presetTimeCustom_'+i+'" class="preset-time-custom" placeholder="e.g. 45 mins, 1 hr 30 mins"'+(isCustom?' value="'+esc(presetCustomTimeLabel(p.time_mins))+'"':' hidden')+' onchange="updatePresetCustomTime('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();updatePresetCustomTime('+i+',this.value);}"></div></div>';
+  }).join(''):'<div class="preset-mgr-empty">No presets match your search.</div>';
+  box.innerHTML='<input type="search" id="presetMgrSearch" class="dailylog-preset-search preset-mgr-search" placeholder="Search presets…" value="'+esc(q)+'" oninput="onPresetMgrSearchInput()" autocomplete="off">'+rows;
 }
 function onPresetTimeSelect(idx,sel){
   var custom=el('presetTimeCustom_'+idx);
@@ -3691,7 +3709,6 @@ async function saveM(){
   var eid=el('meid').value,name=el('mname').value.trim(),role=el('mrole').value.trim(),description=el('mdesc').value.trim(),color=el('mcolor').value,role_tags=el('mtags').value.trim(),pin=el('mpin').value.trim(),is_admin=el('madmin').value==='true',is_inactive=el('minactive').value==='true';
   if(!name||!role){toast('Name and role required','error');return;}
   var payload={name:name,role:role,description:description,color:color,role_tags:role_tags,pin:pin,is_admin:is_admin,is_inactive:is_inactive};
-  if(!eid)payload.prefs={activity_presets:getDefaultActivityPresets()};
   var r=eid?await sb.from('members').update(payload).eq('id',eid):await sb.from('members').insert([payload]).select();
   if(r.error&&isInactiveColumnError(r.error)){
     console.warn('[4KPI] is_inactive column missing — saving inactive flag in settings instead');
@@ -4316,6 +4333,8 @@ window.toggleWeekView=toggleWeekView;
 window.togglePreset=togglePreset;
 window.startFromPreset=startFromPreset;
 window.openPresetManager=openPresetManager;
+window.onPresetSearchInput=onPresetSearchInput;
+window.onPresetMgrSearchInput=onPresetMgrSearchInput;
 window.closePresetManager=closePresetManager;
 window.onPresetTimeSelect=onPresetTimeSelect;
 window.updatePresetCustomTime=updatePresetCustomTime;
