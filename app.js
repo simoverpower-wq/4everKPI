@@ -1,4 +1,4 @@
-const APP_VER='20260527.54';
+const APP_VER='20260527.55';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1836,12 +1836,26 @@ function activityLogTargetMember(){
   var mid=getActivityLogTargetId();
   return mid?members.find(function(m){return String(m.id)===String(mid);}):null;
 }
+function activityLogTargetMembers(){
+  var pool=getActiveMembers().slice();
+  if(!cu)return pool;
+  pool.sort(function(a,b){
+    if(isSelfMember(a.id))return -1;
+    if(isSelfMember(b.id))return 1;
+    return(a.name||'').localeCompare(b.name||'');
+  });
+  return pool;
+}
+function activityLogTargetLabel(m){
+  if(!m)return'';
+  if(isSelfMember(m.id))return'Me';
+  return(m.name||'').split(' ')[0];
+}
 function initActivityLogTarget(){
   if(!cu)return;
   if(!cuIsOverseer()){activityLogTargetId=cu.id;return;}
   if(activityLogTargetId&&members.some(function(m){return String(m.id)===String(activityLogTargetId);}))return;
-  var team=getActiveMembers().filter(function(m){return!isOverseerMember(m);});
-  activityLogTargetId=team.length?team[0].id:cu.id;
+  activityLogTargetId=cu.id;
 }
 function setActivityLogTarget(mid,opts){
   opts=opts||{};
@@ -2385,7 +2399,10 @@ function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
   var tm=activityLogTargetMember();
-  var forLbl=cuIsOverseer()&&tm?' · '+tm.name.split(' ')[0]+'\'s presets':'';
+  var forLbl='';
+  if(cuIsOverseer()&&tm){
+    forLbl=isSelfMember(tm.id)?' · your presets':' · '+tm.name.split(' ')[0]+'\'s presets';
+  }
   box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start'+esc(forLbl)+'</span><span class="dailylog-presets-hint">Tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
     var on=selectedPresetIndices.indexOf(i)>=0;
@@ -2498,9 +2515,9 @@ function openPresetManager(){
   renderPresetMgrList();
   var title=el('presetMgrTitle');
   var tm=activityLogTargetMember();
-  if(title)title.textContent=cuIsOverseer()&&tm?'Presets for '+tm.name:'Activity presets';
+  if(title)title.textContent=cuIsOverseer()&&tm?(isSelfMember(tm.id)?'Your presets':'Presets for '+tm.name):'Activity presets';
   var desc=el('presetMgrDesc');
-  if(desc)desc.textContent=cuIsOverseer()&&tm?'These quick-start buttons are saved on '+tm.name+'\'s profile. Each team member can have their own set.':'Rename presets, set default category & time, or delete any you don\'t need.';
+  if(desc)desc.textContent=cuIsOverseer()&&tm?(isSelfMember(tm.id)?'Your personal quick-start buttons — saved on your profile.':'These quick-start buttons are saved on '+tm.name+'\'s profile. Each team member can have their own set.'):'Rename presets, set default category & time, or delete any you don\'t need.';
   el('PresetM').classList.add('open');
 }
 function closePresetManager(){el('PresetM').classList.remove('open');renderDailyLogPresets();}
@@ -2592,8 +2609,8 @@ function renderActivityLogTargetBar(){
   if(!cuIsOverseer()){wrap.hidden=true;wrap.innerHTML='';return;}
   wrap.hidden=false;
   var target=getActivityLogTargetId();
-  var pills=getActiveMembers().filter(function(m){return!isOverseerMember(m);}).map(function(m){
-    return'<button type="button" class="otb-logfor-pill'+(String(m.id)===String(target)?' on':'')+'" onclick="setActivityLogTarget(\''+m.id+'\')">'+esc(m.name.split(' ')[0])+'</button>';
+  var pills=activityLogTargetMembers().map(function(m){
+    return'<button type="button" class="otb-logfor-pill'+(String(m.id)===String(target)?' on':'')+'" onclick="setActivityLogTarget(\''+m.id+'\')">'+esc(activityLogTargetLabel(m))+'</button>';
   }).join('');
   wrap.innerHTML='<div class="otb-logfor"><span class="otb-logfor-lbl">Logging for</span><div class="otb-logfor-pills">'+pills+'</div></div>';
 }
@@ -2601,21 +2618,22 @@ function renderOverseerTeamBoard(){
   var box=el('overseerTeamBoard');if(!box)return;
   if(!cuIsOverseer()){box.hidden=true;box.innerHTML='';return;}
   box.hidden=false;
-  var day=dailyLogDate||new Date(),key=dateInputStr(day);
-  var team=getActiveMembers().filter(function(m){return!isOverseerMember(m);});
+  var day=dailyLogDate||new Date();
+  var team=activityLogTargetMembers();
   var totalTeamMins=0,target=getActivityLogTargetId();
   var cards=team.map(function(m){
     var entries=activityForMemberDay(m.id,day);
     var mins=entries.reduce(function(s,e){return s+(e.time_minutes||0);},0);
     totalTeamMins+=mins;
     var c=getMC(m),active=String(m.id)===String(target)?' otb-card-active':'';
+    var youBadge=isSelfMember(m.id)?' <span class="otb-you-badge">You</span>':'';
     var lines=entries.slice(0,5).map(function(e){
       return'<li>'+esc(condenseActivityDescription(e.description))+(activityTimeLabel(e)?' <span class="otb-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</li>';
     }).join('');
     var more=entries.length>5?'<li class="otb-more">+'+(entries.length-5)+' more</li>':'';
-    return'<button type="button" class="otb-card'+active+'" onclick="setActivityLogTarget(\''+m.id+'\')"><div class="otb-card-head"><div class="otb-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="otb-card-id"><div class="otb-name">'+esc(m.name)+'</div><div class="otb-role">'+esc(m.role||'')+'</div></div><div class="otb-hours">'+(mins?esc(formatTimeShort(mins)):'—')+'</div></div>'+(entries.length?'<ul class="otb-entries">'+lines+more+'</ul>':'<div class="otb-empty">Nothing logged yet</div>')+'</button>';
+    return'<button type="button" class="otb-card'+active+'" onclick="setActivityLogTarget(\''+m.id+'\')"><div class="otb-card-head"><div class="otb-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="otb-card-id"><div class="otb-name">'+esc(m.name)+youBadge+'</div><div class="otb-role">'+esc(m.role||'')+'</div></div><div class="otb-hours">'+(mins?esc(formatTimeShort(mins)):'—')+'</div></div>'+(entries.length?'<ul class="otb-entries">'+lines+more+'</ul>':'<div class="otb-empty">Nothing logged yet</div>')+'</button>';
   }).join('');
-  box.innerHTML='<div class="otb-head"><div><div class="otb-title">Team log</div><div class="otb-sub">'+esc(dailyLogDayLabel(day))+' · '+esc(formatTimeShort(totalTeamMins)||'0 min')+' logged for team</div></div></div><div class="otb-grid">'+(cards||'<div class="otb-empty-all">No active team members yet.</div>')+'</div>';
+  box.innerHTML='<div class="otb-head"><div><div class="otb-title">Everyone\'s log</div><div class="otb-sub">'+esc(dailyLogDayLabel(day))+' · '+esc(formatTimeShort(totalTeamMins)||'0 min')+' total</div></div></div><div class="otb-grid">'+(cards||'<div class="otb-empty-all">No active team members yet.</div>')+'</div>';
 }
 function syncComposerTargetLabel(){
   var title=el('activityComposerTitle');
@@ -2645,7 +2663,8 @@ function rDailyLogInner(){
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
   var tm=activityLogTargetMember();
-  var listHead=cuIsOverseer()&&tm?esc(tm.name.split(' ')[0])+'\'s log':'Your log';
+  var listHead='Your log';
+  if(cuIsOverseer()&&tm&&!isSelfMember(tm.id))listHead=tm.name.split(' ')[0]+'\'s log';
   if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet for '+esc(listHead.toLowerCase())+' — use the form below.</div>';return;}
   list.innerHTML='<div class="dailylog-list-head">'+listHead+' · '+esc(dailyLogDayLabel(dailyLogDate))+' ('+entries.length+')</div>'+entries.map(function(e){
     return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';

@@ -753,6 +753,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .otb-entries{margin:0;padding:0 0 0 16px;font-size:11px;color:var(--text2);line-height:1.55}
 .otb-entries li{margin-bottom:2px}
 .otb-time{color:var(--text3);font-weight:600}
+.otb-you-badge{font-size:9px;font-weight:700;color:var(--accent);margin-left:4px;text-transform:uppercase;letter-spacing:.04em}
 .otb-more{color:var(--text3);font-style:italic;list-style:none;margin-left:-16px}
 .otb-empty,.otb-empty-all{font-size:11px;color:var(--text3)}
 .otb-logfor{margin-bottom:12px;padding:10px 12px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2)}
