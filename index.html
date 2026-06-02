@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.53';
+  var V='20260527.54';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.53">
+<link rel="stylesheet" href="style.css?v=20260527.54">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -136,6 +136,7 @@
           <button type="button" class="btn sm" id="dailyLogSetupRetryBtn" onclick="retryActivityLogSupabase()">I ran it — retry</button>
         </div>
       </div>
+      <div class="overseer-team-board" id="overseerTeamBoard" hidden></div>
       <div class="dailylog-today" id="dailyLogToday"></div>
       <div class="dailylog-week-wrap" id="dailyLogWeekWrap" hidden>
         <div class="dailylog-week" id="dailyLogWeek"></div>
@@ -149,6 +150,7 @@
           <span class="dailylog-composer-title" id="activityComposerTitle">Log entry</span>
           <span class="dailylog-composer-editing" id="activityComposerEditing" hidden>Editing</span>
         </div>
+        <div id="activityLogTargetWrap" hidden></div>
         <div class="fg act-desc-fg"><label>What did you do?</label><textarea id="actDesc" class="act-desc-area" rows="8" placeholder="e.g. Watched chat team + took notes on strengths/weaknesses"></textarea></div>
         <div class="fg"><label>Time spent</label>
           <div class="act-time-chips" id="actTimeChips">
@@ -458,8 +460,8 @@
 </div>
 <div class="mov" id="PresetM">
   <div class="modal" style="max-width:560px">
-    <div class="modal-title">Activity presets</div>
-    <p class="preset-mgr-desc">Rename presets, set default category & time, or delete any you don’t need. Changes save automatically.</p>
+    <div class="modal-title" id="presetMgrTitle">Activity presets</div>
+    <p class="preset-mgr-desc" id="presetMgrDesc">Rename presets, set default category & time, or delete any you don’t need. Changes save automatically.</p>
     <div class="preset-mgr-list" id="presetMgrList"></div>
     <div class="ma"><button class="btn" onclick="closePresetManager()">Close</button><button class="btn p" onclick="addPresetRow()">+ Add preset</button></div>
   </div>
@@ -500,6 +502,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.53"></script>
+<script src="app.js?v=20260527.54"></script>
 </body>
 </html>

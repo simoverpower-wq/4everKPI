@@ -1,4 +1,4 @@
-const APP_VER='20260527.53';
+const APP_VER='20260527.54';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -367,6 +367,7 @@ function syncOverseerUI(){
   if(claim)claim.hidden=!cu||!cu.isAdmin||cuIsOverseer();
   if(cu){var ur=el('urole');if(ur)ur.textContent=cuIsOverseer()?'Overseer':(cu.isAdmin?'Admin':'Team member');}
   var ver=el('appVerLbl');if(ver)ver.textContent='v'+APP_VER;
+  if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))renderOverseerTeamBoard();
 }
 function getActiveMembers(){return members.filter(function(m){return!isInactiveMember(m);});}
 function getTrackedTasks(){var ids=getActiveMembers().map(function(m){return m.id;});return tasks.filter(function(t){return ids.indexOf(t.member_id)>=0;});}
@@ -1038,7 +1039,7 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null;
+var activityLog=[],activityTags=ls('4k_atags')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1818,23 +1819,60 @@ function applyAccentTheme(key,persist){
   if(el('page-compare')&&el('page-compare').classList.contains('active'))rCompare();
   var ts=el('themeSwatches');if(ts)renderThemeSwatches();
 }
+function getMemberPrefsObj(mid){
+  if(!mid)return{};
+  var m=members.find(function(x){return String(x.id)===String(mid);});
+  var fromDb=(m&&m.prefs&&typeof m.prefs==='object')?m.prefs:null;
+  var fromLs=ls('4k_mp_'+mid);
+  return Object.assign({},fromLs&&typeof fromLs==='object'?fromLs:{},fromDb||{});
+}
+function getActivityLogTargetId(){
+  if(!cu)return null;
+  if(!cuIsOverseer())return cu.id;
+  if(activityLogTargetId&&members.some(function(m){return String(m.id)===String(activityLogTargetId);}))return activityLogTargetId;
+  return cu.id;
+}
+function activityLogTargetMember(){
+  var mid=getActivityLogTargetId();
+  return mid?members.find(function(m){return String(m.id)===String(mid);}):null;
+}
+function initActivityLogTarget(){
+  if(!cu)return;
+  if(!cuIsOverseer()){activityLogTargetId=cu.id;return;}
+  if(activityLogTargetId&&members.some(function(m){return String(m.id)===String(activityLogTargetId);}))return;
+  var team=getActiveMembers().filter(function(m){return!isOverseerMember(m);});
+  activityLogTargetId=team.length?team[0].id:cu.id;
+}
+function setActivityLogTarget(mid,opts){
+  opts=opts||{};
+  if(!cuIsOverseer()||!mid)return;
+  if(!members.some(function(m){return String(m.id)===String(mid);})){toast('Member not found','error');return;}
+  activityLogTargetId=mid;
+  if(opts.silent){
+    renderOverseerTeamBoard();
+    renderActivityLogTargetBar();
+    renderDailyLogPresets();
+    syncComposerTargetLabel();
+    return;
+  }
+  resetActivityComposer(false);
+  rDailyLogInner();
+}
 function loadMemberPrefsForCurrentUser(){
   if(!cu)return;
-  var m=members.find(function(x){return String(x.id)===String(cu.id);});
-  var fromDb=(m&&m.prefs&&typeof m.prefs==='object')?m.prefs:null;
-  var fromLs=ls('4k_mp_'+cu.id);
-  memberPrefs=Object.assign({},fromLs&&typeof fromLs==='object'?fromLs:{},fromDb||{});
-  if(!memberPrefs.activity_presets||!memberPrefs.activity_presets.length)memberPrefs.activity_presets=getDefaultActivityPresets();
+  memberPrefs=getMemberPrefsObj(cu.id);
+  if(!memberPrefs.accentTheme)memberPrefs.accentTheme='gold';
   applyAccentTheme(memberPrefs.accentTheme||'gold',false);
+  initActivityLogTarget();
 }
 async function saveMemberPrefs(){
   if(!cu)return;
   lss('4k_mp_'+cu.id,memberPrefs);
   var m=members.find(function(x){return String(x.id)===String(cu.id);});
-  if(m)m.prefs=memberPrefs;
+  if(m)m.prefs=Object.assign({},getMemberPrefsObj(cu.id),memberPrefs);
   if(!sb)return;
   try{
-    var r=await sb.from('members').update({prefs:memberPrefs}).eq('id',cu.id);
+    var r=await sb.from('members').update({prefs:m?m.prefs:memberPrefs}).eq('id',cu.id);
     if(r.error){
       if(/prefs|column.*does not exist|Could not find|PGRST204/i.test((r.error.message||'')+(r.error.details||''))){console.warn('[4KPI] members.prefs column missing — stored locally. Run supabase_migration.sql');return;}
       console.error('[4KPI] saveMemberPrefs failed',r.error,memberPrefs);
@@ -1851,12 +1889,31 @@ function getDefaultActivityPresets(){
     {id:'p_affiliate',description:'Affiliate/referral outreach',category:'Networking',time_mins:60}
   ];
 }
-function ensureActivityPresets(){
-  if(!memberPrefs.activity_presets||!memberPrefs.activity_presets.length)memberPrefs.activity_presets=getDefaultActivityPresets();
-  return memberPrefs.activity_presets;
+function getMemberActivityPresets(mid){
+  var prefs=getMemberPrefsObj(mid);
+  if(!prefs.activity_presets||!prefs.activity_presets.length)prefs.activity_presets=getDefaultActivityPresets();
+  return prefs.activity_presets;
 }
-function presetUid(){return'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
-function saveActivityPresets(){saveMemberPrefs();}
+async function saveMemberActivityPresets(mid,presets){
+  if(!mid||!presets)return;
+  var m=members.find(function(x){return String(x.id)===String(mid);});
+  var prefs=getMemberPrefsObj(mid);
+  prefs.activity_presets=presets;
+  lss('4k_mp_'+mid,prefs);
+  if(m)m.prefs=prefs;
+  if(!sb)return;
+  try{
+    var r=await sb.from('members').update({prefs:prefs}).eq('id',mid);
+    if(r.error&&/prefs|column.*does not exist|Could not find|PGRST204/i.test((r.error.message||'')+(r.error.details||''))){console.warn('[4KPI] members.prefs column missing — presets stored locally');return;}
+    if(r.error)console.error('[4KPI] saveMemberActivityPresets failed',r.error);
+  }catch(e){console.error('[4KPI] saveMemberActivityPresets exception',e);}
+}
+function ensureActivityPresets(){
+  var mid=getActivityLogTargetId();
+  if(!mid)return getDefaultActivityPresets();
+  return getMemberActivityPresets(mid);
+}
+function saveActivityPresets(){saveMemberActivityPresets(getActivityLogTargetId(),ensureActivityPresets());}
 function normalizeLogDate(v){
   if(v==null||v==='')return'';
   if(typeof v==='string'){var m=v.match(/^(\d{4}-\d{2}-\d{2})/);if(m)return m[1];}
@@ -1865,7 +1922,16 @@ function normalizeLogDate(v){
 }
 function ensureActivityTags(){if(!activityTags||!activityTags.length)activityTags=DEFAULT_ACTIVITY_TAGS.slice();return activityTags;}
 function saveActivityTags(){lss('4k_atags',activityTags);saveSettings();}
-function localActivityKey(){return cu?'4k_alog_'+cu.id:'';}
+function presetUid(){return'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function localActivityKey(){
+  if(!cu)return'';
+  return cuIsOverseer()?'4k_alog_team':'4k_alog_'+cu.id;
+}
+function canManageActivityEntry(e){
+  if(!cu||!e)return false;
+  if(cuIsOverseer())return true;
+  return String(e.member_id)===String(cu.id);
+}
 function selectCopyField(field){
   if(!field)return;
   field.focus({preventScroll:true});
@@ -1975,7 +2041,9 @@ async function probeActivityLogSupabase(){
   if(!sb||!cu)return false;
   if(activityLogSupabaseOk)return true;
   try{
-    var r=await sb.from('activity_log').select('id').eq('member_id',cu.id).limit(1);
+    var q=sb.from('activity_log').select('id').limit(1);
+    if(!cuIsOverseer())q=q.eq('member_id',cu.id);
+    var r=await q;
     if(!r.error){
       markActivityLogConnected();
       return true;
@@ -2053,7 +2121,9 @@ async function loadActivityLog(){
     return{ok:false,error:activityLogLastErr};
   }
   try{
-    var r=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('created_at',{ascending:false});
+    var q=sb.from('activity_log').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false});
+    if(!cuIsOverseer())q=q.eq('member_id',cu.id);
+    var r=await q;
     if(stale())return{ok:false,stale:true};
     if(r.error){
       activityLogLastErr=r.error.message||'Unknown error';
@@ -2080,14 +2150,16 @@ async function loadActivityLog(){
           var L=local[i];
           if(!L||!L.description||!String(L.description).trim())continue;
           if(L.id&&remoteIds[L.id])continue;
-          var pl={member_id:cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
+          var pl={member_id:L.member_id||cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
           if(L.id)pl.id=L.id;
           var ins=await sb.from('activity_log').insert([pl]);
           if(!ins.error)synced++;
         }
         clearActivityLogLocalIfSynced();
         if(synced>0){
-          var r2=await sb.from('activity_log').select('*').eq('member_id',cu.id).order('created_at',{ascending:false});
+          var q2=sb.from('activity_log').select('*').order('log_date',{ascending:false}).order('created_at',{ascending:false});
+          if(!cuIsOverseer())q2=q2.eq('member_id',cu.id);
+          var r2=await q2;
           if(!r2.error&&!stale())activityLog=r2.data||[];
           toast('Local entries synced to Supabase ✓');
         }else clearActivityLogLocalIfSynced();
@@ -2172,10 +2244,15 @@ function formatDailyLogExportSummary(entries,refDate){
   });
   return lines.join('\n');
 }
+function activityForMemberDay(mid,d){
+  if(!mid)return[];
+  var key=dateInputStr(d||dailyLogDate||new Date());
+  return activityLog.filter(function(e){return String(e.member_id)===String(mid)&&normalizeLogDate(e.log_date)===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+}
 function myActivityForDay(d){
-  if(!cu)return[];
-  var key=dateInputStr(d);
-  return activityLog.filter(function(e){return String(e.member_id)===String(cu.id)&&normalizeLogDate(e.log_date)===key;}).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});
+  var mid=getActivityLogTargetId();
+  if(!mid&&cu)mid=cu.id;
+  return activityForMemberDay(mid,d);
 }
 function categoryTotalsForEntries(entries){
   var totals={};
@@ -2196,7 +2273,9 @@ function dailyCategoryTotals(refDate){
 function weeklyCategoryTotals(refDate){
   var start=getWeekStartMonday(refDate||dailyLogDate||new Date()),end=new Date(start);end.setDate(end.getDate()+7);
   return categoryTotalsForEntries(activityLog.filter(function(e){
-    if(!cu||String(e.member_id)!==String(cu.id))return false;
+    var mid=getActivityLogTargetId();
+    if(!mid)return false;
+    if(String(e.member_id)!==String(mid))return false;
     var d=parseDateInput(normalizeLogDate(e.log_date));return d>=start&&d<end;
   }));
 }
@@ -2209,6 +2288,8 @@ function renderTodayTotals(){
   var entries=myActivityForDay(dailyLogDate),totals=dailyCategoryTotals(dailyLogDate),cats=Object.keys(totals).sort();
   var totalMins=entries.reduce(function(s,e){return s+(e.time_minutes||0);},0);
   var label=dailyLogDayLabel(dailyLogDate);
+  var tm=activityLogTargetMember();
+  if(cuIsOverseer()&&tm&&String(tm.id)!==String(cu.id))label=tm.name.split(' ')[0]+' · '+label;
   var meta=!entries.length?'Nothing logged yet':entries.length+' entr'+(entries.length===1?'y':'ies')+(totalMins?' · '+formatTimeShort(totalMins)+' total':'');
   var head='<div class="dailylog-today-head"><div class="dailylog-today-head-main"><span class="dailylog-today-title">'+esc(label)+'</span><span class="dailylog-today-meta">'+esc(meta)+'</span></div><button type="button" class="btn sm dailylog-week-toggle" onclick="toggleWeekView()">'+(weekViewOpen?'Hide week':'This week')+'</button></div>';
   if(!cats.length){box.innerHTML=head+'<div class="dailylog-today-empty">Log time below to see where it went</div>';return;}
@@ -2303,7 +2384,9 @@ function applyPresetTimeMins(mins){
 function renderDailyLogPresets(){
   var box=el('dailyLogPresets');if(!box)return;
   var presets=ensureActivityPresets();
-  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><span class="dailylog-presets-hint">Tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
+  var tm=activityLogTargetMember();
+  var forLbl=cuIsOverseer()&&tm?' · '+tm.name.split(' ')[0]+'\'s presets':'';
+  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start'+esc(forLbl)+'</span><span class="dailylog-presets-hint">Tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><div class="dailylog-presets-grid">'+presets.map(function(p,i){
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
     var on=selectedPresetIndices.indexOf(i)>=0;
     return'<button type="button" class="dailylog-preset-btn'+(on?' on':'')+'" onclick="togglePreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
@@ -2348,8 +2431,8 @@ function togglePreset(idx){
 function startFromPreset(idx){togglePreset(idx);}
 function syncComposerUI(){
   var editing=!!(el('actEid')&&el('actEid').value);
-  var title=el('activityComposerTitle'),saveBtn=el('actSaveBtn'),delBtn=el('actDelBtn'),cancelBtn=el('actCancelBtn'),badge=el('activityComposerEditing'),comp=el('dailyLogComposer');
-  if(title)title.textContent=editing?'Edit entry':'Log entry';
+  var saveBtn=el('actSaveBtn'),delBtn=el('actDelBtn'),cancelBtn=el('actCancelBtn'),badge=el('activityComposerEditing'),comp=el('dailyLogComposer');
+  syncComposerTargetLabel();
   if(saveBtn)saveBtn.textContent=editing?'Update':'Save & next';
   if(delBtn)delBtn.style.display=editing?'':'none';
   if(cancelBtn)cancelBtn.hidden=!editing;
@@ -2386,7 +2469,8 @@ function focusActivityComposer(preset){
 function loadActivityForEdit(id){
   if(!cu)return;
   var row=activityLog.find(function(x){return x.id===id;});
-  if(!row||String(row.member_id)!==String(cu.id)){toast('Entry not found','error');return;}
+  if(!row||!canManageActivityEntry(row)){toast('Entry not found','error');return;}
+  if(cuIsOverseer()&&String(row.member_id)!==String(getActivityLogTargetId()))setActivityLogTarget(row.member_id,{silent:true});
   initActivityComposer();
   clearPresetSelection();
   el('actEid').value=row.id;
@@ -2412,6 +2496,11 @@ function initActivityComposer(){
 function cancelActivityEdit(){resetActivityComposer(true);}
 function openPresetManager(){
   renderPresetMgrList();
+  var title=el('presetMgrTitle');
+  var tm=activityLogTargetMember();
+  if(title)title.textContent=cuIsOverseer()&&tm?'Presets for '+tm.name:'Activity presets';
+  var desc=el('presetMgrDesc');
+  if(desc)desc.textContent=cuIsOverseer()&&tm?'These quick-start buttons are saved on '+tm.name+'\'s profile. Each team member can have their own set.':'Rename presets, set default category & time, or delete any you don\'t need.';
   el('PresetM').classList.add('open');
 }
 function closePresetManager(){el('PresetM').classList.remove('open');renderDailyLogPresets();}
@@ -2498,6 +2587,45 @@ function rDailyLog(){
   rDailyLogInner();
   if(!activityLogSupabaseOk&&sb)probeActivityLogSupabase().then(function(ok){if(ok)rDailyLogInner();});
 }
+function renderActivityLogTargetBar(){
+  var wrap=el('activityLogTargetWrap');if(!wrap)return;
+  if(!cuIsOverseer()){wrap.hidden=true;wrap.innerHTML='';return;}
+  wrap.hidden=false;
+  var target=getActivityLogTargetId();
+  var pills=getActiveMembers().filter(function(m){return!isOverseerMember(m);}).map(function(m){
+    return'<button type="button" class="otb-logfor-pill'+(String(m.id)===String(target)?' on':'')+'" onclick="setActivityLogTarget(\''+m.id+'\')">'+esc(m.name.split(' ')[0])+'</button>';
+  }).join('');
+  wrap.innerHTML='<div class="otb-logfor"><span class="otb-logfor-lbl">Logging for</span><div class="otb-logfor-pills">'+pills+'</div></div>';
+}
+function renderOverseerTeamBoard(){
+  var box=el('overseerTeamBoard');if(!box)return;
+  if(!cuIsOverseer()){box.hidden=true;box.innerHTML='';return;}
+  box.hidden=false;
+  var day=dailyLogDate||new Date(),key=dateInputStr(day);
+  var team=getActiveMembers().filter(function(m){return!isOverseerMember(m);});
+  var totalTeamMins=0,target=getActivityLogTargetId();
+  var cards=team.map(function(m){
+    var entries=activityForMemberDay(m.id,day);
+    var mins=entries.reduce(function(s,e){return s+(e.time_minutes||0);},0);
+    totalTeamMins+=mins;
+    var c=getMC(m),active=String(m.id)===String(target)?' otb-card-active':'';
+    var lines=entries.slice(0,5).map(function(e){
+      return'<li>'+esc(condenseActivityDescription(e.description))+(activityTimeLabel(e)?' <span class="otb-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</li>';
+    }).join('');
+    var more=entries.length>5?'<li class="otb-more">+'+(entries.length-5)+' more</li>':'';
+    return'<button type="button" class="otb-card'+active+'" onclick="setActivityLogTarget(\''+m.id+'\')"><div class="otb-card-head"><div class="otb-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="otb-card-id"><div class="otb-name">'+esc(m.name)+'</div><div class="otb-role">'+esc(m.role||'')+'</div></div><div class="otb-hours">'+(mins?esc(formatTimeShort(mins)):'—')+'</div></div>'+(entries.length?'<ul class="otb-entries">'+lines+more+'</ul>':'<div class="otb-empty">Nothing logged yet</div>')+'</button>';
+  }).join('');
+  box.innerHTML='<div class="otb-head"><div><div class="otb-title">Team log</div><div class="otb-sub">'+esc(dailyLogDayLabel(day))+' · '+esc(formatTimeShort(totalTeamMins)||'0 min')+' logged for team</div></div></div><div class="otb-grid">'+(cards||'<div class="otb-empty-all">No active team members yet.</div>')+'</div>';
+}
+function syncComposerTargetLabel(){
+  var title=el('activityComposerTitle');
+  if(!title)return;
+  var editing=!!(el('actEid')&&el('actEid').value);
+  if(editing){title.textContent='Edit entry';return;}
+  var tm=activityLogTargetMember();
+  if(cuIsOverseer()&&tm&&String(tm.id)!==String(cu.id))title.textContent='Log for '+tm.name.split(' ')[0];
+  else title.textContent='Log entry';
+}
 function rDailyLogInner(){
   if(!cu)return;
   var list=el('dailyLogList'),lbl=el('dailyLogDateLbl'),pick=el('dailyLogDatePick');
@@ -2507,14 +2635,19 @@ function rDailyLogInner(){
   if(pick)pick.value=dateInputStr(dailyLogDate);
   initActivityComposer();
   if(el('actEid')&&!el('actEid').value&&el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
+  renderOverseerTeamBoard();
+  renderActivityLogTargetBar();
   renderTodayTotals();
   if(weekViewOpen)renderWeeklyTotals();
   renderDailyLogPresets();
   syncActivitySetupBanner();
+  syncComposerTargetLabel();
   if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
-  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet — use the form below to log your first one.</div>';return;}
-  list.innerHTML='<div class="dailylog-list-head">'+esc(dailyLogDayLabel(dailyLogDate))+' ('+entries.length+') · newest first</div>'+entries.map(function(e){
+  var tm=activityLogTargetMember();
+  var listHead=cuIsOverseer()&&tm?esc(tm.name.split(' ')[0])+'\'s log':'Your log';
+  if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet for '+esc(listHead.toLowerCase())+' — use the form below.</div>';return;}
+  list.innerHTML='<div class="dailylog-list-head">'+listHead+' · '+esc(dailyLogDayLabel(dailyLogDate))+' ('+entries.length+')</div>'+entries.map(function(e){
     return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
   }).join('');
 }
@@ -2548,7 +2681,8 @@ async function saveActivity(){
   var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
   var eid=el('actEid').value;
   var wasEdit=!!eid;
-  var payload={member_id:cu.id,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
+  var logMemberId=getActivityLogTargetId()||cu.id;
+  var payload={member_id:logMemberId,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
   console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
   try{
     var row=null;
@@ -2556,7 +2690,7 @@ async function saveActivity(){
       row=saveActivityLogLocalRow(payload,eid||null);
     }else{
       var r;
-      if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).eq('member_id',cu.id).select();
+      if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).select();
       else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
       if(r.error){
         console.error('[4KPI] saveActivity failed',r.error,payload);
@@ -2589,12 +2723,14 @@ async function saveActivity(){
 }
 async function deleteActivity(id){
   if(!cu||!id)return;
+  var row=activityLog.find(function(x){return x.id===id;});
+  if(row&&!canManageActivityEntry(row)){toast('You can\'t delete this entry','error');return;}
   if(!confirm('Delete this entry?'))return;
   if(!sb){
     activityLog=activityLog.filter(function(x){return x.id!==id;});
     persistActivityLogLocal();
   }else{
-    var r=await sb.from('activity_log').delete().eq('id',id).eq('member_id',cu.id);
+    var r=await sb.from('activity_log').delete().eq('id',id);
     if(r.error){
       if(isActivityLogTableMissing(r.error)){
         activityLogLocalOnly=true;
@@ -3536,6 +3672,7 @@ async function saveM(){
   var eid=el('meid').value,name=el('mname').value.trim(),role=el('mrole').value.trim(),description=el('mdesc').value.trim(),color=el('mcolor').value,role_tags=el('mtags').value.trim(),pin=el('mpin').value.trim(),is_admin=el('madmin').value==='true',is_inactive=el('minactive').value==='true';
   if(!name||!role){toast('Name and role required','error');return;}
   var payload={name:name,role:role,description:description,color:color,role_tags:role_tags,pin:pin,is_admin:is_admin,is_inactive:is_inactive};
+  if(!eid)payload.prefs={activity_presets:getDefaultActivityPresets()};
   var r=eid?await sb.from('members').update(payload).eq('id',eid):await sb.from('members').insert([payload]).select();
   if(r.error&&isInactiveColumnError(r.error)){
     console.warn('[4KPI] is_inactive column missing — saving inactive flag in settings instead');
@@ -4130,6 +4267,7 @@ window.clearStartTime=clearStartTime;
 window.syncStartClearBtn=syncStartClearBtn;
 window.closeDaySnapM=closeDaySnapM;
 window.openToolsDrawer=openToolsDrawer;
+window.setActivityLogTarget=setActivityLogTarget;
 window.closeToolsDrawer=closeToolsDrawer;
 window.openToolNav=openToolNav;
 window.openActivityModal=openActivityModal;

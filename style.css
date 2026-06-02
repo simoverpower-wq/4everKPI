@@ -735,6 +735,32 @@ body.is-admin .wipe-btn{display:flex !important}
 .copy-day-text:focus{outline:none;border-color:rgba(var(--accent-rgb),.45)}
 .dailylog-setup-banner-text{flex:1;min-width:200px;font-size:12px;color:var(--text2);line-height:1.5}
 .dailylog-setup-banner-text strong{color:var(--text);font-weight:600}
+.overseer-team-board{margin-bottom:16px;max-width:960px}
+.overseer-team-board[hidden]{display:none!important}
+.otb-head{margin-bottom:10px}
+.otb-title{font-size:13px;font-weight:700;color:var(--text)}
+.otb-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.otb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+.otb-card{display:block;width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;transition:border-color .15s,background .15s}
+.otb-card:hover{border-color:rgba(var(--accent-rgb),.35)}
+.otb-card-active{border-color:rgba(var(--accent-rgb),.5);background:rgba(var(--accent-rgb),.06);box-shadow:0 0 0 1px rgba(var(--accent-rgb),.12)}
+.otb-card-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.otb-av{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.otb-card-id{flex:1;min-width:0}
+.otb-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.otb-role{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.otb-hours{font-size:14px;font-weight:700;color:var(--accent);flex-shrink:0}
+.otb-entries{margin:0;padding:0 0 0 16px;font-size:11px;color:var(--text2);line-height:1.55}
+.otb-entries li{margin-bottom:2px}
+.otb-time{color:var(--text3);font-weight:600}
+.otb-more{color:var(--text3);font-style:italic;list-style:none;margin-left:-16px}
+.otb-empty,.otb-empty-all{font-size:11px;color:var(--text3)}
+.otb-logfor{margin-bottom:12px;padding:10px 12px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2)}
+.otb-logfor-lbl{display:block;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.otb-logfor-pills{display:flex;flex-wrap:wrap;gap:6px}
+.otb-logfor-pill{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s}
+.otb-logfor-pill:hover{border-color:rgba(var(--accent-rgb),.35);color:var(--text)}
+.otb-logfor-pill.on{background:rgba(var(--accent-rgb),.14);border-color:rgba(var(--accent-rgb),.4);color:var(--accent)}
 .dailylog-today{margin-bottom:14px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;max-width:720px}
 .dailylog-today-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px 12px;margin-bottom:8px}
 .dailylog-today-head-main{display:flex;flex-direction:column;gap:2px;min-width:0}
