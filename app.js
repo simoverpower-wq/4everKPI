@@ -1,4 +1,4 @@
-const APP_VER='20260527.56';
+const APP_VER='20260527.57';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1932,15 +1932,68 @@ function ensureActivityPresets(){
   return activityPresets;
 }
 function saveActivityPresets(){lss('4k_apresets',activityPresets);saveSettings();}
+function presetSearchHay(p){
+  var desc=(p.description||'').toLowerCase();
+  var cat=(p.category||'').toLowerCase();
+  var time=p.time_mins?formatTimeShort(p.time_mins).toLowerCase():'';
+  return(desc+' '+cat+' '+time).replace(/\s+/g,' ').trim();
+}
+function subsequenceMatch(text,query){
+  if(!query)return false;
+  var i=0,j=0;
+  while(i<text.length&&j<query.length){
+    if(text.charAt(i)===query.charAt(j))j++;
+    i++;
+  }
+  return j===query.length;
+}
+function scorePresetMatch(p,q){
+  if(!q)return 50;
+  var desc=(p.description||'').toLowerCase();
+  var cat=(p.category||'').toLowerCase();
+  var hay=presetSearchHay(p);
+  if(desc===q)return 100;
+  if(desc.indexOf(q)===0)return 92;
+  if(cat===q)return 88;
+  if(cat.indexOf(q)===0)return 82;
+  if(hay.indexOf(q)>=0)return 70;
+  var tokens=q.split(/\s+/).filter(Boolean);
+  if(!tokens.length)return 50;
+  var score=0,allOk=true;
+  tokens.forEach(function(tok){
+    var ts=0;
+    if(desc===tok)ts=68;
+    else if(desc.indexOf(tok)===0)ts=62;
+    else if(desc.indexOf(tok)>0)ts=48;
+    else if(cat.indexOf(tok)===0)ts=44;
+    else if(cat.indexOf(tok)>0)ts=38;
+    else if(hay.indexOf(tok)>=0)ts=32;
+    else if(subsequenceMatch(desc,tok))ts=22;
+    else if(subsequenceMatch(cat,tok))ts=18;
+    else allOk=false;
+    score+=ts;
+  });
+  return allOk?score:0;
+}
 function filterPresetsBySearch(presets,q){
   q=(q||'').trim().toLowerCase();
-  return presets.map(function(p,i){return{p:p,i:i};}).filter(function(x){
-    if(!q)return true;
-    var hay=((x.p.description||'')+' '+(x.p.category||'')).toLowerCase();
-    return hay.indexOf(q)>=0;
-  });
+  var items=presets.map(function(p,i){return{p:p,i:i,s:scorePresetMatch(p,q)};});
+  if(q){
+    items=items.filter(function(x){return x.s>0;});
+    items.sort(function(a,b){return b.s-a.s||String(a.p.description||'').localeCompare(String(b.p.description||''));});
+  }
+  return items;
 }
-function onPresetSearchInput(){renderDailyLogPresets();}
+var presetSearchBound=false;
+function bindPresetSearchInputs(){
+  if(presetSearchBound)return;
+  presetSearchBound=true;
+  var daily=el('dailyLogPresetSearch');
+  if(daily)daily.addEventListener('input',function(){renderDailyLogPresetsGrid();});
+  var mgr=el('presetMgrSearch');
+  if(mgr)mgr.addEventListener('input',function(){renderPresetMgrList();});
+}
+function onPresetSearchInput(){renderDailyLogPresetsGrid();}
 function onPresetMgrSearchInput(){renderPresetMgrList();}
 function normalizeLogDate(v){
   if(v==null||v==='')return'';
@@ -2409,19 +2462,26 @@ function applyPresetTimeMins(mins){
   if(ACT_TIME_CHIP_MINS.indexOf(mins)>=0)setActTimeMins(mins,false);
   else{setActTimeMins(null,true);var c=el('actTimeCustom');if(c)c.value=formatTimeShort(mins);}
 }
-function renderDailyLogPresets(){
-  var box=el('dailyLogPresets');if(!box)return;
+function renderDailyLogPresetsGrid(){
+  var grid=el('dailyLogPresetsGrid');if(!grid)return;
   var presets=ensureActivityPresets();
-  var prev=el('dailyLogPresetSearch');
-  var q=prev?prev.value:'';
+  var searchInp=el('dailyLogPresetSearch');
+  var q=searchInp?searchInp.value:'';
   var filtered=filterPresetsBySearch(presets,q);
-  var gridHtml=filtered.length?filtered.map(function(x){
+  if(!filtered.length){
+    grid.innerHTML='<div class="dailylog-presets-empty">'+(q?'No presets match — try fewer letters or a category name.':'No presets yet — open Manage presets.')+'</div>';
+    return;
+  }
+  grid.innerHTML=filtered.map(function(x){
     var p=x.p,i=x.i;
     var pcats=entryCategories(p).length?entryCategories(p):[p.category].filter(Boolean);
     var on=selectedPresetIndices.indexOf(i)>=0;
     return'<button type="button" class="dailylog-preset-btn'+(on?' on':'')+'" onclick="togglePreset('+i+')" title="'+(pcats.length?esc(pcats.join(', '))+' · ':'')+(p.time_mins?esc(formatTimeShort(p.time_mins)):'' )+'">'+esc(p.description)+'</button>';
-  }).join(''):'<div class="dailylog-presets-empty">'+(q?'No presets match your search.':'No presets yet — open Manage presets.')+'</div>';
-  box.innerHTML='<div class="dailylog-presets-head"><span class="dailylog-presets-lbl">Quick start</span><span class="dailylog-presets-hint">Shared · tap to combine</span><button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button></div><input type="search" id="dailyLogPresetSearch" class="dailylog-preset-search" placeholder="Search presets…" value="'+esc(q)+'" oninput="onPresetSearchInput()" autocomplete="off"><div class="dailylog-presets-grid">'+gridHtml+'</div>';
+  }).join('');
+}
+function renderDailyLogPresets(){
+  bindPresetSearchInputs();
+  renderDailyLogPresetsGrid();
 }
 function clearPresetSelection(){selectedPresetIndices=[];renderDailyLogPresets();}
 function applySelectedPresetsToComposer(){
@@ -2526,6 +2586,7 @@ function initActivityComposer(){
 }
 function cancelActivityEdit(){resetActivityComposer(true);}
 function openPresetManager(){
+  bindPresetSearchInputs();
   renderPresetMgrList();
   var title=el('presetMgrTitle');
   if(title)title.textContent='Team presets';
@@ -2537,19 +2598,19 @@ function closePresetManager(){el('PresetM').classList.remove('open');renderDaily
 function renderPresetMgrList(){
   var box=el('presetMgrList');if(!box)return;
   var presets=ensureActivityPresets(),tags=ensureActivityTags();
-  var prev=el('presetMgrSearch');
-  var q=prev?prev.value:'';
+  var searchInp=el('presetMgrSearch');
+  var q=searchInp?searchInp.value:'';
   var filtered=filterPresetsBySearch(presets,q);
   if(!presets.length){box.innerHTML='<div class="preset-mgr-empty">No presets yet — add one below.</div>';return;}
-  var rows=filtered.length?filtered.map(function(x){
+  if(!filtered.length){box.innerHTML='<div class="preset-mgr-empty">No presets match — try a shorter word or category.</div>';return;}
+  box.innerHTML=filtered.map(function(x){
     var p=x.p,i=x.i;
     var tagOpts=tags.map(function(t){return'<option value="'+esc(t)+'"'+(p.category===t?' selected':'')+'>'+esc(t)+'</option>';}).join('');
     var timeOpts=ACT_TIME_CHIP_MINS.map(function(m){return'<option value="'+m+'"'+(p.time_mins===m?' selected':'')+'>'+esc(formatTimeShort(m))+'</option>';}).join('');
     var isCustom=presetTimeIsCustom(p.time_mins);
     var selVal=presetTimeSelectValue(p.time_mins);
     return'<div class="preset-mgr-row" data-preset-idx="'+i+'"><div class="preset-mgr-row-top"><div class="preset-mgr-name-wrap"><label class="preset-mgr-lbl">Preset name</label><input type="text" value="'+esc(p.description)+'" placeholder="e.g. Recruitment" oninput="updatePresetField('+i+',\'description\',this.value)"></div><button type="button" class="btn sm danger preset-mgr-del" onclick="deletePreset('+i+')" title="Delete preset">Delete</button></div><div class="preset-mgr-row-meta"><label class="preset-mgr-lbl">Category</label><select onchange="updatePresetField('+i+',\'category\',this.value)">'+tagOpts+'</select><label class="preset-mgr-lbl">Default time</label><select id="presetTimeSel_'+i+'" onchange="onPresetTimeSelect('+i+',this)"><option value="">—</option>'+timeOpts+'<option value="custom"'+(selVal==='custom'?' selected':'')+'>Custom</option></select><input type="text" id="presetTimeCustom_'+i+'" class="preset-time-custom" placeholder="e.g. 45 mins, 1 hr 30 mins"'+(isCustom?' value="'+esc(presetCustomTimeLabel(p.time_mins))+'"':' hidden')+' onchange="updatePresetCustomTime('+i+',this.value)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();updatePresetCustomTime('+i+',this.value);}"></div></div>';
-  }).join(''):'<div class="preset-mgr-empty">No presets match your search.</div>';
-  box.innerHTML='<input type="search" id="presetMgrSearch" class="dailylog-preset-search preset-mgr-search" placeholder="Search presets…" value="'+esc(q)+'" oninput="onPresetMgrSearchInput()" autocomplete="off">'+rows;
+  }).join('');
 }
 function onPresetTimeSelect(idx,sel){
   var custom=el('presetTimeCustom_'+idx);
@@ -2575,7 +2636,7 @@ function updatePresetField(idx,field,val){
   else if(field==='category')presets[idx].category=val||null;
   else if(field==='time_mins')presets[idx].time_mins=val||null;
   saveActivityPresets();
-  if(field==='description')renderDailyLogPresets();
+  if(field==='description')renderDailyLogPresetsGrid();
 }
 function deletePreset(idx){
   var presets=ensureActivityPresets();

@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.56';
+  var V='20260527.57';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.56">
+<link rel="stylesheet" href="style.css?v=20260527.57">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -143,7 +143,15 @@
       </div>
       <div class="dailylog-list" id="dailyLogList"></div>
       <div class="dailylog-presets-wrap" id="dailyLogPresetsWrap">
-        <div class="dailylog-presets" id="dailyLogPresets"></div>
+        <div class="dailylog-presets" id="dailyLogPresets">
+          <div class="dailylog-presets-head">
+            <span class="dailylog-presets-lbl">Quick start</span>
+            <span class="dailylog-presets-hint">Shared · tap to combine</span>
+            <button type="button" class="btn sm" onclick="openPresetManager()">Manage presets</button>
+          </div>
+          <input type="search" id="dailyLogPresetSearch" class="dailylog-preset-search" placeholder="Search presets…" autocomplete="off">
+          <div class="dailylog-presets-grid" id="dailyLogPresetsGrid"></div>
+        </div>
       </div>
       <div class="dailylog-composer" id="dailyLogComposer">
         <div class="dailylog-composer-head">
@@ -462,6 +470,7 @@
   <div class="modal" style="max-width:560px">
     <div class="modal-title" id="presetMgrTitle">Activity presets</div>
     <p class="preset-mgr-desc" id="presetMgrDesc">Rename presets, set default category & time, or delete any you don’t need. Changes save automatically.</p>
+    <input type="search" id="presetMgrSearch" class="dailylog-preset-search preset-mgr-search" placeholder="Search presets…" autocomplete="off">
     <div class="preset-mgr-list" id="presetMgrList"></div>
     <div class="ma"><button class="btn" onclick="closePresetManager()">Close</button><button class="btn p" onclick="addPresetRow()">+ Add preset</button></div>
   </div>
@@ -502,6 +511,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.56"></script>
+<script src="app.js?v=20260527.57"></script>
 </body>
 </html>
