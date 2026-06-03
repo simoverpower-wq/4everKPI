@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.61';
+  var V='20260527.62';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.61">
+<link rel="stylesheet" href="style.css?v=20260527.62">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -63,7 +63,7 @@
       <div class="sw"><span class="si" aria-hidden="true">🔍</span><input id="msearch" type="search" name="kpi_member_filter_x" placeholder="Search name..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-1p-ignore></div>
       <button class="login-gear" id="loginGear" onclick="toggleLoginEdit()" title="Admin: reorder login names">⚙️</button>
       <div class="login-status" id="loginStatus" aria-live="polite"></div>
-      <div class="lgrid" id="lgrid"><div class="login-empty login-loading">Loading your team…</div></div>
+      <div class="lgrid" id="lgrid"></div>
     </div>
     <div id="step2" class="pin-sec">
       <button class="back-btn" onclick="backSel()">← Back</button>
@@ -515,6 +515,6 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.61"></script>
+<script src="app.js?v=20260527.62"></script>
 </body>
 </html>

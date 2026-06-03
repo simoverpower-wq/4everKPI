@@ -1,4 +1,4 @@
-const APP_VER='20260527.61';
+const APP_VER='20260527.62';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1037,7 +1037,7 @@ function buildLogTimePresets(){
 const LOG_TIME_PRESETS=buildLogTimePresets();
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
-var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date(),loginMembersReady=false;
+var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date(),loginMembersReady=false,loginWatchTimer=null;
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
@@ -1084,9 +1084,72 @@ function loginVisibleMembers(list){
   return(list||[]).filter(function(m){return m&&m.name;});
 }
 function loginLoadErrorMessage(err){
-  if(!sb)return'Could not connect to the database. Check your internet connection and refresh.';
+  if(!sb&&!window.fetch)return'Could not connect to the database. Check your internet connection and refresh.';
   if(err&&(err.message||err.code))return'Could not load team: '+(err.message||err.code)+'. Refresh or try again.';
   return'Could not load team from the database. Refresh the page.';
+}
+function fetchWithTimeout(promise,ms,label){
+  return Promise.race([
+    promise,
+    new Promise(function(_,reject){
+      setTimeout(function(){reject(new Error((label||'Request')+' timed out after '+ms+'ms'));},ms);
+    })
+  ]);
+}
+async function loadLoginMembers(){
+  var ms=10000,restUrl=SBU+'/rest/v1/members?select=*&order=name',headers={'apikey':SBK,'Authorization':'Bearer '+SBK,'Accept':'application/json'};
+  if(sb){
+    try{
+      var r=await fetchWithTimeout(sb.from('members').select('*').order('name'),ms,'Team load');
+      if(r.data&&r.data.length)return r.data;
+      if(r.error)console.warn('[4KPI] members via client',r.error.message||r.error);
+    }catch(e){console.warn('[4KPI] members via client failed',e.message||e);}
+  }
+  if(typeof fetch!=='function')throw new Error('Browser cannot reach the database');
+  var res=await fetchWithTimeout(fetch(restUrl,{headers:headers,cache:'no-store'}),ms,'Team load');
+  if(!res.ok)throw new Error('Could not load team (HTTP '+res.status+')');
+  var data=await res.json();
+  if(!Array.isArray(data))throw new Error('Invalid team response');
+  return data;
+}
+function cacheLoginRoster(){
+  try{
+    lss('4k_login_roster',{t:Date.now(),members:members.map(function(m){
+      return{id:m.id,name:m.name,is_admin:!!m.is_admin,pin:m.pin,role:m.role,color:m.color,role_tags:m.role_tags,description:m.description,is_inactive:!!m.is_inactive};
+    })});
+  }catch(e){}
+}
+function restoreLoginRosterFromCache(){
+  var cache=ls('4k_login_roster');
+  if(!cache||!cache.members||!cache.members.length)return false;
+  members=cache.members;
+  memberAccountTotal=members.length;
+  return true;
+}
+function finishLoginRoster(){
+  loginMembersReady=true;
+  if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
+  cacheLoginRoster();
+  setupLoginSearch();
+  var msearch=el('msearch');
+  if(msearch&&msearch.value.trim())filterM();
+  else renderLG(loginVisibleMembers(members));
+  updateLoginStatus();
+  setTimeout(function(){
+    var sub=el('login-sub');
+    if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
+  },0);
+}
+function loginStuckWatchdog(){
+  if(loginMembersReady)return;
+  var grid=el('lgrid');
+  if(restoreLoginRosterFromCache()){
+    finishLoginRoster();
+    var st=el('loginStatus');
+    if(st)st.textContent='Showing saved names — tap yours to sign in, or Retry to refresh';
+    return;
+  }
+  if(grid)grid.innerHTML='<div class="login-empty">'+esc('Team list is taking too long. Check connection or ad blockers for supabase.co, then retry.')+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
 }
 function updateLoginStatus(){
   var st=el('loginStatus');
@@ -1102,40 +1165,32 @@ function clearLoginSearch(){
 }
 async function initLogin(){
   loginMembersReady=false;
+  if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
   var grid=el('lgrid');
   if(grid)grid.innerHTML='<div class="login-empty login-loading">Loading your team…</div>';
   updateLoginStatus();
-  if(!sb){
-    console.error('[4KPI] Cannot load login — Supabase client missing');
-    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(null))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
-    return;
-  }
+  loginWatchTimer=setTimeout(loginStuckWatchdog,12000);
   try{
     var savedAccent=ls('4k_accent_theme');
     if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
     logKPI('initLogin start');
-    var r=await sb.from('members').select('*').order('name');
-    if(r.error&&!(r.data&&r.data.length)){
-      sbErr('members (login)',r);
-      if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(r.error))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
-      return;
-    }
-    if(r.error)sbErr('members (login)',r);
-    members=r.data||[];
+    members=await loadLoginMembers();
     memberAccountTotal=members.length;
     logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
-    await loadSettings();
-    syncInactiveMembersFromSettings();
-    setupLoginSearch();
-    loginMembersReady=true;
-    var ms=el('msearch');
-    if(ms&&ms.value.trim())filterM();
-    else renderLG(loginVisibleMembers(members));
-    updateLoginStatus();
-    var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
+    finishLoginRoster();
+    loadSettings().then(function(){
+      syncInactiveMembersFromSettings();
+      if(el('msearch')&&(el('msearch').value||'').trim())filterM();
+      else renderLG(loginVisibleMembers(members));
+    }).catch(function(e){console.error('[4KPI] loadSettings (login)',e);});
   }catch(e){
     console.error('[4KPI] initLogin failed',e);
     loginMembersReady=false;
+    if(restoreLoginRosterFromCache()){
+      finishLoginRoster();
+      var st=el('loginStatus');if(st)st.textContent='Offline roster — Retry when online';
+      return;
+    }
     if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(e))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
   }
 }
