@@ -1,4 +1,4 @@
-const APP_VER='20260527.60';
+const APP_VER='20260527.61';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1037,7 +1037,7 @@ function buildLogTimePresets(){
 const LOG_TIME_PRESETS=buildLogTimePresets();
 const QT=['The agency moves when the team moves.','Consistency beats motivation every time.','What gets measured gets managed.','Every logged task builds a better system.','Data does not lie. Log everything.','Small daily wins compound into agencies.','Accountability is the foundation of growth.'];
 
-var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date();
+var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=new Date(),loginMembersReady=false;
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
@@ -1088,39 +1088,69 @@ function loginLoadErrorMessage(err){
   if(err&&(err.message||err.code))return'Could not load team: '+(err.message||err.code)+'. Refresh or try again.';
   return'Could not load team from the database. Refresh the page.';
 }
+function updateLoginStatus(){
+  var st=el('loginStatus');
+  if(!st)return;
+  if(!loginMembersReady||!members.length){st.textContent='';return;}
+  st.textContent=members.length+' team member'+(members.length===1?'':'s')+' — tap your name';
+}
+function clearLoginSearch(){
+  var ms=el('msearch');
+  if(ms)ms.value='';
+  filterM();
+  if(ms)ms.focus();
+}
 async function initLogin(){
+  loginMembersReady=false;
   var grid=el('lgrid');
+  if(grid)grid.innerHTML='<div class="login-empty login-loading">Loading your team…</div>';
+  updateLoginStatus();
   if(!sb){
     console.error('[4KPI] Cannot load login — Supabase client missing');
-    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(null))+'</div>';
+    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(null))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
     return;
   }
-  var savedAccent=ls('4k_accent_theme');
-  if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
-  logKPI('initLogin start');
   try{
+    var savedAccent=ls('4k_accent_theme');
+    if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
+    logKPI('initLogin start');
     var r=await sb.from('members').select('*').order('name');
-    if(sbErr('members (login)',r)&&grid){grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(r.error))+'</div>';return;}
+    if(r.error&&!(r.data&&r.data.length)){
+      sbErr('members (login)',r);
+      if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(r.error))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
+      return;
+    }
+    if(r.error)sbErr('members (login)',r);
     members=r.data||[];
     memberAccountTotal=members.length;
     logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
     await loadSettings();
     syncInactiveMembersFromSettings();
     setupLoginSearch();
-    renderLG(loginVisibleMembers(members));
+    loginMembersReady=true;
+    var ms=el('msearch');
+    if(ms&&ms.value.trim())filterM();
+    else renderLG(loginVisibleMembers(members));
+    updateLoginStatus();
     var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
   }catch(e){
     console.error('[4KPI] initLogin failed',e);
-    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(e))+'</div>';
+    loginMembersReady=false;
+    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(e))+' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button></div>';
   }
 }
+async function retryLoginLoad(){await initLogin();}
 
 function renderLG(list){
   var grid=el('lgrid');
   if(!grid)return;
   list=sortByOrder(list||[],'login');
   if(!list.length){
-    grid.innerHTML='<div class="login-empty">'+esc(members.length?'No team names found. Add members in Supabase or ask an admin.':loginLoadErrorMessage(null))+'</div>';
+    var qEl=el('msearch'),q=qEl?(qEl.value||'').trim().toLowerCase():'';
+    var msg=members.length?(q?'No names match “'+esc(q)+'”.':'No team names found. Add members in Supabase or ask an admin.'):loginLoadErrorMessage(null);
+    var extra=(q&&members.length)?' <button type="button" class="login-retry-btn" onclick="clearLoginSearch()">Show everyone</button>':'';
+    if(!members.length)extra=' <button type="button" class="login-retry-btn" onclick="retryLoginLoad()">Retry</button>';
+    grid.innerHTML='<div class="login-empty">'+msg+extra+'</div>';
     return;
   }
   var admins=list.filter(function(m){return m.is_admin;});
@@ -1172,7 +1202,13 @@ function toggleLoginEdit(){
   loginEditMode=true;el('loginGear').classList.add('on');renderLG(loginVisibleMembers(members));
 }
 
-function filterM(){var q=el('msearch').value.toLowerCase();var pool=loginVisibleMembers(members);renderLG(q?pool.filter(function(m){return m.name.toLowerCase().includes(q);}):pool);}
+function filterM(){
+  if(!loginMembersReady)return;
+  var ms=el('msearch'),q=ms?(ms.value||'').trim().toLowerCase():'';
+  var pool=loginVisibleMembers(members);
+  if(!q){renderLG(pool);return;}
+  renderLG(pool.filter(function(m){return m.name&&String(m.name).toLowerCase().includes(q);}));
+}
 
 function setupLoginSearch(){
   var ms=el('msearch');if(!ms)return;
@@ -4530,6 +4566,9 @@ window.addPresetRow=addPresetRow;
 window.openThemeModal=openThemeModal;
 window.closeThemeModal=closeThemeModal;
 window.pickAccentTheme=pickAccentTheme;
+window.filterM=filterM;
+window.clearLoginSearch=clearLoginSearch;
+window.retryLoginLoad=retryLoginLoad;
 try{var _bootAccent=ls('4k_accent_theme');if(_bootAccent&&ACCENT_THEMES[_bootAccent])applyAccentTheme(_bootAccent,false);}catch(e){}
 initLogin();
 initSidebar();

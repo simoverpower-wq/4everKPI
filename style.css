@@ -32,7 +32,13 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .sw{position:relative;margin-bottom:12px}.sw input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:9px 12px 9px 32px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}.sw input:focus{border-color:var(--accent)}.si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
 .login-empty{font-size:12px;color:var(--text2);line-height:1.55;padding:14px 10px;text-align:center;border:1px dashed var(--border2);border-radius:10px;background:rgba(255,255,255,.02)}
 .login-bubble-inactive{opacity:.72;border-style:dashed}
-.lgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;max-height:240px;overflow-y:auto;margin-bottom:14px}
+#lgrid.lgrid{display:flex;flex-direction:column;gap:0;min-height:72px;max-height:min(52vh,340px);overflow-y:auto;overflow-x:hidden;margin-bottom:14px;width:100%}
+.login-status{font-size:11px;color:var(--text3);min-height:16px;margin:4px 0 8px;text-align:center}
+.login-loading{color:var(--accent);border-style:solid;border-color:rgba(var(--accent-rgb),.25)}
+.login-retry-btn{display:block;margin:10px auto 0;padding:8px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.login-retry-btn:hover{border-color:var(--accent)}
+.login-section{grid-column:1/-1}
+.login-grid-unified{width:100%;margin-bottom:14px}
 .mbtn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px;cursor:pointer;color:var(--text);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .15s;text-align:center}.mbtn:hover,.mbtn.sel{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.06)}
 .pin-sec{display:none;margin-top:10px}.pin-sec.show{display:block}
 .pin-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;text-align:center}
@@ -588,7 +594,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .login-bubble.team:hover,.login-bubble.team.sel{color:var(--accent)}
 .login-bubble.dragging{opacity:.5}
 .login-bubble .drag-hint{font-size:9px;color:var(--text3);margin-left:2px}
-.login-grid-unified{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.login-grid-unified{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:9px}
 .prof-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
 .pfbtn{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'DM Sans',sans-serif;transition:all .15s}
 .pfbtn.on{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.08)}
