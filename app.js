@@ -1,4 +1,4 @@
-const APP_VER='20260527.64';
+const APP_VER='20260527.65';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1042,7 +1042,7 @@ var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=fal
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,activityPresets=ls('4k_apresets')||null,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
-var dailyDayNotes=ls('4k_ddn')||{},lastDayNoteKey=null,dayNoteSaveTimer=null,categoryDeleteMode=false,dayNoteInputBound=false;
+var dailyDayNotes=ls('4k_ddn')||{},lastDayNoteKey=null,dayNoteSaveTimer=null,dayNoteInputBound=false,dayNotesOpen=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -2607,21 +2607,22 @@ function toggleWeekView(){
 }
 function renderActCatBubbles(){
   var tags=ensureActivityTags(),wrap=el('actCatWrap');if(!wrap)return;
-  wrap.innerHTML=tags.map(function(t,i){
+  wrap.innerHTML=tags.map(function(t){
     var on=actCategories.indexOf(t)>=0;
-    var delBtn=categoryDeleteMode?'<button type="button" class="sb-del" onclick="event.stopPropagation();removeActivityTag('+i+')" title="Delete category">×</button>':'';
-    return'<span class="sb'+(on?' on':'')+(categoryDeleteMode?' cat-delete-mode':'')+'" data-act-cat="'+esc(t)+'">'+esc(t)+delBtn+'</span>';
+    return'<span class="sb cat-bubble'+(on?' on':'')+'" data-act-cat="'+esc(t)+'"><span class="cat-bubble-txt">'+esc(t)+'</span><button type="button" class="sb-del" data-del-cat="'+esc(t)+'" title="Delete category" aria-label="Delete category">×</button></span>';
   }).join('');
-  qsa('[data-act-cat]',wrap).forEach(function(b){b.onclick=function(){toggleActCategory(this.dataset.actCat);};});
+  qsa('[data-del-cat]',wrap).forEach(function(btn){
+    btn.onclick=function(e){e.stopPropagation();removeActivityTagByName(btn.getAttribute('data-del-cat'));};
+  });
+  qsa('.cat-bubble[data-act-cat]',wrap).forEach(function(b){
+    b.onclick=function(e){if(e.target.closest('.sb-del'))return;toggleActCategory(b.dataset.actCat);};
+  });
 }
-function toggleCategoryDeleteMode(){
-  categoryDeleteMode=!categoryDeleteMode;
-  var btn=el('catMgrToggleBtn');
-  if(btn){
-    btn.textContent=categoryDeleteMode?'Done':'Delete';
-    btn.classList.toggle('on',categoryDeleteMode);
-  }
-  renderActCatBubbles();
+function removeActivityTagByName(name){
+  ensureActivityTags();
+  var idx=activityTags.indexOf(name);
+  if(idx<0)return;
+  removeActivityTag(idx);
 }
 function dailyDayNoteKey(mid,date){
   return String(mid||'')+'|'+dateInputStr(date||dailyLogDate||new Date());
@@ -2643,6 +2644,26 @@ function saveDailyDayNoteNow(){
   saveDailyDayNotesToStorage();
   var meta=el('dailyDayNoteMeta');
   if(meta)meta.textContent='Saved';
+  updateDailyDayNotePreview();
+}
+function updateDailyDayNotePreview(){
+  var prev=el('dailyDayNotePreview');
+  if(!prev||dayNotesOpen){if(prev)prev.textContent='';return;}
+  var text=getDailyDayNote(getActivityLogTargetId()||cu.id).trim();
+  if(!text){prev.textContent='';return;}
+  var line=text.split('\n').map(function(s){return s.trim();}).filter(Boolean)[0]||'';
+  prev.textContent=line.length>52?line.slice(0,52)+'…':line;
+}
+function toggleDailyDayNotes(){
+  dayNotesOpen=!dayNotesOpen;
+  var panel=el('dailyLogDayNotesPanel'),wrap=el('dailyLogDayNotes'),chev=el('dailyDayNoteChevron'),tog=el('dailyDayNoteToggle');
+  if(panel)panel.hidden=!dayNotesOpen;
+  if(wrap)wrap.classList.toggle('open',dayNotesOpen);
+  if(chev)chev.textContent=dayNotesOpen?'▴':'▾';
+  if(tog)tog.setAttribute('aria-expanded',dayNotesOpen?'true':'false');
+  updateDailyDayNotePreview();
+  if(dayNotesOpen){var inp=el('dailyDayNoteInput');if(inp)inp.focus();}
+  else flushDailyDayNote();
 }
 function scheduleSaveDailyDayNote(){
   var meta=el('dailyDayNoteMeta');
@@ -2681,6 +2702,7 @@ function renderDailyDayNotes(){
     inp.value=getDailyDayNote(mid);
     lastDayNoteKey=key;
     if(meta)meta.textContent=inp.value.trim()?'':'';
+    updateDailyDayNotePreview();
   }
 }
 function getDailyDayNotePreview(mid,date,maxLen){
@@ -4681,7 +4703,7 @@ window.downloadDaySummary=downloadDaySummary;
 window.chDailyLogDay=chDailyLogDay;
 window.goDailyLogToday=goDailyLogToday;
 window.pickDailyLogDate=pickDailyLogDate;
-window.toggleCategoryDeleteMode=toggleCategoryDeleteMode;
+window.toggleDailyDayNotes=toggleDailyDayNotes;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;

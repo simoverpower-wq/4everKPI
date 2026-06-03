@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.64';
+  var V='20260527.65';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.64">
+<link rel="stylesheet" href="style.css?v=20260527.65">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -140,11 +140,15 @@
       <div class="overseer-team-board" id="overseerTeamBoard" hidden></div>
       <div class="dailylog-today" id="dailyLogToday"></div>
       <div class="dailylog-daynotes" id="dailyLogDayNotes">
-        <div class="dailylog-daynotes-head">
+        <button type="button" class="dailylog-daynotes-toggle" id="dailyDayNoteToggle" onclick="toggleDailyDayNotes()" aria-expanded="false">
           <span class="dailylog-daynotes-lbl" id="dailyDayNoteLbl">Day notes</span>
+          <span class="dailylog-daynotes-preview" id="dailyDayNotePreview"></span>
           <span class="dailylog-daynotes-meta" id="dailyDayNoteMeta"></span>
+          <span class="dailylog-daynotes-chevron" id="dailyDayNoteChevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="dailylog-daynotes-panel" id="dailyLogDayNotesPanel" hidden>
+          <textarea id="dailyDayNoteInput" class="dailylog-daynotes-area" rows="4" placeholder="Jot tiny tasks, reminders, or what to do next — saves automatically." autocomplete="off"></textarea>
         </div>
-        <textarea id="dailyDayNoteInput" class="dailylog-daynotes-area" rows="5" placeholder="Jot tiny tasks, reminders, or what to do next — saves automatically." autocomplete="off"></textarea>
       </div>
       <div class="dailylog-week-wrap" id="dailyLogWeekWrap" hidden>
         <div class="dailylog-week" id="dailyLogWeek"></div>
@@ -181,7 +185,7 @@
           <input id="actTimeCustom" class="act-time-custom" hidden placeholder='e.g. 45 mins, 1 hour 30 mins' autocomplete="off">
         </div>
         <div class="fg">
-          <div class="bsel"><div class="bsel-lbl">Categories <span class="bsel-hint">· tap all that apply</span><button type="button" class="btn sm cat-mgr-toggle" id="catMgrToggleBtn" onclick="toggleCategoryDeleteMode()">Delete</button></div><div class="bwrap" id="actCatWrap"></div></div>
+          <div class="bsel"><div class="bsel-lbl">Categories <span class="bsel-hint">· tap to select · × to remove</span></div><div class="bwrap" id="actCatWrap"></div></div>
           <div class="act-cat-row"><input id="actCatNew" placeholder="New category…" style="flex:1"><button type="button" class="btn sm" onclick="addActivityTagFromModal()">Add category</button></div>
         </div>
         <div class="fg dailylog-composer-date"><label>Date</label><input type="date" id="actDate"></div>
@@ -574,6 +578,6 @@
   else bootLogin();
 })();
 </script>
-<script src="app.js?v=20260527.64"></script>
+<script src="app.js?v=20260527.65"></script>
 </body>
 </html>
