@@ -1,4 +1,4 @@
-const APP_VER='20260527.65';
+const APP_VER='20260527.66';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1043,6 +1043,7 @@ var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date()
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
 var activityLog=[],activityTags=ls('4k_atags')||null,activityPresets=ls('4k_apresets')||null,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
 var dailyDayNotes=ls('4k_ddn')||{},lastDayNoteKey=null,dayNoteSaveTimer=null,dayNoteInputBound=false,dayNotesOpen=false;
+var activityTimers=[],memberOutcomes=[],timersTableOk=null,outcomesTableOk=null,timerTickHandle=null,outcomesPanelOpen=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1413,6 +1414,8 @@ function enterApp(){
   if(cu){var mp=ls('4k_mp_'+cu.id);if(mp&&mp.accentTheme)applyAccentTheme(mp.accentTheme,false);}
   try{if(sessionStorage.getItem('4k_alog_ok')==='1')activityLogSupabaseOk=true;}catch(x){}
   syncActivitySetupBanner();
+  loadActivityTimers().then(function(){renderActivityTimersBar();ensureTimerTick();});
+  loadMemberOutcomes();
   fetchAndRender(true).then(function(){
     var btn=document.querySelector('[data-nav="dailylog"]');
     gp('dailylog',btn||null);
@@ -1460,6 +1463,8 @@ async function fetchAndRender(showLoadErr){
     try{await loadResultPosts();}catch(e){console.error('[4KPI] loadResultPosts failed',e);}
     try{await loadTrash();}catch(e){console.error('[4KPI] loadTrash failed',e);}
     try{await loadActivityLog();}catch(e){console.error('[4KPI] loadActivityLog failed',e);}
+    try{await loadActivityTimers();}catch(e){console.error('[4KPI] loadActivityTimers failed',e);}
+    try{await loadMemberOutcomes();}catch(e){console.error('[4KPI] loadMemberOutcomes failed',e);}
     loadMemberPrefsForCurrentUser();
 
     render();
@@ -2070,6 +2075,7 @@ function setActivityLogTarget(mid,opts){
     renderDailyLogPresets();
     syncComposerTargetLabel();
     renderDailyDayNotes();
+    renderDailyLogOutcomes();
     return;
   }
   resetActivityComposer(false);
@@ -2446,7 +2452,7 @@ async function loadActivityLog(){
           var L=local[i];
           if(!L||!L.description||!String(L.description).trim())continue;
           if(L.id&&remoteIds[L.id])continue;
-          var pl={member_id:L.member_id||cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
+          var pl={member_id:L.member_id||cu.id,description:L.description,time_spent:L.time_spent,time_minutes:L.time_minutes,category:L.category,categories:L.categories||null,started_at:L.started_at||null,ended_at:L.ended_at||null,entry_source:L.entry_source||'manual',log_date:normalizeLogDate(L.log_date),updated_at:nowISO(),created_at:L.created_at||nowISO()};
           if(L.id)pl.id=L.id;
           var ins=await sb.from('activity_log').insert([pl]);
           if(!ins.error)synced++;
@@ -2481,7 +2487,303 @@ function formatTimeShort(mins){
   if(!h&&m)return m+(m===1?' min':' mins');
   return h+(h===1?' hr':' hrs')+' '+m+' mins';
 }
-function activityTimeLabel(e){if(!e)return'';if(e.time_spent&&String(e.time_spent).trim())return String(e.time_spent).trim();return formatTimeShort(e.time_minutes);}
+function fmtClock(d){
+  if(!d)return'';
+  return d.toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+}
+function formatEntryTimeRange(e){
+  if(!e)return'';
+  var start=e.started_at?parseDT(e.started_at):null,end=e.ended_at?parseDT(e.ended_at):null;
+  var dur=e.time_minutes?formatTimeShort(e.time_minutes):(e.time_spent&&String(e.time_spent).trim()?String(e.time_spent).trim():'');
+  if(start&&end)return fmtClock(start)+' – '+fmtClock(end)+(dur?' · '+dur:'');
+  if(start&&dur)return fmtClock(start)+' · '+dur;
+  return dur;
+}
+function activityTimeLabel(e){
+  if(!e)return'';
+  var range=formatEntryTimeRange(e);
+  if(range)return range;
+  if(e.time_spent&&String(e.time_spent).trim())return String(e.time_spent).trim();
+  return formatTimeShort(e.time_minutes);
+}
+function toTimeInputValue(d){
+  if(!d)return'';
+  var h=d.getHours(),m=d.getMinutes();
+  return(h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+}
+function combineDateAndTime(dateStr,timeStr){
+  if(!dateStr||!timeStr)return null;
+  var parts=timeStr.split(':'),h=parseInt(parts[0],10),m=parseInt(parts[1]||'0',10);
+  if(isNaN(h))return null;
+  var d=parseDateInput(dateStr)||new Date();
+  d.setHours(h,m,0,0);
+  return d;
+}
+function setActStartNow(){
+  var inp=el('actStartTime');if(inp)inp.value=toTimeInputValue(new Date());
+}
+function activityEntryTimingFromForm(){
+  var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
+  var timeMins=null,timeSpent=null;
+  if(actTimeIsCustom){
+    var timeRaw=(el('actTimeCustom').value||'').trim();
+    if(timeRaw){
+      timeMins=parseTimePhrase(timeRaw);
+      if(timeMins!=null)timeSpent=timeRaw;
+    }
+  }else if(actSelectedMins!=null){
+    timeMins=actSelectedMins;
+    timeSpent=formatTimeShort(timeMins);
+  }
+  var startInp=el('actStartTime'),startedAt=null,endedAt=null;
+  if(startInp&&startInp.value&&timeMins!=null){
+    startedAt=combineDateAndTime(logDate,startInp.value);
+    if(startedAt)endedAt=new Date(startedAt.getTime()+timeMins*60000);
+  }else if(timeMins!=null){
+    endedAt=new Date();
+    startedAt=new Date(endedAt.getTime()-timeMins*60000);
+  }
+  return{
+    started_at:startedAt?startedAt.toISOString():null,
+    ended_at:endedAt?endedAt.toISOString():null,
+    time_minutes:timeMins,
+    time_spent:timeSpent,
+    entry_source:'manual'
+  };
+}
+function isTimersTableMissing(err){
+  var msg=(err&&(err.message||err.code||''))||'';
+  return/timers|activity_timers|schema cache/i.test(msg)&&/does not exist|Could not find/i.test(msg);
+}
+function isOutcomesTableMissing(err){
+  var msg=(err&&(err.message||err.code||''))||'';
+  return/outcomes|member_outcomes|schema cache/i.test(msg)&&/does not exist|Could not find/i.test(msg);
+}
+function localTimersKey(){return'4k_act_timers';}
+function localOutcomesKey(){return'4k_member_outcomes';}
+function persistTimersLocal(){lss(localTimersKey(),activityTimers);}
+function loadTimersFromLocal(){activityTimers=ls(localTimersKey())||[];}
+async function loadActivityTimers(){
+  if(!cu){activityTimers=[];return;}
+  if(!sb){loadTimersFromLocal();return;}
+  try{
+    var r=await sb.from('activity_timers').select('*').order('started_at',{ascending:true});
+    if(r.error){
+      if(isTimersTableMissing(r.error)){timersTableOk=false;loadTimersFromLocal();return;}
+      console.warn('[4KPI] loadActivityTimers',r.error);
+      loadTimersFromLocal();
+      return;
+    }
+    timersTableOk=true;
+    activityTimers=r.data||[];
+    persistTimersLocal();
+  }catch(e){console.warn('[4KPI] loadActivityTimers',e);loadTimersFromLocal();}
+}
+function timerElapsedMs(t){
+  var s=parseDT(t.started_at);
+  if(!s)return 0;
+  return Math.max(0,Date.now()-s.getTime());
+}
+function formatTimerElapsed(ms){
+  var sec=Math.floor(ms/1000),m=Math.floor(sec/60),h=Math.floor(m/60);
+  sec=sec%60;m=m%60;
+  if(h>0)return h+'h '+m+'m';
+  if(m>0)return m+'m '+sec+'s';
+  return sec+'s';
+}
+function ensureTimerTick(){
+  if(timerTickHandle)return;
+  timerTickHandle=setInterval(function(){
+    if(!activityTimers.length){clearInterval(timerTickHandle);timerTickHandle=null;return;}
+    if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))renderActivityTimersBar();
+  },1000);
+}
+async function startActivityTimer(){
+  if(!cu){toast('Log in first','error');return;}
+  var desc=(el('actDesc').value||'').trim();
+  if(!desc){toast('Describe the task before starting a timer','error');return;}
+  var cats=actCategories.slice().filter(Boolean);
+  var category=cats.length?cats.join(', '):null;
+  var logMemberId=getActivityLogTargetId()||cu.id;
+  var logDate=normalizeLogDate(el('actDate').value)||dateInputStr(dailyLogDate);
+  var payload={
+    member_id:logMemberId,
+    description:desc,
+    category:category,
+    categories:cats.length?cats:null,
+    started_at:nowISO(),
+    log_date:logDate
+  };
+  var row=null;
+  if(sb&&timersTableOk!==false){
+    try{
+      var r=await sb.from('activity_timers').insert([payload]).select();
+      if(r.error){
+        if(isTimersTableMissing(r.error)){timersTableOk=false;}
+        else{toast('Could not start timer — '+r.error.message,'error');return;}
+      }else{
+        timersTableOk=true;
+        row=Array.isArray(r.data)?r.data[0]:r.data;
+      }
+    }catch(e){console.warn('[4KPI] startActivityTimer',e);}
+  }
+  if(!row)row=Object.assign({},payload,{id:genActId(),created_at:nowISO()});
+  activityTimers.push(row);
+  persistTimersLocal();
+  renderActivityTimersBar();
+  ensureTimerTick();
+  toast('Timer started ✓');
+}
+async function stopActivityTimer(timerId){
+  if(!cu||!timerId)return;
+  var t=activityTimers.find(function(x){return String(x.id)===String(timerId);});
+  if(!t){toast('Timer not found','error');return;}
+  var started=parseDT(t.started_at);
+  if(!started){toast('Invalid timer','error');return;}
+  var ended=new Date();
+  var mins=Math.max(1,Math.round((ended-started)/60000));
+  var cats=entryCategories(t);
+  var payload={
+    member_id:t.member_id,
+    description:t.description,
+    time_spent:formatTimeShort(mins),
+    time_minutes:mins,
+    category:t.category||(cats.length?cats.join(', '):null),
+    categories:cats.length?cats:null,
+    log_date:normalizeLogDate(t.log_date)||dateInputStr(dailyLogDate),
+    started_at:t.started_at,
+    ended_at:ended.toISOString(),
+    entry_source:'timer',
+    updated_at:nowISO()
+  };
+  if(sb){
+    try{
+      var r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
+      if(!r.error){
+        markActivityLogConnected();
+        var row=Array.isArray(r.data)?r.data[0]:r.data;
+        if(row){activityLog.unshift(row);}
+      }else if(isActivityLogTableMissing(r.error)){
+        saveActivityLogLocalRow(payload,null);
+      }else{toast('Could not log time — '+r.error.message,'error');return;}
+    }catch(e){toast('Could not log time','error');return;}
+  }else saveActivityLogLocalRow(payload,null);
+  if(sb&&timersTableOk!==false){
+    try{await sb.from('activity_timers').delete().eq('id',timerId);}catch(e){}
+  }
+  activityTimers=activityTimers.filter(function(x){return String(x.id)!==String(timerId);});
+  persistTimersLocal();
+  dailyLogDate=parseDateInput(payload.log_date);
+  toast('Logged '+formatTimeShort(mins)+' ✓');
+  rDailyLog();
+}
+function renderActivityTimersBar(){
+  var box=el('dailyLogTimers');if(!box)return;
+  if(!activityTimers.length){box.hidden=true;box.innerHTML='';return;}
+  box.hidden=false;
+  var cards=activityTimers.map(function(t){
+    var m=members.find(function(x){return String(x.id)===String(t.member_id);});
+    var name=m?m.name:'Member';
+    var elapsed=formatTimerElapsed(timerElapsedMs(t));
+    var cats=entryCategories(t);
+    return'<div class="dailylog-timer-card"><div class="dailylog-timer-card-main"><div class="dailylog-timer-member">'+esc(name)+'</div><div class="dailylog-timer-task">'+esc(condenseActivityDescription(t.description))+'</div><div class="dailylog-timer-meta">'+(cats.length?esc(cats.join(', '))+' · ':'')+'Started '+esc(fmtClock(parseDT(t.started_at)))+'</div></div><div class="dailylog-timer-elapsed">'+esc(elapsed)+'</div><button type="button" class="btn sm p dailylog-timer-stop" onclick="stopActivityTimer(\''+t.id+'\')">Stop</button></div>';
+  }).join('');
+  box.innerHTML='<div class="dailylog-timers-title">Running timers ('+activityTimers.length+')</div><div class="dailylog-timer-cards">'+cards+'</div>';
+}
+async function loadMemberOutcomes(){
+  if(!cu){memberOutcomes=[];return;}
+  if(!sb){memberOutcomes=ls(localOutcomesKey())||[];return;}
+  try{
+    var r=await sb.from('member_outcomes').select('*').order('outcome_date',{ascending:false}).order('created_at',{ascending:false});
+    if(r.error){
+      if(isOutcomesTableMissing(r.error)){outcomesTableOk=false;memberOutcomes=ls(localOutcomesKey())||[];return;}
+      memberOutcomes=[];
+      return;
+    }
+    outcomesTableOk=true;
+    memberOutcomes=r.data||[];
+    lss(localOutcomesKey(),memberOutcomes);
+  }catch(e){memberOutcomes=ls(localOutcomesKey())||[];}
+}
+function outcomesForTargetDay(){
+  var mid=getActivityLogTargetId()||cu.id,dk=dateInputStr(dailyLogDate||new Date());
+  return memberOutcomes.filter(function(o){
+    return String(o.member_id)===String(mid)&&normalizeLogDate(o.outcome_date)===dk;
+  });
+}
+function updateOutcomesPreview(){
+  var prev=el('dailyOutcomesPreview');
+  if(!prev||outcomesPanelOpen){if(prev)prev.textContent='';return;}
+  var list=outcomesForTargetDay();
+  if(!list.length){prev.textContent='';return;}
+  prev.textContent=list.length+' logged';
+}
+function toggleDailyOutcomes(){
+  outcomesPanelOpen=!outcomesPanelOpen;
+  var panel=el('dailyLogOutcomesPanel'),wrap=el('dailyLogOutcomes'),chev=el('dailyOutcomesChevron'),tog=el('dailyOutcomesToggle');
+  if(panel)panel.hidden=!outcomesPanelOpen;
+  if(wrap)wrap.classList.toggle('open',outcomesPanelOpen);
+  if(chev)chev.textContent=outcomesPanelOpen?'▴':'▾';
+  if(tog)tog.setAttribute('aria-expanded',outcomesPanelOpen?'true':'false');
+  updateOutcomesPreview();
+  if(outcomesPanelOpen)renderDailyLogOutcomes();
+}
+function renderDailyLogOutcomes(){
+  var listEl=el('dailyLogOutcomesList'),lbl=el('dailyOutcomesLbl');
+  if(!listEl)return;
+  var tm=activityLogTargetMember();
+  if(lbl){
+    var name=tm?(isSelfMember(tm.id)?'your':tm.name.split(' ')[0]+'\'s'):'';
+    lbl.textContent='Results / outcomes'+(name?' — '+name:'');
+  }
+  var list=outcomesForTargetDay();
+  updateOutcomesPreview();
+  if(!list.length){listEl.innerHTML='<div class="dailylog-outcomes-empty" style="font-size:12px;color:var(--text3)">No outcomes for this day yet.</div>';return;}
+  listEl.innerHTML=list.map(function(o){
+    return'<div class="dailylog-outcome-row"><div><strong>'+esc(o.label)+'</strong> <span class="dailylog-outcome-val">'+esc(o.value_text)+'</span></div><button type="button" class="btn sm danger" onclick="deleteMemberOutcome(\''+o.id+'\')">Delete</button></div>';
+  }).join('');
+}
+async function saveMemberOutcome(){
+  if(!cu)return;
+  var labelInp=el('outcomeLabel'),valInp=el('outcomeValue');
+  var label=labelInp?(labelInp.value||'').trim():'';
+  var value=valInp?(valInp.value||'').trim():'';
+  if(!label||!value){toast('Enter a label and value','error');return;}
+  var mid=getActivityLogTargetId()||cu.id;
+  var dk=dateInputStr(dailyLogDate||new Date());
+  var payload={member_id:mid,label:label,value_text:value,outcome_date:dk,updated_at:nowISO()};
+  var row=null;
+  if(sb&&outcomesTableOk!==false){
+    try{
+      var r=await sb.from('member_outcomes').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
+      if(r.error){
+        if(isOutcomesTableMissing(r.error)){outcomesTableOk=false;}
+        else{toast('Could not save — '+r.error.message,'error');return;}
+      }else{
+        outcomesTableOk=true;
+        row=Array.isArray(r.data)?r.data[0]:r.data;
+      }
+    }catch(e){toast('Could not save','error');return;}
+  }
+  if(!row)row=Object.assign({},payload,{id:genActId(),created_at:nowISO()});
+  memberOutcomes.unshift(row);
+  lss(localOutcomesKey(),memberOutcomes);
+  if(labelInp)labelInp.value='';
+  if(valInp)valInp.value='';
+  toast('Outcome saved ✓');
+  renderDailyLogOutcomes();
+}
+async function deleteMemberOutcome(id){
+  if(!cu||!id)return;
+  if(!confirm('Delete this outcome?'))return;
+  if(sb&&outcomesTableOk!==false){
+    try{await sb.from('member_outcomes').delete().eq('id',id);}catch(e){}
+  }
+  memberOutcomes=memberOutcomes.filter(function(x){return String(x.id)!==String(id);});
+  lss(localOutcomesKey(),memberOutcomes);
+  toast('Deleted ✓');
+  renderDailyLogOutcomes();
+}
 function entryCategories(e){
   if(!e)return[];
   if(e.categories&&Array.isArray(e.categories)&&e.categories.length)return e.categories.map(function(c){return String(c).trim();}).filter(Boolean);
@@ -2748,6 +3050,11 @@ function setActTimeMins(mins,isCustom){
   if(cust){cust.hidden=!isCustom;if(isCustom)setTimeout(function(){cust.focus();},50);else cust.value='';}
 }
 function applyActivityTimeFromRow(row){
+  var stInp=el('actStartTime');
+  if(stInp){
+    if(row&&row.started_at)stInp.value=toTimeInputValue(parseDT(row.started_at));
+    else stInp.value='';
+  }
   if(!row){setActTimeMins(null,false);return;}
   if(row.time_minutes&&ACT_TIME_CHIP_MINS.indexOf(row.time_minutes)>=0){setActTimeMins(row.time_minutes,false);return;}
   if(row.time_spent){
@@ -2852,6 +3159,7 @@ function resetActivityComposer(focusDesc){
   setActCategories([]);
   clearPresetSelection();
   if(el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
+  var stInp=el('actStartTime');if(stInp)stInp.value='';
   syncComposerUI();
   renderActCatBubbles();
   if(focusDesc){setTimeout(function(){var ta=el('actDesc');if(ta)ta.focus();},40);}
@@ -3057,6 +3365,8 @@ function rDailyLogInner(){
   renderOverseerTeamBoard();
   renderActivityLogTargetBar();
   renderDailyDayNotes();
+  renderActivityTimersBar();
+  renderDailyLogOutcomes();
   renderTodayTotals();
   if(weekViewOpen)renderWeeklyTotals();
   renderDailyLogPresets();
@@ -3068,7 +3378,8 @@ function rDailyLogInner(){
   if(cuIsOverseer()&&tm&&!isSelfMember(tm.id))listHead=tm.name.split(' ')[0]+'\'s log';
   if(!entries.length){list.innerHTML='<div class="dailylog-empty">No entries yet for '+esc(listHead.toLowerCase())+' — use the form below.</div>';return;}
   list.innerHTML='<div class="dailylog-list-head">'+listHead+' · '+esc(dailyLogDayLabel(dailyLogDate))+' ('+entries.length+')</div>'+entries.map(function(e){
-    return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
+    var src=e.entry_source==='timer'?' <span class="dailylog-entry-start">timer</span>':'';
+    return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+src+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
   }).join('');
 }
 function chDailyLogDay(n){flushDailyDayNote();dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);lastDayNoteKey=null;rDailyLog();}
@@ -3084,17 +3395,9 @@ async function saveActivity(){
   if(!sb||!cu){console.error('[4KPI] saveActivity: no Supabase client or user');toast('Not connected — refresh and try again','error');return;}
   var desc=(el('actDesc').value||'').trim();
   if(!desc){toast('Describe what you did','error');return;}
-  var timeMins=null,timeSpent=null;
-  if(actTimeIsCustom){
-    var timeRaw=(el('actTimeCustom').value||'').trim();
-    if(timeRaw){
-      timeMins=parseTimePhrase(timeRaw);
-      if(timeMins==null){toast('Try "4 hrs", "15 mins", or "1 hour 30 mins"','error');return;}
-      timeSpent=timeRaw;
-    }
-  }else if(actSelectedMins!=null){
-    timeMins=actSelectedMins;
-    timeSpent=formatTimeShort(timeMins);
+  var timing=activityEntryTimingFromForm();
+  if(actTimeIsCustom&&(el('actTimeCustom').value||'').trim()&&timing.time_minutes==null){
+    toast('Try "4 hrs", "15 mins", or "1 hour 30 mins"','error');return;
   }
   var cats=actCategories.slice().filter(Boolean);
   var category=cats.length?cats.join(', '):null;
@@ -3102,7 +3405,19 @@ async function saveActivity(){
   var eid=el('actEid').value;
   var wasEdit=!!eid;
   var logMemberId=getActivityLogTargetId()||cu.id;
-  var payload={member_id:logMemberId,description:desc,time_spent:timeSpent,time_minutes:timeMins,category:category,log_date:logDate,updated_at:nowISO()};
+  var payload={
+    member_id:logMemberId,
+    description:desc,
+    time_spent:timing.time_spent,
+    time_minutes:timing.time_minutes,
+    category:category,
+    categories:cats.length?cats:null,
+    started_at:timing.started_at,
+    ended_at:timing.ended_at,
+    entry_source:timing.entry_source||'manual',
+    log_date:logDate,
+    updated_at:nowISO()
+  };
   console.log('[4KPI] saveActivity',eid?'update':'insert',payload);
   try{
     var row=null;
@@ -4653,7 +4968,7 @@ function resetLocalPrefs(){
 
 function subscribeRealtime(){
   if(!sb||!cu)return;
-  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'activity_log'},function(){if(!cu)return;loadActivityLog().then(function(){if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))rDailyLog();});}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
+  sb.channel('kpi').on('postgres_changes',{event:'*',schema:'public',table:'tasks'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'members'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'task_history'},function(){if(cu)fetchAndRender(false);}).on('postgres_changes',{event:'*',schema:'public',table:'activity_log'},function(){if(!cu)return;loadActivityLog().then(function(){if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))rDailyLog();});}).on('postgres_changes',{event:'*',schema:'public',table:'activity_timers'},function(){if(!cu)return;loadActivityTimers().then(function(){renderActivityTimersBar();ensureTimerTick();});}).on('postgres_changes',{event:'*',schema:'public',table:'member_outcomes'},function(){if(!cu)return;loadMemberOutcomes().then(function(){if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))renderDailyLogOutcomes();});}).on('postgres_changes',{event:'*',schema:'public',table:'role_notes'},function(){if(cu)loadRoleNotes();}).on('postgres_changes',{event:'*',schema:'public',table:'result_posts'},function(){if(!cu)return;loadResultPosts().then(function(){if(el('page-results').classList.contains('active'))rResults();if(el('page-dashboard').classList.contains('active'))genIns();});}).on('postgres_changes',{event:'*',schema:'public',table:'trash_bin'},function(){if(!cu)return;loadTrash().then(function(){if(el('page-trash').classList.contains('active'))rTrash();});}).subscribe();
 }
 
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
@@ -4704,6 +5019,12 @@ window.chDailyLogDay=chDailyLogDay;
 window.goDailyLogToday=goDailyLogToday;
 window.pickDailyLogDate=pickDailyLogDate;
 window.toggleDailyDayNotes=toggleDailyDayNotes;
+window.toggleDailyOutcomes=toggleDailyOutcomes;
+window.saveMemberOutcome=saveMemberOutcome;
+window.deleteMemberOutcome=deleteMemberOutcome;
+window.startActivityTimer=startActivityTimer;
+window.stopActivityTimer=stopActivityTimer;
+window.setActStartNow=setActStartNow;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;

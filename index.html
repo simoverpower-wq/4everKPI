@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.65';
+  var V='20260527.66';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.65">
+<link rel="stylesheet" href="style.css?v=20260527.66">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -138,6 +138,7 @@
         </div>
       </div>
       <div class="overseer-team-board" id="overseerTeamBoard" hidden></div>
+      <div class="dailylog-timers" id="dailyLogTimers" hidden aria-live="polite"></div>
       <div class="dailylog-today" id="dailyLogToday"></div>
       <div class="dailylog-daynotes" id="dailyLogDayNotes">
         <button type="button" class="dailylog-daynotes-toggle" id="dailyDayNoteToggle" onclick="toggleDailyDayNotes()" aria-expanded="false">
@@ -152,6 +153,22 @@
       </div>
       <div class="dailylog-week-wrap" id="dailyLogWeekWrap" hidden>
         <div class="dailylog-week" id="dailyLogWeek"></div>
+      </div>
+      <div class="dailylog-outcomes" id="dailyLogOutcomes">
+        <button type="button" class="dailylog-outcomes-toggle" id="dailyOutcomesToggle" onclick="toggleDailyOutcomes()" aria-expanded="false">
+          <span class="dailylog-outcomes-lbl" id="dailyOutcomesLbl">Results / outcomes</span>
+          <span class="dailylog-outcomes-preview" id="dailyOutcomesPreview"></span>
+          <span class="dailylog-outcomes-chevron" id="dailyOutcomesChevron" aria-hidden="true">▾</span>
+        </button>
+        <div class="dailylog-outcomes-panel" id="dailyLogOutcomesPanel" hidden>
+          <p class="dailylog-outcomes-hint">Non-time metrics (impressions, leads, posts) — separate from the time log.</p>
+          <div class="dailylog-outcome-form">
+            <input type="text" id="outcomeLabel" class="outcome-inp" placeholder="Label (e.g. Daily impressions)" autocomplete="off">
+            <input type="text" id="outcomeValue" class="outcome-inp" placeholder="Value (e.g. 30k)" autocomplete="off">
+            <button type="button" class="btn sm p" onclick="saveMemberOutcome()">Add</button>
+          </div>
+          <div class="dailylog-outcomes-list" id="dailyLogOutcomesList"></div>
+        </div>
       </div>
       <div class="dailylog-list" id="dailyLogList"></div>
       <div class="dailylog-presets-wrap" id="dailyLogPresetsWrap">
@@ -172,7 +189,19 @@
         </div>
         <div id="activityLogTargetWrap" hidden></div>
         <div class="fg act-desc-fg"><label>What did you do?</label><textarea id="actDesc" class="act-desc-area" rows="8" placeholder="e.g. Watched chat team + took notes on strengths/weaknesses"></textarea></div>
-        <div class="fg"><label>Time spent</label>
+        <div class="fg act-timer-fg">
+          <label>Live timer</label>
+          <div class="act-timer-row">
+            <button type="button" class="btn p" id="actStartTimerBtn" onclick="startActivityTimer()">▶ Start timer</button>
+            <span class="act-timer-hint">Stop from the running timers bar when they finish — logs real elapsed time.</span>
+          </div>
+        </div>
+        <div class="fg"><label>Time (manual log)</label>
+          <div class="act-start-row">
+            <span class="act-start-lbl">Started at</span>
+            <input type="time" id="actStartTime" class="act-start-inp">
+            <button type="button" class="btn sm" onclick="setActStartNow()">Now</button>
+          </div>
           <div class="act-time-chips" id="actTimeChips">
             <button type="button" class="tchip" data-act-mins="15">15m</button>
             <button type="button" class="tchip" data-act-mins="30">30m</button>
@@ -578,6 +607,6 @@
   else bootLogin();
 })();
 </script>
-<script src="app.js?v=20260527.65"></script>
+<script src="app.js?v=20260527.66"></script>
 </body>
 </html>

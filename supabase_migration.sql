@@ -366,7 +366,9 @@ AS $$
 BEGIN
   DELETE FROM task_history;
   DELETE FROM tasks;
+  DELETE FROM activity_timers;
   DELETE FROM activity_log;
+  DELETE FROM member_outcomes;
   DELETE FROM result_posts;
   DELETE FROM feedback;
   DELETE FROM role_notes;
@@ -375,3 +377,5 @@ BEGIN
   RETURN jsonb_build_object('ok', true, 'wiped_at', now());
 END;
 $$;
+
+-- Timers, outcomes, start/end on activity_log: run timers_outcomes_migration.sql in SQL Editor
