@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.67';
+  var V='20260527.68';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.67">
+<link rel="stylesheet" href="style.css?v=20260527.68">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -148,7 +148,7 @@
           <span class="dailylog-daynotes-chevron" id="dailyDayNoteChevron" aria-hidden="true">▾</span>
         </button>
         <div class="dailylog-daynotes-panel" id="dailyLogDayNotesPanel" hidden>
-          <textarea id="dailyDayNoteInput" class="dailylog-daynotes-area" rows="4" placeholder="Jot tiny tasks, reminders, or what to do next — saves automatically." autocomplete="off"></textarea>
+          <textarea id="dailyDayNoteInput" class="dailylog-daynotes-area" rows="10" placeholder="Jot tiny tasks, reminders, or what to do next — saves automatically." autocomplete="off"></textarea>
         </div>
       </div>
       <div class="dailylog-week-wrap" id="dailyLogWeekWrap" hidden>
@@ -193,7 +193,7 @@
           <label>Live timer</label>
           <div class="act-timer-row">
             <button type="button" class="btn p" id="actStartTimerBtn" onclick="startActivityTimer()">▶ Start timer</button>
-            <span class="act-timer-hint">Stop from the running timers bar when they finish — logs real elapsed time.</span>
+            <span class="act-timer-hint">Pause to save elapsed time if you stop early — Resume continues where you left off. Log time when you are done.</span>
           </div>
         </div>
         <div class="fg"><label>Time (manual log)</label>
@@ -607,6 +607,6 @@
   else bootLogin();
 })();
 </script>
-<script src="app.js?v=20260527.67"></script>
+<script src="app.js?v=20260527.68"></script>
 </body>
 </html>

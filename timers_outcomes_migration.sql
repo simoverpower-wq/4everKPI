@@ -23,9 +23,14 @@ CREATE TABLE IF NOT EXISTS activity_timers (
   category TEXT,
   categories TEXT[],
   started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  accumulated_ms INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'running',
   log_date DATE NOT NULL DEFAULT CURRENT_DATE,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE activity_timers ADD COLUMN IF NOT EXISTS accumulated_ms INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE activity_timers ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'running';
 
 CREATE INDEX IF NOT EXISTS activity_timers_member ON activity_timers (member_id);
 CREATE INDEX IF NOT EXISTS activity_timers_started ON activity_timers (started_at DESC);
@@ -34,10 +39,12 @@ ALTER TABLE activity_timers ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "activity_timers_select" ON activity_timers;
 DROP POLICY IF EXISTS "activity_timers_insert" ON activity_timers;
+DROP POLICY IF EXISTS "activity_timers_update" ON activity_timers;
 DROP POLICY IF EXISTS "activity_timers_delete" ON activity_timers;
 
 CREATE POLICY "activity_timers_select" ON activity_timers FOR SELECT USING (true);
 CREATE POLICY "activity_timers_insert" ON activity_timers FOR INSERT WITH CHECK (true);
+CREATE POLICY "activity_timers_update" ON activity_timers FOR UPDATE USING (true);
 CREATE POLICY "activity_timers_delete" ON activity_timers FOR DELETE USING (true);
 
 GRANT ALL ON TABLE activity_timers TO anon, authenticated;

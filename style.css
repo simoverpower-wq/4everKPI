@@ -791,7 +791,7 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-daynotes-meta{font-size:11px;color:var(--accent);flex-shrink:0}
 .dailylog-daynotes-chevron{margin-left:auto;font-size:11px;color:var(--text3);flex-shrink:0}
 .dailylog-daynotes-panel{margin-top:8px}
-.dailylog-daynotes-area{width:100%;min-height:72px;max-height:200px;padding:10px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:14px;line-height:1.55;resize:vertical;display:block}
+.dailylog-daynotes-area{width:100%;min-height:160px;max-height:min(50vh,420px);padding:12px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-family:inherit;font-size:14px;line-height:1.55;resize:vertical;display:block}
 .dailylog-daynotes-area:focus{outline:none;border-color:rgba(var(--accent-rgb),.45)}
 .cat-bubble{padding-right:6px}
 .cat-bubble-txt{pointer-events:none}
@@ -815,7 +815,10 @@ body.is-admin .wipe-btn{display:flex !important}
 .dailylog-timer-task{font-size:13px;font-weight:500;color:var(--text);line-height:1.4}
 .dailylog-timer-meta{font-size:11px;color:var(--text2);margin-top:4px}
 .dailylog-timer-elapsed{font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0}
-.dailylog-timer-stop{flex-shrink:0}
+.dailylog-timer-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:stretch}
+.dailylog-timer-actions .btn{white-space:nowrap}
+.dailylog-timer-card.paused{border-color:rgba(255,184,48,.35);background:rgba(255,184,48,.04)}
+.dailylog-timer-paused{font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.06em}
 .act-timer-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .act-timer-hint{font-size:11px;color:var(--text3);line-height:1.45;flex:1;min-width:180px}
 .act-start-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}

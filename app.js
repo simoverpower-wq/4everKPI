@@ -1,4 +1,4 @@
-const APP_VER='20260527.67';
+const APP_VER='20260527.68';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -2598,7 +2598,7 @@ function isOutcomesTableMissing(err){
 function localTimersKey(){return'4k_act_timers';}
 function localOutcomesKey(){return'4k_member_outcomes';}
 function persistTimersLocal(){lss(localTimersKey(),activityTimers);}
-function loadTimersFromLocal(){activityTimers=ls(localTimersKey())||[];}
+function loadTimersFromLocal(){activityTimers=(ls(localTimersKey())||[]).map(normalizeTimerRow);}
 async function loadActivityTimers(){
   if(!cu){activityTimers=[];return;}
   if(!sb){loadTimersFromLocal();return;}
@@ -2611,14 +2611,34 @@ async function loadActivityTimers(){
       return;
     }
     timersTableOk=true;
-    activityTimers=r.data||[];
+    activityTimers=(r.data||[]).map(normalizeTimerRow);
     persistTimersLocal();
   }catch(e){console.warn('[4KPI] loadActivityTimers',e);loadTimersFromLocal();}
+  activityTimers.forEach(normalizeTimerRow);
 }
+function timerStatus(t){return t&&t.status==='paused'?'paused':'running';}
 function timerElapsedMs(t){
+  var acc=parseInt(t.accumulated_ms,10)||0;
+  if(timerStatus(t)==='paused')return acc;
   var s=parseDT(t.started_at);
-  if(!s)return 0;
-  return Math.max(0,Date.now()-s.getTime());
+  if(!s)return acc;
+  return acc+Math.max(0,Date.now()-s.getTime());
+}
+function normalizeTimerRow(t){
+  if(!t)return t;
+  if(t.accumulated_ms==null)t.accumulated_ms=0;
+  if(!t.status)t.status='running';
+  return t;
+}
+async function syncTimerToDb(t){
+  if(!sb||timersTableOk===false||!t||!t.id)return;
+  try{
+    await sb.from('activity_timers').update({
+      accumulated_ms:t.accumulated_ms||0,
+      status:t.status||'running',
+      started_at:t.started_at
+    }).eq('id',t.id);
+  }catch(e){console.warn('[4KPI] syncTimerToDb',e);}
 }
 function formatTimerElapsed(ms){
   var sec=Math.floor(ms/1000),m=Math.floor(sec/60),h=Math.floor(m/60);
@@ -2628,9 +2648,15 @@ function formatTimerElapsed(ms){
   return sec+'s';
 }
 function ensureTimerTick(){
-  if(timerTickHandle)return;
+  if(timerTickHandle){clearInterval(timerTickHandle);timerTickHandle=null;}
+  var anyRunning=activityTimers.some(function(t){return timerStatus(t)==='running';});
+  if(!anyRunning)return;
   timerTickHandle=setInterval(function(){
-    if(!activityTimers.length){clearInterval(timerTickHandle);timerTickHandle=null;return;}
+    if(!activityTimers.some(function(t){return timerStatus(t)==='running';})){
+      clearInterval(timerTickHandle);timerTickHandle=null;
+      if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))renderActivityTimersBar();
+      return;
+    }
     if(el('page-dailylog')&&el('page-dailylog').classList.contains('active'))renderActivityTimersBar();
   },1000);
 }
@@ -2648,6 +2674,8 @@ async function startActivityTimer(){
     category:category,
     categories:cats.length?cats:null,
     started_at:nowISO(),
+    accumulated_ms:0,
+    status:'running',
     log_date:logDate
   };
   var row=null;
@@ -2663,21 +2691,54 @@ async function startActivityTimer(){
       }
     }catch(e){console.warn('[4KPI] startActivityTimer',e);}
   }
-  if(!row)row=Object.assign({},payload,{id:genActId(),created_at:nowISO()});
+  if(!row)row=Object.assign({},payload,{id:genActId(),created_at:nowISO(),accumulated_ms:0,status:'running'});
+  normalizeTimerRow(row);
   activityTimers.push(row);
   persistTimersLocal();
   renderActivityTimersBar();
   ensureTimerTick();
   toast('Timer started ✓');
 }
-async function stopActivityTimer(timerId){
+async function pauseActivityTimer(timerId){
   if(!cu||!timerId)return;
   var t=activityTimers.find(function(x){return String(x.id)===String(timerId);});
   if(!t){toast('Timer not found','error');return;}
+  if(timerStatus(t)==='paused'){toast('Already paused — tap Resume','error');return;}
+  t.accumulated_ms=timerElapsedMs(t);
+  t.status='paused';
+  await syncTimerToDb(t);
+  persistTimersLocal();
+  renderActivityTimersBar();
+  ensureTimerTick();
+  toast('Timer paused — tap Resume to continue');
+}
+async function resumeActivityTimer(timerId){
+  if(!cu||!timerId)return;
+  var t=activityTimers.find(function(x){return String(x.id)===String(timerId);});
+  if(!t){toast('Timer not found','error');return;}
+  if(timerStatus(t)==='running'){toast('Timer is already running','error');return;}
+  t.started_at=nowISO();
+  t.status='running';
+  await syncTimerToDb(t);
+  persistTimersLocal();
+  renderActivityTimersBar();
+  ensureTimerTick();
+  toast('Timer resumed ✓');
+}
+async function logActivityTimer(timerId){
+  if(!cu||!timerId)return;
+  var t=activityTimers.find(function(x){return String(x.id)===String(timerId);});
+  if(!t){toast('Timer not found','error');return;}
+  var totalMs=timerElapsedMs(t);
+  var mins=Math.max(1,Math.round(totalMs/60000));
   var started=parseDT(t.started_at);
-  if(!started){toast('Invalid timer','error');return;}
   var ended=new Date();
-  var mins=Math.max(1,Math.round((ended-started)/60000));
+  if(timerStatus(t)==='paused'&&t.accumulated_ms){
+    ended=new Date();
+    started=new Date(ended.getTime()-totalMs);
+  }else if(started){
+    ended=new Date(started.getTime()+totalMs);
+  }
   var cats=entryCategories(t);
   var payload={
     member_id:t.member_id,
@@ -2687,7 +2748,7 @@ async function stopActivityTimer(timerId){
     category:t.category||(cats.length?cats.join(', '):null),
     categories:cats.length?cats:null,
     log_date:normalizeLogDate(t.log_date)||dateInputStr(dailyLogDate),
-    started_at:t.started_at,
+    started_at:started?started.toISOString():t.started_at,
     ended_at:ended.toISOString(),
     entry_source:'timer',
     updated_at:nowISO()
@@ -2713,18 +2774,29 @@ async function stopActivityTimer(timerId){
   toast('Logged '+formatTimeShort(mins)+' ✓');
   rDailyLog();
 }
+async function stopActivityTimer(timerId){return logActivityTimer(timerId);}
 function renderActivityTimersBar(){
   var box=el('dailyLogTimers');if(!box)return;
   if(!activityTimers.length){box.hidden=true;box.innerHTML='';return;}
   box.hidden=false;
+  var running=0;
   var cards=activityTimers.map(function(t){
+    normalizeTimerRow(t);
     var m=members.find(function(x){return String(x.id)===String(t.member_id);});
     var name=m?m.name:'Member';
+    var paused=timerStatus(t)==='paused';
+    if(!paused)running++;
     var elapsed=formatTimerElapsed(timerElapsedMs(t));
     var cats=entryCategories(t);
-    return'<div class="dailylog-timer-card"><div class="dailylog-timer-card-main"><div class="dailylog-timer-member">'+esc(name)+'</div><div class="dailylog-timer-task">'+esc(condenseActivityDescription(t.description))+'</div><div class="dailylog-timer-meta">'+(cats.length?esc(cats.join(', '))+' · ':'')+'Started '+esc(fmtClock(parseDT(t.started_at)))+'</div></div><div class="dailylog-timer-elapsed">'+esc(elapsed)+'</div><button type="button" class="btn sm p dailylog-timer-stop" onclick="stopActivityTimer(\''+t.id+'\')">Stop</button></div>';
+    var statusLbl=paused?'<span class="dailylog-timer-paused">Paused</span> · ':'';
+    var btns=paused
+      ?'<button type="button" class="btn sm" onclick="resumeActivityTimer(\''+t.id+'\')">Resume</button><button type="button" class="btn sm p" onclick="logActivityTimer(\''+t.id+'\')">Log time</button>'
+      :'<button type="button" class="btn sm" onclick="pauseActivityTimer(\''+t.id+'\')">Pause</button><button type="button" class="btn sm p" onclick="logActivityTimer(\''+t.id+'\')">Log time</button>';
+    return'<div class="dailylog-timer-card'+(paused?' paused':'')+'"><div class="dailylog-timer-card-main"><div class="dailylog-timer-member">'+esc(name)+'</div><div class="dailylog-timer-task">'+esc(fullActivityDescription(t.description))+'</div><div class="dailylog-timer-meta">'+statusLbl+(cats.length?esc(cats.join(', '))+' · ':'')+(paused?'Saved ':'Started ')+esc(fmtClock(parseDT(t.started_at)))+'</div></div><div class="dailylog-timer-elapsed">'+esc(elapsed)+'</div><div class="dailylog-timer-actions">'+btns+'</div></div>';
   }).join('');
-  box.innerHTML='<div class="dailylog-timers-title">Running timers ('+activityTimers.length+')</div><div class="dailylog-timer-cards">'+cards+'</div>';
+  var title=running?'Active timers ('+running+')':'Timers ('+activityTimers.length+')';
+  if(running<activityTimers.length)title+=' · '+(activityTimers.length-running)+' paused';
+  box.innerHTML='<div class="dailylog-timers-title">'+title+'</div><div class="dailylog-timer-cards">'+cards+'</div>';
 }
 async function loadMemberOutcomes(){
   if(!cu){memberOutcomes=[];return;}
@@ -2847,18 +2919,38 @@ function condenseActivityLine(line){
   if(s.length>100)s=s.slice(0,97).trim()+'…';
   return s;
 }
+function fullActivityDescription(desc){
+  return(desc||'').trim().replace(/\s*\n+\s*/g,' ').replace(/\s+/g,' ').trim();
+}
 function condenseActivityDescription(desc){
   var lines=(desc||'').trim().split(/\n+/).map(function(l){return l.trim();}).filter(Boolean);
   if(!lines.length)return'';
   if(lines.length===1)return condenseActivityLine(lines[0]);
   return lines.map(condenseActivityLine).filter(Boolean).join(' · ');
 }
+function formatExportTimeRange(e){
+  var start=e.started_at?parseDT(e.started_at):null;
+  var end=e.ended_at?parseDT(e.ended_at):null;
+  if(start&&end)return fmtClock(start)+'–'+fmtClock(end);
+  if(start&&e.time_minutes){
+    var endEst=new Date(start.getTime()+e.time_minutes*60000);
+    return fmtClock(start)+'–'+fmtClock(endEst);
+  }
+  if(e.time_spent&&String(e.time_spent).trim())return String(e.time_spent).trim();
+  return formatTimeShort(e.time_minutes)||'';
+}
+function formatExportCategorySuffix(e){
+  var cats=entryCategories(e);
+  if(!cats.length)return '';
+  return ' — ['+cats.map(function(c){return String(c).toUpperCase();}).join(', ')+']';
+}
 function formatActivityExportLine(e){
-  var desc=condenseActivityDescription(e.description),time=activityTimeLabel(e),cats=entryCategories(e);
-  var suffix='';
-  if(time)suffix+=' — '+time;
-  if(cats.length)suffix+=' ['+cats.join(', ')+']';
-  return(desc||'Activity')+suffix;
+  var desc=fullActivityDescription(e.description)||'Activity';
+  var time=formatExportTimeRange(e);
+  var line=desc;
+  if(time)line+=' — '+time;
+  line+=formatExportCategorySuffix(e);
+  return line;
 }
 function formatDailyLogExportSummary(entries,refDate){
   var d=refDate||dailyLogDate||new Date();
@@ -2867,15 +2959,10 @@ function formatDailyLogExportSummary(entries,refDate){
   var lines=['Daily log — '+label,entries.length+' entr'+(entries.length===1?'y':'ies')+(totalMins?' · '+formatTimeShort(totalMins)+' total':'')];
   lines.push('');
   entries.slice().reverse().forEach(function(e){
-    var desc=condenseActivityDescription(e.description);
-    var time=activityTimeLabel(e);
-    var cats=entryCategories(e);
-    var head=cats.length?cats.join(', '):'Activity';
-    var line='• '+head;
-    if(time)line+=' ('+time+')';
-    if(desc)line+=': '+desc;
-    lines.push(line);
+    lines.push('• '+formatActivityExportLine(e));
+    lines.push('');
   });
+  while(lines.length&&lines[lines.length-1]==='')lines.pop();
   return lines.join('\n');
 }
 function activityForMemberDay(mid,d){
@@ -5061,6 +5148,9 @@ window.saveMemberOutcome=saveMemberOutcome;
 window.deleteMemberOutcome=deleteMemberOutcome;
 window.startActivityTimer=startActivityTimer;
 window.stopActivityTimer=stopActivityTimer;
+window.pauseActivityTimer=pauseActivityTimer;
+window.resumeActivityTimer=resumeActivityTimer;
+window.logActivityTimer=logActivityTimer;
 window.setActStartNow=setActStartNow;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
