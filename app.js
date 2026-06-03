@@ -1,4 +1,4 @@
-const APP_VER='20260527.59';
+const APP_VER='20260527.60';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1079,35 +1079,57 @@ function el(id){return document.getElementById(id);}
 function qs(sel,ctx){return(ctx||document).querySelector(sel);}
 function qsa(sel,ctx){return(ctx||document).querySelectorAll(sel);}
 
-// LOGIN
+// LOGIN — everyone with a name can sign in; inactive only affects KPI tracking after login
 function loginVisibleMembers(list){
-  return(list||[]).filter(function(m){return !isInactiveMember(m);});
+  return(list||[]).filter(function(m){return m&&m.name;});
+}
+function loginLoadErrorMessage(err){
+  if(!sb)return'Could not connect to the database. Check your internet connection and refresh.';
+  if(err&&(err.message||err.code))return'Could not load team: '+(err.message||err.code)+'. Refresh or try again.';
+  return'Could not load team from the database. Refresh the page.';
 }
 async function initLogin(){
-  if(!sb){console.error('[4KPI] Cannot load login — Supabase client missing');return;}
+  var grid=el('lgrid');
+  if(!sb){
+    console.error('[4KPI] Cannot load login — Supabase client missing');
+    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(null))+'</div>';
+    return;
+  }
   var savedAccent=ls('4k_accent_theme');
   if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
   logKPI('initLogin start');
-  var r=await sb.from('members').select('*').order('name');
-  sbErr('members (login)',r);
-  members=r.data||[];
-  memberAccountTotal=members.length;
-  logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
-  await loadSettings();
-  setupLoginSearch();
-  renderLG(loginVisibleMembers(members));
-  var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
+  try{
+    var r=await sb.from('members').select('*').order('name');
+    if(sbErr('members (login)',r)&&grid){grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(r.error))+'</div>';return;}
+    members=r.data||[];
+    memberAccountTotal=members.length;
+    logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
+    await loadSettings();
+    syncInactiveMembersFromSettings();
+    setupLoginSearch();
+    renderLG(loginVisibleMembers(members));
+    var sub=el('login-sub');if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
+  }catch(e){
+    console.error('[4KPI] initLogin failed',e);
+    if(grid)grid.innerHTML='<div class="login-empty">'+esc(loginLoadErrorMessage(e))+'</div>';
+  }
 }
 
 function renderLG(list){
-  list=sortByOrder(list,'login');
+  var grid=el('lgrid');
+  if(!grid)return;
+  list=sortByOrder(list||[],'login');
+  if(!list.length){
+    grid.innerHTML='<div class="login-empty">'+esc(members.length?'No team names found. Add members in Supabase or ask an admin.':loginLoadErrorMessage(null))+'</div>';
+    return;
+  }
   var admins=list.filter(function(m){return m.is_admin;});
   var team=list.filter(function(m){return !m.is_admin;});
   var pi='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.4;flex-shrink:0"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
   var drag=loginEditMode?'<span class="drag-hint">⠿</span>':'';
   var h='';
   if(loginEditMode)h+='<div style="font-size:11px;color:var(--amber);text-align:center;margin-bottom:10px">Drag names to reorder · order saves automatically</div>';
-  function bub(m,extra){return'<button class="login-bubble mbtn'+extra+'" draggable="'+(loginEditMode?'true':'false')+'" data-id="'+m.id+'" data-name="'+m.name+'">'+drag+pi+m.name+'</button>';}
+  function bub(m,extra){var inactive=isInactiveMember(m)?' login-bubble-inactive':'';return'<button type="button" class="login-bubble mbtn'+extra+inactive+'" draggable="'+(loginEditMode?'true':'false')+'" data-id="'+m.id+'" data-name="'+esc(m.name)+'">'+drag+pi+esc(m.name)+'</button>';}
   if(admins.length){
     h+='<div class="login-section"><div class="ls-line"></div><span class="ls-label">Admins</span><div class="ls-line"></div></div>';
     h+='<div class="login-grid-unified">';
@@ -1120,8 +1142,8 @@ function renderLG(list){
     team.forEach(function(m){h+=bub(m,' team');});
     h+='</div>';
   }
-  el('lgrid').innerHTML=h;
-  qsa('.mbtn').forEach(function(btn){
+  grid.innerHTML=h;
+  qsa('.mbtn',grid).forEach(function(btn){
     if(loginEditMode){
       btn.onclick=function(e){e.preventDefault();};
       btn.ondragstart=function(){dragLoginId=this.dataset.id;this.classList.add('dragging');};
@@ -1155,11 +1177,11 @@ function filterM(){var q=el('msearch').value.toLowerCase();var pool=loginVisible
 function setupLoginSearch(){
   var ms=el('msearch');if(!ms)return;
   ms.value='';
+  ms.removeAttribute('readonly');
   ms.setAttribute('autocomplete','off');
   if(ms.dataset.bound)return;
   ms.dataset.bound='1';
-  ms.addEventListener('focus',function(){ms.removeAttribute('readonly');});
-  ms.addEventListener('blur',function(){if(!ms.value.trim())ms.setAttribute('readonly','readonly');});
+  ms.addEventListener('input',filterM);
 }
 
 function syncTaskDescUI(){
