@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.62';
+  var V='20260527.63';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.62">
+<link rel="stylesheet" href="style.css?v=20260527.63">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -515,6 +515,60 @@
 </div>
 <div class="help-float" id="helpFloat"></div>
 <div class="toast" id="toast"></div>
-<script src="app.js?v=20260527.62"></script>
+<script>
+(function(){
+  var U='https://wqtenvjtuxvdoaechyjh.supabase.co',K='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
+  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+  function renderBootRoster(full){
+    var g=document.getElementById('lgrid');if(!g)return;
+    full=full||window.__4K_BOOT_MEMBERS_FULL||[];
+    var pi='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.4;flex-shrink:0"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+    var h='',qEl=document.getElementById('msearch'),q=qEl?(qEl.value||'').trim().toLowerCase():'';
+    var show=q?full.filter(function(m){return m.name&&String(m.name).toLowerCase().indexOf(q)>=0;}):full;
+    var admins=show.filter(function(m){return m&&m.name&&m.is_admin;});
+    var team=show.filter(function(m){return m&&m.name&&!m.is_admin;});
+    function sect(label,rows,cls){
+      if(!rows.length)return;
+      h+='<div class="login-section"><div class="ls-line"></div><span class="ls-label">'+label+'</span><div class="ls-line"></div></div><div class="login-grid-unified">';
+      rows.forEach(function(m){h+='<button type="button" class="login-bubble mbtn'+cls+'" data-id="'+m.id+'" data-name="'+esc(m.name)+'">'+pi+esc(m.name)+'</button>';});
+      h+='</div>';
+    }
+    sect('Admins',admins,'');
+    sect('Team Members',team,' team');
+    if(!h)h='<div class="login-empty">'+(q?'No names match “'+esc(q)+'”. <button type="button" class="login-retry-btn" onclick="document.getElementById(\'msearch\').value=\'\';window.__4K_BOOT_RENDER&&window.__4K_BOOT_RENDER()">Show everyone</button>':'No team members found.')+'</div>';
+    g.innerHTML=h;
+    g.dataset.boot='1';
+    window.__4K_BOOT_MEMBERS=full;
+    window.__4K_BOOT_RENDER=function(){renderBootRoster(window.__4K_BOOT_MEMBERS_FULL);};
+    var st=document.getElementById('loginStatus');
+    if(st&&window.__4K_BOOT_MEMBERS_FULL)st.textContent=window.__4K_BOOT_MEMBERS_FULL.length+' team members — tap your name';
+    g.querySelectorAll('.mbtn').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        if(typeof window.selM==='function')window.selM(btn.dataset.id,btn.dataset.name);
+      });
+    });
+  }
+  function bootLogin(){
+    var g=document.getElementById('lgrid');if(!g||g.dataset.boot==='1')return;
+    g.innerHTML='<div class="login-empty login-loading">Loading your team…</div>';
+    fetch(U+'/rest/v1/members?select=*&order=name',{headers:{'apikey':K,'Authorization':'Bearer '+K,'Accept':'application/json'},cache:'no-store'})
+      .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+      .then(function(data){
+        if(!Array.isArray(data)||!data.length)throw new Error('No members returned');
+        window.__4K_BOOT_MEMBERS_FULL=data;
+        renderBootRoster(data);
+      })
+      .catch(function(err){
+        console.error('[4KPI boot login]',err);
+        if(g)g.innerHTML='<div class="login-empty">Could not load team from Supabase. Allow supabase.co and refresh. <button type="button" class="login-retry-btn" onclick="location.reload()">Retry</button></div>';
+      });
+  }
+  var ms=document.getElementById('msearch');
+  if(ms)ms.addEventListener('input',function(){if(window.filterM)window.filterM();else if(window.__4K_BOOT_RENDER)window.__4K_BOOT_RENDER();});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootLogin);
+  else bootLogin();
+})();
+</script>
+<script src="app.js?v=20260527.63"></script>
 </body>
 </html>

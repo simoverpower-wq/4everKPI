@@ -1,4 +1,4 @@
-const APP_VER='20260527.62';
+const APP_VER='20260527.63';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1163,7 +1163,51 @@ function clearLoginSearch(){
   filterM();
   if(ms)ms.focus();
 }
+function adoptBootLoginRoster(){
+  var grid=el('lgrid');
+  if(!grid||grid.dataset.boot!=='1'||!window.__4K_BOOT_MEMBERS_FULL||!window.__4K_BOOT_MEMBERS_FULL.length)return false;
+  members=window.__4K_BOOT_MEMBERS_FULL;
+  memberAccountTotal=members.length;
+  loginMembersReady=true;
+  if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
+  setupLoginSearch();
+  bindLoginButtons(grid);
+  updateLoginStatus();
+  loadSettings().then(function(){
+    syncInactiveMembersFromSettings();
+    if(el('msearch')&&(el('msearch').value||'').trim())filterM();
+    else renderLG(loginVisibleMembers(members));
+  }).catch(function(e){console.error('[4KPI] loadSettings (login)',e);});
+  loadLoginMembers().then(function(data){
+    if(data&&data.length){members=data;memberAccountTotal=members.length;window.__4K_BOOT_MEMBERS_FULL=data;cacheLoginRoster();}
+    if(el('msearch')&&(el('msearch').value||'').trim())filterM();
+    else renderLG(loginVisibleMembers(members));
+    updateLoginStatus();
+  }).catch(function(e){console.warn('[4KPI] login refresh',e);});
+  setTimeout(function(){
+    var sub=el('login-sub');
+    if(sub&&!sub.querySelector('.help-wrap'))sub.insertAdjacentHTML('beforeend',' '+hBtn('login'));
+  },0);
+  return true;
+}
+function bindLoginButtons(grid){
+  if(!grid)return;
+  qsa('.mbtn',grid).forEach(function(btn){
+    if(loginEditMode){
+      btn.onclick=function(e){e.preventDefault();};
+      btn.ondragstart=function(){dragLoginId=this.dataset.id;this.classList.add('dragging');};
+      btn.ondragend=function(){this.classList.remove('dragging');dragLoginId=null;};
+      btn.ondragover=function(e){e.preventDefault();};
+      btn.ondrop=function(e){e.preventDefault();dropLoginOrder(this.dataset.id);};
+    }else{
+      btn.onclick=function(){selM(this.dataset.id,this.dataset.name);};
+    }
+  });
+}
 async function initLogin(){
+  if(adoptBootLoginRoster())return;
+  await new Promise(function(r){setTimeout(r,400);});
+  if(adoptBootLoginRoster())return;
   loginMembersReady=false;
   if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
   var grid=el('lgrid');
@@ -1227,18 +1271,13 @@ function renderLG(list){
     team.forEach(function(m){h+=bub(m,' team');});
     h+='</div>';
   }
+  if(!h&&list.length){
+    h='<div class="login-grid-unified">';
+    list.forEach(function(m){h+=bub(m,m.is_admin?'':' team');});
+    h+='</div>';
+  }
   grid.innerHTML=h;
-  qsa('.mbtn',grid).forEach(function(btn){
-    if(loginEditMode){
-      btn.onclick=function(e){e.preventDefault();};
-      btn.ondragstart=function(){dragLoginId=this.dataset.id;this.classList.add('dragging');};
-      btn.ondragend=function(){this.classList.remove('dragging');dragLoginId=null;};
-      btn.ondragover=function(e){e.preventDefault();};
-      btn.ondrop=function(e){e.preventDefault();dropLoginOrder(this.dataset.id);};
-    }else{
-      btn.addEventListener('click',function(){selM(this.dataset.id,this.dataset.name);});
-    }
-  });
+  bindLoginButtons(grid);
 }
 function dropLoginOrder(targetId){
   if(!dragLoginId||dragLoginId===targetId)return;
@@ -1258,11 +1297,14 @@ function toggleLoginEdit(){
 }
 
 function filterM(){
-  if(!loginMembersReady)return;
   var ms=el('msearch'),q=ms?(ms.value||'').trim().toLowerCase():'';
+  if(!loginMembersReady){
+    if(window.__4K_BOOT_RENDER&&window.__4K_BOOT_MEMBERS_FULL)window.__4K_BOOT_RENDER();
+    return;
+  }
   var pool=loginVisibleMembers(members);
   if(!q){renderLG(pool);return;}
-  renderLG(pool.filter(function(m){return m.name&&String(m.name).toLowerCase().includes(q);}));
+  renderLG(pool.filter(function(m){return m.name&&String(m.name).toLowerCase().indexOf(q)>=0;}));
 }
 
 function setupLoginSearch(){
@@ -4558,10 +4600,7 @@ var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target=
 
 console.log('[4KPI] app version',APP_VER);
 if(typeof window!=='undefined'&&window.__4K_EXPECTED_VER&&window.__4K_EXPECTED_VER!==APP_VER){
-  try{
-    var mk='4k_js_mismatch_'+window.__4K_EXPECTED_VER;
-    if(!sessionStorage.getItem(mk)){sessionStorage.setItem(mk,'1');location.reload();}
-  }catch(e){}
+  console.warn('[4KPI] HTML/JS version mismatch — hard refresh (Cmd+Shift+R). HTML:',window.__4K_EXPECTED_VER,'JS:',APP_VER);
 }
 window.gp=gp;
 window.openT=openT;
