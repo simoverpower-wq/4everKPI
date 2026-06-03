@@ -1,4 +1,4 @@
-const APP_VER='20260527.63';
+const APP_VER='20260527.64';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -1131,6 +1131,7 @@ function finishLoginRoster(){
   if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
   cacheLoginRoster();
   setupLoginSearch();
+  setupLoginPin();
   var msearch=el('msearch');
   if(msearch&&msearch.value.trim())filterM();
   else renderLG(loginVisibleMembers(members));
@@ -1171,6 +1172,7 @@ function adoptBootLoginRoster(){
   loginMembersReady=true;
   if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
   setupLoginSearch();
+  setupLoginPin();
   bindLoginButtons(grid);
   updateLoginStatus();
   loadSettings().then(function(){
@@ -1211,7 +1213,7 @@ async function initLogin(){
   loginMembersReady=false;
   if(loginWatchTimer){clearTimeout(loginWatchTimer);loginWatchTimer=null;}
   var grid=el('lgrid');
-  if(grid)grid.innerHTML='<div class="login-empty login-loading">Loading your team…</div>';
+  if(grid&&grid.dataset.boot!=='1')grid.innerHTML='<div class="login-empty login-loading">Loading your team…</div>';
   updateLoginStatus();
   loginWatchTimer=setTimeout(loginStuckWatchdog,12000);
   try{
@@ -1219,6 +1221,7 @@ async function initLogin(){
     if(savedAccent&&ACCENT_THEMES[savedAccent])applyAccentTheme(savedAccent,false);
     logKPI('initLogin start');
     members=await loadLoginMembers();
+    window.__4K_BOOT_MEMBERS_FULL=members;
     memberAccountTotal=members.length;
     logKPI('initLogin members loaded',{count:members.length,memberAccountTotal:memberAccountTotal});
     finishLoginRoster();
@@ -1316,6 +1319,12 @@ function setupLoginSearch(){
   ms.dataset.bound='1';
   ms.addEventListener('input',filterM);
 }
+function setupLoginPin(){
+  var btn=el('loginEnterBtn');
+  if(!btn||btn.dataset.bound)return;
+  btn.dataset.bound='1';
+  btn.addEventListener('click',function(e){e.preventDefault();doLogin();});
+}
 
 function syncTaskDescUI(){
   var body=el('descBody'),block=el('taskDescBlock');
@@ -1324,33 +1333,66 @@ function syncTaskDescUI(){
 }
 function togTaskDesc(){syncTaskDescUI();}
 
-function selM(id,name){
-  selPin={id:id,name:name};
-  qsa('.mbtn').forEach(function(b){b.classList.toggle('sel',b.dataset.id===id);});
-  el('pinlbl').textContent=name+' — enter PIN';
-  el('step2').classList.add('show');
-  ['p0','p1','p2','p3'].forEach(function(i){el(i).value='';});
-  el('lerr').textContent='';
-  el('p0').focus();
+function ensureMembersForLogin(){
+  if(members&&members.length)return members;
+  if(window.__4K_BOOT_MEMBERS_FULL&&window.__4K_BOOT_MEMBERS_FULL.length){
+    members=window.__4K_BOOT_MEMBERS_FULL;
+    memberAccountTotal=members.length;
+    return members;
+  }
+  var cache=ls('4k_login_roster');
+  if(cache&&cache.members&&cache.members.length){
+    members=cache.members;
+    memberAccountTotal=members.length;
+    return members;
+  }
+  return members||[];
+}
+function findLoginMember(id){
+  if(id==null||id==='')return null;
+  var pool=ensureMembersForLogin(),sid=String(id);
+  return pool.find(function(x){return x&&String(x.id)===sid;})||null;
 }
 
-function backSel(){el('step2').classList.remove('show');selPin=null;}
+function selM(id,name){
+  ensureMembersForLogin();
+  selPin={id:String(id),name:name||''};
+  qsa('.mbtn').forEach(function(b){b.classList.toggle('sel',String(b.dataset.id)===String(id));});
+  var lbl=el('pinlbl'),s2=el('step2');
+  if(lbl)lbl.textContent=(name||'Member')+' — enter PIN';
+  if(s2)s2.classList.add('show');
+  ['p0','p1','p2','p3'].forEach(function(i){var p=el(i);if(p)p.value='';});
+  var err=el('lerr');if(err)err.textContent='';
+  var p0=el('p0');if(p0)p0.focus();
+}
+
+function backSel(){var s2=el('step2');if(s2)s2.classList.remove('show');selPin=null;}
 function pnext(i){if(el('p'+i).value&&i<3)el('p'+(i+1)).focus();}
 function pkey(e,i){if(e.key==='Backspace'&&!el('p'+i).value&&i>0)el('p'+(i-1)).focus();if(e.key==='Enter')doLogin();}
-function getPin(){return['p0','p1','p2','p3'].map(function(i){return el(i).value;}).join('');}
+function getPin(){return['p0','p1','p2','p3'].map(function(i){var p=el(i);return p?p.value:'';}).join('');}
 
 function doLogin(){
-  if(!selPin){el('lerr').textContent='Select your name first';return;}
+  var err=el('lerr');
+  if(!selPin){if(err)err.textContent='Select your name first';return;}
   var pin=getPin();
-  var m=members.find(function(x){return x.id===selPin.id;});
-  if(!m)return;
-  if(m.pin&&m.pin!==pin){
-    el('lerr').textContent='Wrong PIN — try again';
-    ['p0','p1','p2','p3'].forEach(function(i){el(i).value='';});
-    el('p0').focus();return;
+  if(pin.length<4){if(err)err.textContent='Enter all 4 PIN digits';return;}
+  var m=findLoginMember(selPin.id);
+  if(!m){
+    if(err)err.textContent='Still loading your profile — wait a second and tap Enter again';
+    ensureMembersForLogin();
+    m=findLoginMember(selPin.id);
+    if(!m){if(err)err.textContent='Could not find that team member. Tap Back and select your name again.';return;}
+  }
+  var expected=String(m.pin||'');
+  if(expected&&expected!==pin){
+    if(err)err.textContent='Wrong PIN — try again';
+    ['p0','p1','p2','p3'].forEach(function(i){var p=el(i);if(p)p.value='';});
+    var p0=el('p0');if(p0)p0.focus();
+    return;
   }
   cu={id:m.id,name:m.name,isAdmin:!!m.is_admin,color:m.color||'teal'};
   console.log('[4KPI] login ok',{id:cu.id,name:cu.name,isAdmin:cu.isAdmin});
+  if(err)err.textContent='';
   enterApp();
 }
 
@@ -4663,6 +4705,11 @@ window.pickAccentTheme=pickAccentTheme;
 window.filterM=filterM;
 window.clearLoginSearch=clearLoginSearch;
 window.retryLoginLoad=retryLoginLoad;
+window.selM=selM;
+window.backSel=backSel;
+window.doLogin=doLogin;
+window.pnext=pnext;
+window.pkey=pkey;
 try{var _bootAccent=ls('4k_accent_theme');if(_bootAccent&&ACCENT_THEMES[_bootAccent])applyAccentTheme(_bootAccent,false);}catch(e){}
 initLogin();
 initSidebar();

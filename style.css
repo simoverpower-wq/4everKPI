@@ -40,7 +40,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;fon
 .login-section{grid-column:1/-1}
 .login-grid-unified{width:100%;margin-bottom:14px}
 .mbtn{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:11px;cursor:pointer;color:var(--text);font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .15s;text-align:center}.mbtn:hover,.mbtn.sel{border-color:var(--accent);color:var(--accent);background:rgba(var(--accent-rgb),.06)}
-.pin-sec{display:none;margin-top:10px}.pin-sec.show{display:block}
+.pin-sec{display:none;margin-top:10px;position:relative;z-index:5}.pin-sec.show{display:block}
+#loginEnterBtn{position:relative;z-index:6}
 .pin-lbl{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;text-align:center}
 .pboxes{display:flex;gap:8px;justify-content:center;margin-bottom:12px}
 .pbox{width:46px;height:52px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-size:22px;text-align:center;color:var(--text);font-family:'DM Sans',sans-serif;outline:none}.pbox:focus{border-color:var(--accent)}

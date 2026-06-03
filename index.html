@@ -7,7 +7,7 @@
 <title>4everKPI</title>
 <script>
 (function(){
-  var V='20260527.63';
+  var V='20260527.64';
   window.__4K_EXPECTED_VER=V;
   try{
     var k='4k_html_ver',p=localStorage.getItem(k);
@@ -24,7 +24,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.8"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260527.63">
+<link rel="stylesheet" href="style.css?v=20260527.64">
 </head>
 <body>
 <div class="login-screen" id="LS">
@@ -69,7 +69,7 @@
       <button class="back-btn" onclick="backSel()">← Back</button>
       <div class="pin-lbl" id="pinlbl">Enter your PIN</div>
       <div class="pboxes"><input class="pbox" type="password" maxlength="1" id="p0" oninput="pnext(0)" onkeydown="pkey(event,0)"><input class="pbox" type="password" maxlength="1" id="p1" oninput="pnext(1)" onkeydown="pkey(event,1)"><input class="pbox" type="password" maxlength="1" id="p2" oninput="pnext(2)" onkeydown="pkey(event,2)"><input class="pbox" type="password" maxlength="1" id="p3" oninput="pnext(3)" onkeydown="pkey(event,3)"></div>
-      <button class="lbtn" onclick="doLogin()">Enter</button>
+      <button type="button" class="lbtn" id="loginEnterBtn">Enter</button>
       <div class="lerr" id="lerr"></div>
     </div>
     </div>
@@ -565,10 +565,15 @@
   }
   var ms=document.getElementById('msearch');
   if(ms)ms.addEventListener('input',function(){if(window.filterM)window.filterM();else if(window.__4K_BOOT_RENDER)window.__4K_BOOT_RENDER();});
+  var enterBtn=document.getElementById('loginEnterBtn');
+  if(enterBtn&&!enterBtn.dataset.bootBound){
+    enterBtn.dataset.bootBound='1';
+    enterBtn.addEventListener('click',function(e){e.preventDefault();if(typeof window.doLogin==='function')window.doLogin();});
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bootLogin);
   else bootLogin();
 })();
 </script>
-<script src="app.js?v=20260527.63"></script>
+<script src="app.js?v=20260527.64"></script>
 </body>
 </html>
