@@ -1,4 +1,4 @@
-const APP_VER='20260527.58';
+const APP_VER='20260527.59';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -805,12 +805,12 @@ function syncArchivedPageBanner(page){
   banner.style.display=show?'':'none';
 }
 
-function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_apresets',activityPresets);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);saveSettings();}
+function saveAll(){lss('4k_rc',RCOLS);lss('4k_cra',customRA);lss('4k_del',delBase);lss('4k_crc',customRC);lss('4k_crcr',customRCByRole);lss('4k_cm',catMeta);lss('4k_co',catOrder);lss('4k_lo',loginOrder);lss('4k_ro',rolesOrder);lss('4k_mna',memberNavAccess);lss('4k_ina',inactiveMembers);lss('4k_oid',overseerId);lss('4k_tdo',taskDayOrder);lss('4k_dsn',daySnapshots);lss('4k_ddn',dailyDayNotes);lss('4k_tdn',taskDisplayNames);lss('4k_twn',taskWorkNotesCache);lss('4k_atags',activityTags);lss('4k_apresets',activityPresets);lss('4k_dncm',displayNameColMissing);lss('4k_wncm',workNotesColMissing);saveSettings();}
 
 async function saveSettings(){
   if(!sb)return;
   try{
-    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,sn:simpleNavMode,atags:activityTags,apresets:activityPresets};
+    var data={rcols:RCOLS,cra:customRA,del:delBase,crc:customRC,crcr:customRCByRole,cm:catMeta,co:catOrder,lo:loginOrder,ro:rolesOrder,mna:memberNavAccess,ina:inactiveMembers,oid:overseerId,tdo:taskDayOrder,dsn:daySnapshots,ddn:dailyDayNotes,sn:simpleNavMode,atags:activityTags,apresets:activityPresets};
     await sb.from('settings').upsert([{key:'agency_prefs',value:data,updated_at:nowISO()}]);
   }catch(e){console.log('saveSettings err',e);}
 }
@@ -828,6 +828,7 @@ async function loadSettings(){
       if(v.oid){overseerId=v.oid;lss('4k_oid',overseerId);}
       if(v.tdo&&typeof v.tdo==='object'){taskDayOrder=v.tdo;lss('4k_tdo',taskDayOrder);}
       if(v.dsn&&typeof v.dsn==='object'){daySnapshots=v.dsn;lss('4k_dsn',daySnapshots);}
+      if(v.ddn&&typeof v.ddn==='object'){dailyDayNotes=v.ddn;lss('4k_ddn',dailyDayNotes);}
       if(v.atags&&Array.isArray(v.atags)&&v.atags.length){activityTags=v.atags;lss('4k_atags',activityTags);}
       if(v.apresets&&Array.isArray(v.apresets)&&v.apresets.length){activityPresets=v.apresets;lss('4k_apresets',activityPresets);}
     }
@@ -1040,7 +1041,8 @@ var members=[],memberAccountTotal=0,tasks=[],hist=[],charts={},cu=null,calDate=n
 var sMids=[],sRoles=[],sTTs=[],sRCs=[],sEta=null,sAct=null,selPin=null,isRec=false,recFreq=null,editOccDate=null,editScope='all',descDetailsOn=ls('4k_desc_on')===true,delTaskId=null,delOccDate=null,delScope='all';
 var pickRole=null,editCat=null,editCatNew=false,curDayT=[],lineupDate=new Date(),myTasksDate=new Date(),myTasksViewDate=new Date(),myTasksExpandedId=null,dailyLogDate=new Date(),weekViewOpen=false,pulseDate=new Date(),daySnapMemberId=null,daySnapDateKey=null,dragCat=null,dms=null,loginEditMode=false,profileFilter='all',profileMid=null,dragLoginId=null,dragRoleId=null;
 var DEFAULT_ACTIVITY_TAGS=['Recruitment','Content','Networking','Chatting','Admin','Other'];
-var activityLog=[],activityTags=ls('4k_atags')||null,activityPresets=ls('4k_apresets')||null,tagMgrOpen=false,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
+var activityLog=[],activityTags=ls('4k_atags')||null,activityPresets=ls('4k_apresets')||null,activityLogLocalOnly=false,activityLogSupabaseOk=false,activityLogLoadSeq=0,activityLogLastErr=null,activityLogTargetId=null;
+var dailyDayNotes=ls('4k_ddn')||{},lastDayNoteKey=null,dayNoteSaveTimer=null,categoryDeleteMode=false,dayNoteInputBound=false;
 var memberPrefs={},actCategories=[],actSelectedMins=null,actTimeIsCustom=false,actTimeChipsBound=false,activityComposerInited=false,selectedPresetIndices=[];
 var ACT_TIME_CHIP_MINS=[15,30,60,120,180,240];
 var ACCENT_THEMES={
@@ -1862,12 +1864,15 @@ function setActivityLogTarget(mid,opts){
   opts=opts||{};
   if(!cuIsOverseer()||!mid)return;
   if(!members.some(function(m){return String(m.id)===String(mid);})){toast('Member not found','error');return;}
+  flushDailyDayNote();
   activityLogTargetId=mid;
+  lastDayNoteKey=null;
   if(opts.silent){
     renderOverseerTeamBoard();
     renderActivityLogTargetBar();
     renderDailyLogPresets();
     syncComposerTargetLabel();
+    renderDailyDayNotes();
     return;
   }
   resetActivityComposer(false);
@@ -2405,10 +2410,88 @@ function toggleWeekView(){
 }
 function renderActCatBubbles(){
   var tags=ensureActivityTags(),wrap=el('actCatWrap');if(!wrap)return;
-  wrap.innerHTML=tags.map(function(t){
-    return'<span class="sb'+(actCategories.indexOf(t)>=0?' on':'')+'" data-act-cat="'+esc(t)+'">'+esc(t)+'</span>';
+  wrap.innerHTML=tags.map(function(t,i){
+    var on=actCategories.indexOf(t)>=0;
+    var delBtn=categoryDeleteMode?'<button type="button" class="sb-del" onclick="event.stopPropagation();removeActivityTag('+i+')" title="Delete category">×</button>':'';
+    return'<span class="sb'+(on?' on':'')+(categoryDeleteMode?' cat-delete-mode':'')+'" data-act-cat="'+esc(t)+'">'+esc(t)+delBtn+'</span>';
   }).join('');
   qsa('[data-act-cat]',wrap).forEach(function(b){b.onclick=function(){toggleActCategory(this.dataset.actCat);};});
+}
+function toggleCategoryDeleteMode(){
+  categoryDeleteMode=!categoryDeleteMode;
+  var btn=el('catMgrToggleBtn');
+  if(btn){
+    btn.textContent=categoryDeleteMode?'Done':'Delete';
+    btn.classList.toggle('on',categoryDeleteMode);
+  }
+  renderActCatBubbles();
+}
+function dailyDayNoteKey(mid,date){
+  return String(mid||'')+'|'+dateInputStr(date||dailyLogDate||new Date());
+}
+function getDailyDayNote(mid,date){
+  var k=dailyDayNoteKey(mid,date);
+  return dailyDayNotes[k]!=null?String(dailyDayNotes[k]):'';
+}
+function saveDailyDayNotesToStorage(){
+  lss('4k_ddn',dailyDayNotes);
+  saveSettings();
+}
+function saveDailyDayNoteNow(){
+  var inp=el('dailyDayNoteInput');
+  if(!inp||!cu)return;
+  var mid=getActivityLogTargetId()||cu.id;
+  var key=dailyDayNoteKey(mid);
+  dailyDayNotes[key]=inp.value;
+  saveDailyDayNotesToStorage();
+  var meta=el('dailyDayNoteMeta');
+  if(meta)meta.textContent='Saved';
+}
+function scheduleSaveDailyDayNote(){
+  var meta=el('dailyDayNoteMeta');
+  if(meta)meta.textContent='Saving…';
+  clearTimeout(dayNoteSaveTimer);
+  dayNoteSaveTimer=setTimeout(saveDailyDayNoteNow,450);
+}
+function flushDailyDayNote(){
+  clearTimeout(dayNoteSaveTimer);
+  var inp=el('dailyDayNoteInput');
+  if(!inp||!cu)return;
+  var mid=getActivityLogTargetId()||cu.id;
+  var key=dailyDayNoteKey(mid);
+  if(dailyDayNotes[key]!==inp.value)saveDailyDayNoteNow();
+}
+function bindDailyDayNoteInput(){
+  if(dayNoteInputBound)return;
+  var inp=el('dailyDayNoteInput');
+  if(!inp)return;
+  dayNoteInputBound=true;
+  inp.addEventListener('input',scheduleSaveDailyDayNote);
+  inp.addEventListener('blur',flushDailyDayNote);
+}
+function renderDailyDayNotes(){
+  var wrap=el('dailyLogDayNotes'),inp=el('dailyDayNoteInput'),lbl=el('dailyDayNoteLbl'),meta=el('dailyDayNoteMeta');
+  if(!wrap||!inp)return;
+  bindDailyDayNoteInput();
+  var mid=getActivityLogTargetId()||cu.id;
+  var tm=activityLogTargetMember();
+  var key=dailyDayNoteKey(mid);
+  if(lbl){
+    var name=tm?(isSelfMember(tm.id)?'you':tm.name.split(' ')[0]):'you';
+    lbl.textContent='Day notes — '+name;
+  }
+  if(document.activeElement!==inp&&lastDayNoteKey!==key){
+    inp.value=getDailyDayNote(mid);
+    lastDayNoteKey=key;
+    if(meta)meta.textContent=inp.value.trim()?'':'';
+  }
+}
+function getDailyDayNotePreview(mid,date,maxLen){
+  var t=getDailyDayNote(mid,date).trim();
+  if(!t)return'';
+  var line=t.split('\n').map(function(s){return s.trim();}).filter(Boolean)[0]||'';
+  if(line.length>(maxLen||48))return line.slice(0,maxLen-1)+'…';
+  return line;
 }
 function toggleActCategory(cat){
   if(!cat)return;
@@ -2682,28 +2765,7 @@ function renderThemeSwatches(){
   }).join('');
 }
 function pickAccentTheme(key){applyAccentTheme(key,true);toast('Accent updated ✓');}
-function renderTagManagerPanel(){
-  var panel=el('dailyLogTagMgr');if(!panel||panel.hidden)return;
-  var tags=ensureActivityTags();
-  var listHtml=!tags.length?'<div class="dailylog-tagmgr-empty">No categories yet — add one above.</div>':tags.map(function(t,i){
-    return'<span class="dailylog-tag-chip"><span class="dailylog-tag-chip-name">'+esc(t)+'</span><button type="button" class="tag-del-btn" onclick="removeActivityTag('+i+')" title="Delete category">×</button></span>';
-  }).join('');
-  panel.innerHTML='<div class="dailylog-tagmgr-inner"><div class="dailylog-tagmgr-title">Tap × to delete a category. Past log entries keep their labels.</div><div class="dailylog-tagmgr-list">'+listHtml+'</div><div class="dailylog-tagmgr-add"><input id="dailyLogTagNew" placeholder="New category name…"><button type="button" class="btn sm" onclick="addActivityTagFromMgr()">Add category</button></div></div>';
-}
-function toggleTagManager(forceOpen){
-  var panel=el('dailyLogTagMgr');
-  if(!panel)return;
-  if(forceOpen===true)tagMgrOpen=true;
-  else if(forceOpen===false)tagMgrOpen=false;
-  else tagMgrOpen=!tagMgrOpen;
-  panel.hidden=!tagMgrOpen;
-  if(tagMgrOpen){
-    renderTagManagerPanel();
-    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }
-}
-function addActivityTagFromMgr(){var inp=el('dailyLogTagNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){toast('Category already exists','error');return;}activityTags.push(name);saveActivityTags();inp.value='';renderActCatBubbles();renderTagManagerPanel();toast('Category added ✓');}
-function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}toggleActCategory(name);inp.value='';renderTagManagerPanel();toast('Category added ✓');}
+function addActivityTagFromModal(){var inp=el('actCatNew');if(!inp)return;var name=inp.value.trim();if(!name)return;ensureActivityTags();if(!activityTags.some(function(t){return t.toLowerCase()===name.toLowerCase();})){activityTags.push(name);saveActivityTags();}toggleActCategory(name);inp.value='';renderActCatBubbles();toast('Category added ✓');}
 function removeActivityTag(idx){
   ensureActivityTags();
   if(idx<0||idx>=activityTags.length)return;
@@ -2714,9 +2776,7 @@ function removeActivityTag(idx){
   syncPresetsAfterCategoryRemoved(removed);
   actCategories=actCategories.filter(function(c){return c!==removed;});
   renderActCatBubbles();
-  renderTagManagerPanel();
   if(el('PresetM')&&el('PresetM').classList.contains('open'))renderPresetMgrList();
-  rDailyLog();
   toast('Category deleted ✓');
 }
 function rDailyLog(){
@@ -2751,7 +2811,9 @@ function renderOverseerTeamBoard(){
       return'<li>'+esc(condenseActivityDescription(e.description))+(activityTimeLabel(e)?' <span class="otb-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</li>';
     }).join('');
     var more=entries.length>5?'<li class="otb-more">+'+(entries.length-5)+' more</li>':'';
-    return'<button type="button" class="otb-card'+active+'" onclick="setActivityLogTarget(\''+m.id+'\')"><div class="otb-card-head"><div class="otb-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="otb-card-id"><div class="otb-name">'+esc(m.name)+youBadge+'</div><div class="otb-role">'+esc(m.role||'')+'</div></div><div class="otb-hours">'+(mins?esc(formatTimeShort(mins)):'—')+'</div></div>'+(entries.length?'<ul class="otb-entries">'+lines+more+'</ul>':'<div class="otb-empty">Nothing logged yet</div>')+'</button>';
+    var notePreview=getDailyDayNotePreview(m.id,day,42);
+    var noteHtml=notePreview?'<div class="otb-note">📝 '+esc(notePreview)+'</div>':'';
+    return'<button type="button" class="otb-card'+active+'" onclick="setActivityLogTarget(\''+m.id+'\')"><div class="otb-card-head"><div class="otb-av" style="background:'+c.bg+';color:'+c.text+'">'+ini(m.name)+'</div><div class="otb-card-id"><div class="otb-name">'+esc(m.name)+youBadge+'</div><div class="otb-role">'+esc(m.role||'')+'</div></div><div class="otb-hours">'+(mins?esc(formatTimeShort(mins)):'—')+'</div></div>'+noteHtml+(entries.length?'<ul class="otb-entries">'+lines+more+'</ul>':'<div class="otb-empty">Nothing logged yet</div>')+'</button>';
   }).join('');
   box.innerHTML='<div class="otb-head"><div><div class="otb-title">Everyone\'s log</div><div class="otb-sub">'+esc(dailyLogDayLabel(day))+' · '+esc(formatTimeShort(totalTeamMins)||'0 min')+' total</div></div></div><div class="otb-grid">'+(cards||'<div class="otb-empty-all">No active team members yet.</div>')+'</div>';
 }
@@ -2775,12 +2837,12 @@ function rDailyLogInner(){
   if(el('actEid')&&!el('actEid').value&&el('actDate'))el('actDate').value=dateInputStr(dailyLogDate);
   renderOverseerTeamBoard();
   renderActivityLogTargetBar();
+  renderDailyDayNotes();
   renderTodayTotals();
   if(weekViewOpen)renderWeeklyTotals();
   renderDailyLogPresets();
   syncActivitySetupBanner();
   syncComposerTargetLabel();
-  if(tagMgrOpen)renderTagManagerPanel();
   var entries=myActivityForDay(dailyLogDate);
   var tm=activityLogTargetMember();
   var listHead='Your log';
@@ -2790,9 +2852,9 @@ function rDailyLogInner(){
     return'<div class="dailylog-entry"><div class="dailylog-entry-main dailylog-entry-tap" onclick="loadActivityForEdit(\''+e.id+'\')" title="Tap to edit"><div class="dailylog-entry-desc">'+esc(e.description)+'</div><div class="dailylog-entry-meta">'+renderEntryCategoryTags(e)+(activityTimeLabel(e)?'<span class="dailylog-time">'+esc(activityTimeLabel(e))+'</span>':'')+'</div></div><div class="dailylog-entry-actions"><button type="button" class="btn sm" onclick="event.stopPropagation();loadActivityForEdit(\''+e.id+'\')">Edit</button><button type="button" class="btn sm danger" onclick="event.stopPropagation();deleteActivity(\''+e.id+'\')">Delete</button></div></div>';
   }).join('');
 }
-function chDailyLogDay(n){dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);rDailyLog();}
-function goDailyLogToday(){dailyLogDate=new Date();rDailyLog();}
-function pickDailyLogDate(val){dailyLogDate=parseDateInput(val);rDailyLog();}
+function chDailyLogDay(n){flushDailyDayNote();dailyLogDate=dailyLogDate||new Date();dailyLogDate=new Date(dailyLogDate);dailyLogDate.setDate(dailyLogDate.getDate()+n);lastDayNoteKey=null;rDailyLog();}
+function goDailyLogToday(){flushDailyDayNote();dailyLogDate=new Date();lastDayNoteKey=null;rDailyLog();}
+function pickDailyLogDate(val){flushDailyDayNote();dailyLogDate=parseDateInput(val);lastDayNoteKey=null;rDailyLog();}
 function openActivityModal(id,preset){
   if(typeof id==='object'&&!preset){preset=id;id=null;}
   if(id)loadActivityForEdit(id);
@@ -4366,7 +4428,7 @@ async function wipeDataFallback(){
   await sb.from('settings').delete().eq('key','agency_prefs');
 }
 function resetLocalPrefs(){
-  RCOLS={};customRA={};delBase={tasks:{},rc:[],rcByRole:{}};customRC=[];customRCByRole={};catMeta={};catOrder=null;loginOrder=null;rolesOrder=null;memberNavAccess={};inactiveMembers={};overseerId=null;taskDayOrder={};daySnapshots={};
+  RCOLS={};customRA={};delBase={tasks:{},rc:[],rcByRole:{}};customRC=[];customRCByRole={};catMeta={};catOrder=null;loginOrder=null;rolesOrder=null;memberNavAccess={};inactiveMembers={};overseerId=null;taskDayOrder={};daySnapshots={};dailyDayNotes={};
   ['4k_rc','4k_cra','4k_del','4k_crc','4k_crcr','4k_cm','4k_co','4k_lo','4k_ro','4k_mna','4k_ina','4k_oid','4k_tdo','4k_trash','4k_dsn'].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
 }
 
@@ -4425,7 +4487,7 @@ window.downloadDaySummary=downloadDaySummary;
 window.chDailyLogDay=chDailyLogDay;
 window.goDailyLogToday=goDailyLogToday;
 window.pickDailyLogDate=pickDailyLogDate;
-window.toggleTagManager=toggleTagManager;
+window.toggleCategoryDeleteMode=toggleCategoryDeleteMode;
 window.addActivityTagFromModal=addActivityTagFromModal;
 window.addActivityTagFromMgr=addActivityTagFromMgr;
 window.removeActivityTag=removeActivityTag;
