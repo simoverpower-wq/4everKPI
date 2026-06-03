@@ -1,10 +1,19 @@
 -- Run once in Supabase → SQL Editor (after activity_log exists)
 -- Adds: start/end times on activity log, live timers, member outcomes (non-time metrics)
 
--- 1) Activity log: when work started / ended
+-- 1) Activity log: multi-category tags + start/end times
+ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS categories TEXT[];
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ;
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS entry_source TEXT DEFAULT 'manual';
+
+UPDATE activity_log SET categories = string_to_array(category, ', ')
+  WHERE categories IS NULL AND category IS NOT NULL AND position(',' in category) > 0;
+UPDATE activity_log SET categories = ARRAY[category]
+  WHERE categories IS NULL AND category IS NOT NULL AND category <> '';
+
+-- Refresh API schema (Supabase usually picks this up within seconds)
+NOTIFY pgrst, 'reload schema';
 
 -- 2) Running timers (multiple per operator)
 CREATE TABLE IF NOT EXISTS activity_timers (

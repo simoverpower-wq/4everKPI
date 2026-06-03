@@ -1,4 +1,4 @@
-const APP_VER='20260527.66';
+const APP_VER='20260527.67';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -2320,6 +2320,42 @@ function isActivityLogTableMissing(err){
   var msg=(err.message||'')+(err.details||'')+(err.hint||'');
   return/relation \"activity_log\" does not exist|Could not find the table 'public\.activity_log'|Could not find the table \"public\"\.\"activity_log\"|schema cache.*activity_log|does not exist.*activity_log/i.test(msg);
 }
+var activityLogExtrasDisabled=false;
+function isActivityLogColumnMissingError(err){
+  if(!err)return false;
+  var msg=(err.message||'')+(err.details||'');
+  return /schema cache/i.test(msg)&&/activity_log/i.test(msg)&&/Could not find the/i.test(msg);
+}
+function activityLogLeanPayload(payload){
+  return{
+    member_id:payload.member_id,
+    description:payload.description,
+    time_spent:payload.time_spent,
+    time_minutes:payload.time_minutes,
+    category:payload.category,
+    log_date:payload.log_date,
+    updated_at:payload.updated_at
+  };
+}
+async function persistActivityLogToSupabase(payload,eid){
+  if(!sb)return{error:{message:'No Supabase client'}};
+  var tries=activityLogExtrasDisabled?[activityLogLeanPayload(payload)]:[payload,activityLogLeanPayload(payload)];
+  var lastErr=null,usedLean=false;
+  for(var i=0;i<tries.length;i++){
+    var pl=tries[i],lean=i>0;
+    var r;
+    if(eid)r=await sb.from('activity_log').update(pl).eq('id',eid).select();
+    else r=await sb.from('activity_log').insert([Object.assign({},pl,{created_at:nowISO()})]).select();
+    if(!r.error){
+      if(lean)usedLean=true;
+      return{data:r.data,usedLean:usedLean};
+    }
+    lastErr=r.error;
+    if(isActivityLogColumnMissingError(r.error)){activityLogExtrasDisabled=true;continue;}
+    break;
+  }
+  return{error:lastErr};
+}
 function loadActivityLogFromLocal(){
   var key=localActivityKey();if(!key){activityLog=[];return;}
   var data=ls(key);activityLog=Array.isArray(data)?data:[];
@@ -2658,14 +2694,14 @@ async function stopActivityTimer(timerId){
   };
   if(sb){
     try{
-      var r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
-      if(!r.error){
+      var pr=await persistActivityLogToSupabase(payload,null);
+      if(!pr.error){
         markActivityLogConnected();
-        var row=Array.isArray(r.data)?r.data[0]:r.data;
+        var row=Array.isArray(pr.data)?pr.data[0]:pr.data;
         if(row){activityLog.unshift(row);}
-      }else if(isActivityLogTableMissing(r.error)){
+      }else if(isActivityLogTableMissing(pr.error)){
         saveActivityLogLocalRow(payload,null);
-      }else{toast('Could not log time — '+r.error.message,'error');return;}
+      }else{toast('Could not log time — '+pr.error.message,'error');return;}
     }catch(e){toast('Could not log time','error');return;}
   }else saveActivityLogLocalRow(payload,null);
   if(sb&&timersTableOk!==false){
@@ -3424,22 +3460,23 @@ async function saveActivity(){
     if(!sb){
       row=saveActivityLogLocalRow(payload,eid||null);
     }else{
-      var r;
-      if(eid)r=await sb.from('activity_log').update(payload).eq('id',eid).select();
-      else r=await sb.from('activity_log').insert([Object.assign({},payload,{created_at:nowISO()})]).select();
-      if(r.error){
-        console.error('[4KPI] saveActivity failed',r.error,payload);
-        if(isActivityLogTableMissing(r.error)){
+      var pr=await persistActivityLogToSupabase(payload,eid||null);
+      if(pr.error){
+        console.error('[4KPI] saveActivity failed',pr.error,payload);
+        if(isActivityLogTableMissing(pr.error)){
           activityLogLocalOnly=true;
           syncActivitySetupBanner();
           row=saveActivityLogLocalRow(payload,eid||null);
         }else{
-          toast('Could not save — '+r.error.message,'error');
+          toast('Could not save — '+pr.error.message,'error');
           return;
         }
       }else{
         markActivityLogConnected();
-        row=Array.isArray(r.data)?r.data[0]:r.data;
+        row=Array.isArray(pr.data)?pr.data[0]:pr.data;
+        if(pr.usedLean){
+          try{if(!sessionStorage.getItem('4k_mig_hint')){sessionStorage.setItem('4k_mig_hint','1');toast('Saved — run timers_outcomes_migration.sql in Supabase for start times & tags','error');}}catch(x){}
+        }
       }
     }
     if(row){
