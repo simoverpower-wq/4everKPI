@@ -1,4 +1,4 @@
-const APP_VER='20260527.69';
+const APP_VER='20260527.70';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -2272,6 +2272,30 @@ async function copyTextToClipboard(text){
   if(verified===false)return false;
   return false;
 }
+var confirmPending=null,confirmRunning=false;
+function showConfirmModal(opts){
+  if(confirmRunning)return;
+  confirmPending=opts||null;
+  var title=el('confirmTitle'),msg=el('confirmMsg'),ok=el('confirmOkBtn'),modal=el('ConfirmM');
+  if(!modal||!confirmPending)return;
+  if(title)title.textContent=confirmPending.title||'Confirm';
+  if(msg)msg.textContent=confirmPending.message||'';
+  if(ok)ok.textContent=confirmPending.confirmLabel||'Delete';
+  modal.classList.add('open');
+}
+function closeConfirmModal(){
+  confirmPending=null;
+  var modal=el('ConfirmM');if(modal)modal.classList.remove('open');
+}
+async function runConfirmAction(){
+  if(confirmRunning||!confirmPending)return;
+  var fn=confirmPending.onConfirm;
+  closeConfirmModal();
+  if(!fn)return;
+  confirmRunning=true;
+  try{await fn();}catch(e){console.error('[4KPI] confirm action',e);toast('Something went wrong','error');}
+  finally{confirmRunning=false;}
+}
 function openDailyLogCopyModal(text){
   var box=el('copyDayText'),modal=el('CopyDayM');
   if(!box||!modal)return;
@@ -2883,7 +2907,14 @@ async function saveMemberOutcome(){
 }
 async function deleteMemberOutcome(id){
   if(!cu||!id)return;
-  if(!confirm('Delete this outcome?'))return;
+  showConfirmModal({
+    title:'Delete outcome?',
+    message:'This removes the outcome for this day.',
+    onConfirm:function(){return doDeleteMemberOutcome(id);}
+  });
+}
+async function doDeleteMemberOutcome(id){
+  if(!cu||!id)return;
   if(sb&&outcomesTableOk!==false){
     try{await sb.from('member_outcomes').delete().eq('id',id);}catch(e){}
   }
@@ -3394,7 +3425,16 @@ function updatePresetField(idx,field,val){
 function deletePreset(idx){
   var presets=ensureActivityPresets();
   if(!presets[idx])return;
-  if(!confirm('Delete preset “'+(presets[idx].description||'Untitled')+'”?'))return;
+  var name=presets[idx].description||'Untitled';
+  showConfirmModal({
+    title:'Delete preset?',
+    message:'Remove “'+name+'” from the team preset list?',
+    onConfirm:function(){return doDeletePreset(idx);}
+  });
+}
+function doDeletePreset(idx){
+  var presets=ensureActivityPresets();
+  if(!presets[idx])return;
   presets.splice(idx,1);
   selectedPresetIndices=selectedPresetIndices.filter(function(i){return i!==idx;}).map(function(i){return i>idx?i-1:i;});
   saveActivityPresets();
@@ -3427,7 +3467,16 @@ function removeActivityTag(idx){
   ensureActivityTags();
   if(idx<0||idx>=activityTags.length)return;
   var removed=activityTags[idx];
-  if(!confirm('Delete category “'+removed+'”? Existing log entries are unchanged.'))return;
+  showConfirmModal({
+    title:'Delete category?',
+    message:'Remove “'+removed+'” from the category list? Existing log entries are unchanged.',
+    onConfirm:function(){return doRemoveActivityTag(idx);}
+  });
+}
+function doRemoveActivityTag(idx){
+  ensureActivityTags();
+  if(idx<0||idx>=activityTags.length)return;
+  var removed=activityTags[idx];
   activityTags.splice(idx,1);
   saveActivityTags();
   syncPresetsAfterCategoryRemoved(removed);
@@ -3587,35 +3636,61 @@ async function saveActivity(){
     toast('Could not save — see console for details','error');
   }
 }
-async function deleteActivity(id){
+function deleteActivity(id){
   if(!cu||!id)return;
-  var row=activityLog.find(function(x){return x.id===id;});
+  var row=activityLog.find(function(x){return String(x.id)===String(id);});
   if(row&&!canManageActivityEntry(row)){toast('You can\'t delete this entry','error');return;}
-  if(!confirm('Delete this entry?'))return;
+  var preview=row&&fullActivityDescription(row.description);
+  showConfirmModal({
+    title:'Delete this entry?',
+    message:preview?('Remove “'+preview.slice(0,120)+(preview.length>120?'…':'')+'” from this day\'s log?'):'Remove this log entry from the day?',
+    onConfirm:function(){return doDeleteActivity(id);}
+  });
+}
+async function doDeleteActivity(id){
+  if(!cu||!id)return;
+  var row=activityLog.find(function(x){return String(x.id)===String(id);});
+  if(row&&!canManageActivityEntry(row)){toast('You can\'t delete this entry','error');return;}
+  var snapshot=activityLog.slice();
+  activityLog=activityLog.filter(function(x){return String(x.id)!==String(id);});
+  if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
+  if(activityLogLocalOnly||!sb)persistActivityLogLocal();
+  rDailyLog();
   if(!sb){
-    activityLog=activityLog.filter(function(x){return x.id!==id;});
-    persistActivityLogLocal();
-  }else{
+    toast('Deleted ✓');
+    return;
+  }
+  try{
     var r=await sb.from('activity_log').delete().eq('id',id);
     if(r.error){
       if(isActivityLogTableMissing(r.error)){
         activityLogLocalOnly=true;
         syncActivitySetupBanner();
-        activityLog=activityLog.filter(function(x){return x.id!==id;});
         persistActivityLogLocal();
-      }else{toast('Could not delete','error');return;}
-    }else{
-      markActivityLogConnected();
+        toast('Deleted locally ✓');
+        return;
+      }
+      activityLog=snapshot;
+      if(activityLogLocalOnly)persistActivityLogLocal();
+      rDailyLog();
+      toast('Could not delete — '+((r.error&&r.error.message)||'try again'),'error');
+      return;
     }
+    markActivityLogConnected();
+    toast('Deleted ✓');
+    if(!activityLogLocalOnly)await loadActivityLog();
+    rDailyLog();
+  }catch(e){
+    console.error('[4KPI] doDeleteActivity',e);
+    activityLog=snapshot;
+    if(activityLogLocalOnly)persistActivityLogLocal();
+    rDailyLog();
+    toast('Could not delete','error');
   }
-  if(el('actEid')&&el('actEid').value===id)resetActivityComposer(false);
-  toast('Deleted ✓');
-  if(!activityLogLocalOnly&&sb)await loadActivityLog();
-  rDailyLog();
 }
 async function deleteActivityFromComposer(){
   var id=el('actEid').value;if(!id)return;
-  await deleteActivity(id);
+  deleteActivity(id);
 }
 async function deleteActivityFromModal(){await deleteActivityFromComposer();}
 function copyDailyLogDay(){
@@ -5105,7 +5180,7 @@ function subscribeRealtime(){
 function toast(msg,type){type=type||'success';var t=el('toast');if(!t)return;t.textContent=msg;t.className='toast '+type+' show';setTimeout(function(){t.className='toast';},2600);}
 
 // MODAL CLOSE ON BACKDROP
-['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','PresetM','ThemeM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='PresetM')closePresetManager();else if(id==='ThemeM')closeThemeModal();else node.classList.remove('open');}});});
+['TM','MM','ECM','FBM','RM','WPM','DM','TransferM','DaySnapM','PresetM','ThemeM','ConfirmM','CopyDayM'].forEach(function(id){var node=el(id);if(node)node.addEventListener('click',function(e){if(e.target===node){if(id==='DM')closeDeleteModal();else if(id==='TransferM')closeTransferM();else if(id==='DaySnapM')closeDaySnapM();else if(id==='PresetM')closePresetManager();else if(id==='ThemeM')closeThemeModal();else if(id==='ConfirmM')closeConfirmModal();else if(id==='CopyDayM')closeCopyDayModal();else node.classList.remove('open');}});});
 var ddOv=el('DD');if(ddOv)ddOv.addEventListener('click',function(e){if(e.target===ddOv)closeDrill();});
 
 console.log('[4KPI] app version',APP_VER);
@@ -5142,6 +5217,8 @@ window.saveActivity=saveActivity;
 window.deleteActivity=deleteActivity;
 window.deleteActivityFromModal=deleteActivityFromModal;
 window.copyDailyLogDay=copyDailyLogDay;
+window.closeConfirmModal=closeConfirmModal;
+window.runConfirmAction=runConfirmAction;
 window.closeCopyDayModal=closeCopyDayModal;
 window.copyFromDayModal=copyFromDayModal;
 window.selectDaySummaryText=selectDaySummaryText;
