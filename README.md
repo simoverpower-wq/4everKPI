@@ -1,4 +1,4 @@
-# 4everKPI
+# Telligence
 
 Agency operations tracker — Daily Log, time tracking, team KPIs, and Supabase-backed sync.
 
@@ -21,7 +21,7 @@ Start there before changing code or database schema.
 2. In [Supabase](https://supabase.com) SQL Editor, run migrations as needed — see **Section 7** in [HANDOFF.md](./HANDOFF.md).  
 3. Hard refresh after deploy: **Cmd+Shift+R** (Mac) or **Ctrl+Shift+R** (Windows).
 
-**Current version:** `20260527.71`
+**Current version:** `20260527.72`
 
 ## Main files
 

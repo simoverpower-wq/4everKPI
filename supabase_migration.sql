@@ -1,4 +1,4 @@
--- Run this in the Supabase SQL Editor for 4everKPI new features
+-- Run this in the Supabase SQL Editor for Telligence new features
 
 -- ========== QUICK FIX: Inactive member toggle "Error saving" ==========
 -- Run this if marking a member Inactive fails in the app.

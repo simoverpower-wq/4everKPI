@@ -1,4 +1,4 @@
-const APP_VER='20260527.71';
+const APP_VER='20260527.72';
 const SBU='https://wqtenvjtuxvdoaechyjh.supabase.co',SBK='sb_publishable_3llEE8WVT0thYygn-HRu6g_Ks2ePuLD';
 var sb=null;
 try{
@@ -73,7 +73,7 @@ const HELP={
   cmp_1v1:'Pick yourself and an opponent to compare stats side by side. Toggle "Personality text" for fun commentary on who\'s winning.',
   cmp_humor:'Funny commentary that reacts to how the comparison is going — winning, losing, close match, etc. Works for everyone, not just admins!',
   login:'Pick your name, then enter your PIN. Admins: tap the gear to drag names into the order you want on this screen.',
-  feedback:'Rate the app 1–5 stars and leave a comment. Your feedback helps us make 4everKPI better for everyone.',
+  feedback:'Rate the app 1–5 stars and leave a comment. Your feedback helps us make Telligence better for everyone.',
   rolenotes:'Shared notes for this role category. Write meeting notes, conversation summaries, reminders — anything the team needs to remember. Everyone can read and edit.',
   results:'Your wins board — log results you got (DM sent, lead found, call booked) and upload screenshots or files as proof. Like a trophy case for the team.'
 };
